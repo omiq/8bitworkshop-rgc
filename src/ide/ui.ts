@@ -202,7 +202,7 @@ class UserPrefs {
     return hasLocalStorage && !isEmbed && platform && localStorage.getItem("__lastrepo_" + platform);
   }
   shouldCompleteTour() {
-    return hasLocalStorage && !isEmbed && !localStorage.getItem("8bitworkshop.hello");
+    return false; // hasLocalStorage && !isEmbed && !localStorage.getItem("8bitworkshop.hello");
   }
   completedTour() {
     if (hasLocalStorage && !isEmbed) localStorage.setItem("8bitworkshop.hello", "true");
@@ -1912,7 +1912,7 @@ export function getPlatformAndRepo() {
   // add default platform
   if (!platform_id) {
     if (isEmbed) fatalError(`The 'platform' must be specified when embed=1`);
-    platform_id = qs.platform = "vcs";
+    platform_id = qs.platform = "c64";
   }
 }
 
