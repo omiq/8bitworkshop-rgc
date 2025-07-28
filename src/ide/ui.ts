@@ -489,6 +489,18 @@ function checkEnteredFilename(fn : string) : boolean {
   return true;
 }
 
+// Helper function to fix Bootbox aria-hidden issues
+function fixBootboxAriaHidden() {
+  setTimeout(() => {
+    const modal = document.querySelector('.bootbox.modal');
+    if (modal) {
+      modal.removeAttribute('aria-hidden');
+      modal.setAttribute('aria-hidden', 'false');
+      console.log("Fixed modal aria-hidden attribute");
+    }
+  }, 100);
+}
+
 function _createNewFile(e) {
   // TODO: support spaces
   bootbox.prompt({
@@ -507,6 +519,10 @@ function _createNewFile(e) {
       }
     }
   } as any);
+  
+  // Fix aria-hidden issue after modal is shown
+  fixBootboxAriaHidden();
+  
   return true;
 }
 
@@ -589,10 +605,14 @@ async function _openLocalDirectory(e) {
 }
 
 async function promptUser(message: string) : Promise<string> {
-  return new Promise( (resolve, reject) => {
+  return new Promise<string>( (resolve, reject) => {
     bootbox.prompt(DOMPurify.sanitize(message), (result) => {
       resolve(result);
     });
+  }).then(result => {
+    // Fix aria-hidden issue after modal is shown
+    fixBootboxAriaHidden();
+    return result;
   });
 }
 
@@ -708,6 +728,9 @@ function _renameFile(e) {
         }
       }
     });
+    
+    // Fix aria-hidden issue after modal is shown
+    fixBootboxAriaHidden();
   } else {
     alertError("Cannot rename the active window.");
   }
@@ -1296,6 +1319,9 @@ function addFileToProject(type, ext, linefn) {
         }
       }
     });
+    
+    // Fix aria-hidden issue after modal is shown
+    fixBootboxAriaHidden();
   } else {
     alertError("Can't insert text in this window -- switch back to main file");
   }
@@ -2084,3 +2110,49 @@ if (typeof process === 'undefined') {
     startUI();
   }
 }
+
+// Expose key IDE variables globally for console access
+function exposeToGlobal() {
+  (window as any).IDE = {
+    platform,
+    platform_id,
+    current_project,
+    projectWindows,
+    qs,
+    store_id,
+    repo_id,
+    lastDebugState,
+    getCurrentProject,
+    getCurrentMainFilename,
+    getCurrentEditorFilename,
+    getCurrentOutput,
+    getPlatformStore,
+    haltEmulation,
+    gotoNewLocation,
+    setFrameRateUI,
+    setupBreakpoint,
+    runToPC,
+    clearBreakpoint,
+    reloadWorkspaceFile,
+    highlightSearch,
+    // Helper function to load ROM with proper context
+    loadROM: (data?: Uint8Array) => {
+      const output = data || getCurrentOutput();
+      if (!output) {
+        console.error("❌ No compiled output available. Please compile your project first.");
+        return;
+      }
+      if (!(output instanceof Uint8Array)) {
+        console.error("❌ Output is not binary data:", typeof output);
+        return;
+      }
+      console.log("✅ Loading ROM with", output.length, "bytes");
+      platform.loadROM(getCurrentMainFilename(), output);
+    }
+  };
+  console.log("IDE variables exposed globally. Access via window.IDE");
+  console.log("Use window.IDE.loadROM() to load the current compiled output");
+}
+
+// Auto-expose when module loads
+setTimeout(exposeToGlobal, 1000);

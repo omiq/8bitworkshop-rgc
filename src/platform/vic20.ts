@@ -1,5 +1,4 @@
 
-import { VIC20_WASMMachine } from "../machine/vic20";
 import { Platform, Base6502MachinePlatform, getToolForFilename_6502, getOpcodeMetadata_6502 } from "../common/baseplatform";
 import { PLATFORMS } from "../common/emu";
 import { BaseMAME6502Platform } from "../common/mameplatform";
@@ -30,26 +29,7 @@ const VIC20_MEMORY_MAP = { main:[
   {name:'KERNAL ROM',   start:0xe000,size:0x2000,type:'rom'},
 ] }
 
-// WASM VIC20 platform
-class VIC20WASMPlatform extends Base6502MachinePlatform<VIC20_WASMMachine> implements Platform {
-
-  newMachine()          { return new VIC20_WASMMachine('vic20'); }
-
-  getPresets()          { return VIC20_PRESETS; }
-  getDefaultExtension() { return ".c"; };
-  readAddress(a)        { return this.machine.readConst(a); }
-  getMemoryMap()        { return VIC20_MEMORY_MAP; }
-  showHelp() {
-    return "https://8bitworkshop.com/docs/platforms/vic20/";
-  }
-  getROMExtension(rom:Uint8Array) { 
-
-    console.log('getROMExtension', rom);
-    if (rom && rom[0] == 0x00 && rom[1] == 0x80 && rom[2+4] == 0xc3 && rom[2+5] == 0xc2) return ".crt";
-    if (rom && rom[0] == 0x01 && rom[1] == 0x08) return ".prg";
-    else return ".crt";
-  }
-}
+// WASM VIC20 platform - REMOVED (using chips-test instead)
 
 // VIC20 MAME platform (TODO)
 abstract class VIC20MAMEPlatform extends BaseMAME6502Platform {
@@ -87,11 +67,8 @@ abstract class VIC20MAMEPlatform extends BaseMAME6502Platform {
 }
 
 
-PLATFORMS['vic20'] = VIC20WASMPlatform;
-PLATFORMS['vic20.wasm'] = VIC20WASMPlatform;
-PLATFORMS['vic20.mame'] = VIC20MAMEPlatform;
-
 // Temporarily redirect old VIC-20 to chips-test implementation
 // TODO: Remove this once chips-test is fully tested
 import VIC20ChipsPlatform from "./vic20_chips";
 PLATFORMS['vic20'] = VIC20ChipsPlatform;
+PLATFORMS['vic20.mame'] = VIC20MAMEPlatform;

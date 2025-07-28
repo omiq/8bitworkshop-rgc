@@ -1,5 +1,4 @@
 
-import { C64_WASMMachine } from "../machine/c64";
 import { Platform, Base6502MachinePlatform, getToolForFilename_6502, getOpcodeMetadata_6502, Preset } from "../common/baseplatform";
 import { PLATFORMS } from "../common/emu";
 import { BaseMAME6502Platform } from "../common/mameplatform";
@@ -63,24 +62,7 @@ const C64_MEMORY_MAP = { main:[
   {name:'KERNAL ROM',   start:0xe000,size:0x2000,type:'rom'},
 ] }
 
-// WASM C64 platform
-class C64WASMPlatform extends Base6502MachinePlatform<C64_WASMMachine> implements Platform {
-
-  newMachine()          { return new C64_WASMMachine('c64'); }
-
-  getPresets()          { return C64_PRESETS; }
-  getDefaultExtension() { return ".c"; };
-  readAddress(a)        { return this.machine.readConst(a); }
-  getMemoryMap()        { return C64_MEMORY_MAP; }
-  showHelp()            { return "https://8bitworkshop.com/docs/platforms/c64/" }
-  getROMExtension(rom:Uint8Array) { 
-    /*
-    if (rom && rom[0] == 0x00 && rom[1] == 0x80 && rom[2+4] == 0xc3 && rom[2+5] == 0xc2) return ".crt";
-    */
-    if (rom && rom[0] == 0x01 && rom[1] == 0x08) return ".prg";
-    else return ".bin";
-  }
-}
+// WASM C64 platform - REMOVED (using chips-test instead)
 
 // C64 MAME platform
 abstract class C64MAMEPlatform extends BaseMAME6502Platform {
@@ -118,11 +100,8 @@ abstract class C64MAMEPlatform extends BaseMAME6502Platform {
 }
 
 
-PLATFORMS['c64'] = C64WASMPlatform;
-PLATFORMS['c64.wasm'] = C64WASMPlatform;
-PLATFORMS['c64.mame'] = C64MAMEPlatform;
-
 // Temporarily redirect old C64 to chips-test implementation
 // TODO: Remove this once chips-test is fully tested
 import C64ChipsPlatform from "./c64_chips";
 PLATFORMS['c64'] = C64ChipsPlatform;
+PLATFORMS['c64.mame'] = C64MAMEPlatform;

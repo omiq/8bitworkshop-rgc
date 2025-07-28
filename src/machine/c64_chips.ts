@@ -46,13 +46,71 @@ export class C64ChipsMachine {
       this.canvas.style.maxWidth = '800px';
       this.canvas.style.maxHeight = '600px';
       
+      // Prevent the canvas from grabbing keyboard focus
+      this.canvas.tabIndex = -1;
+      this.canvas.style.outline = 'none';
+      this.canvas.style.pointerEvents = 'auto';
+      
+      // Prevent focus on any mouse event
+      this.canvas.addEventListener('mousedown', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        // Only allow focus if explicitly requested
+        if (e.target === this.canvas && e.detail === 2) { // Double click
+          this.canvas.focus();
+        }
+      });
+      
+      this.canvas.addEventListener('mouseup', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+      });
+      
+      this.canvas.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+      });
+      
+      // Prevent default keyboard handling
+      this.canvas.addEventListener('keydown', (e) => {
+        if (document.activeElement !== this.canvas) {
+          e.preventDefault();
+          e.stopPropagation();
+          return;
+        }
+      });
+      
+      this.canvas.addEventListener('keyup', (e) => {
+        if (document.activeElement !== this.canvas) {
+          e.preventDefault();
+          e.stopPropagation();
+          return;
+        }
+      });
+      
+      // Prevent focus on any other events
+      this.canvas.addEventListener('focus', (e) => {
+        // Only allow focus if it was explicitly requested
+        if (!e.isTrusted) {
+          this.canvas.blur();
+        }
+      });
+      
+      // Prevent any automatic focus
+      this.canvas.addEventListener('focusin', (e) => {
+        if (e.target === this.canvas && !e.isTrusted) {
+          e.preventDefault();
+          e.stopPropagation();
+        }
+      }, true);
+      
       // Add the canvas to the DOM so the chips-test emulator can find it
       document.body.appendChild(this.canvas);
       
       // Load the chips-test module if not already loaded
       if (!window.c64_chips_module) {
         const script = document.createElement('script');
-        script.src = 'res/c64.js';
+        script.src = `res/c64.js?t=${Date.now()}`;
         script.async = true;
         
         // Wait for the module to load
@@ -85,6 +143,16 @@ export class C64ChipsMachine {
           script.onerror = () => reject(new Error("Failed to load C64 module"));
           document.head.appendChild(script);
         });
+      }
+      
+      // Add cache-busting for WASM files
+      const originalFetch = window.fetch;
+      window.fetch = function(input: RequestInfo | URL, init?: RequestInit) {
+        if (typeof input === 'string' && (input.includes('c64.wasm') || input.includes('c64.js'))) {
+          const separator = input.includes('?') ? '&' : '?';
+          input = `${input}${separator}t=${Date.now()}`;
+        }
+        return originalFetch.call(this, input, init);
       }
       
       this.module = window.c64_chips_module;
@@ -150,6 +218,8 @@ export class C64ChipsMachine {
   }
 
   loadProgram(program: Uint8Array): void {
+    console.log("=== C64 LOAD PROGRAM DEBUG (UPDATED VERSION) ===");
+    console.log("✅ NEW FOCUS PREVENTION ACTIVE ===");
     console.log("C64 loadProgram called with", program.length, "bytes");
     console.log("First few bytes:", program.slice(0, 10));
     
@@ -217,6 +287,30 @@ export class C64ChipsMachine {
     
     // Try multiple approaches to call the quickload function
     let success = false;
+    
+    // Check for input parameter in URL
+    const urlParams = new URLSearchParams(window.location.search);
+    const inputParam = urlParams.get('input');
+    if (inputParam) {
+      console.log("Found input parameter:", inputParam);
+      // Try to add input parameter to the emulator
+      if (this.module && typeof (this.module as any).__sargs_add_kvp === 'function') {
+        try {
+          (this.module as any).__sargs_add_kvp('input', inputParam);
+          console.log("✅ Successfully added input parameter to module");
+        } catch (e) {
+          console.log("❌ Error adding input parameter to module:", e);
+        }
+      }
+      if (typeof (window as any).h && typeof (window as any).h.__sargs_add_kvp === 'function') {
+        try {
+          (window as any).h.__sargs_add_kvp('input', inputParam);
+          console.log("✅ Successfully added input parameter to window.h");
+        } catch (e) {
+          console.log("❌ Error adding input parameter to window.h:", e);
+        }
+      }
+    }
     
     // Approach 1: Direct module access
     if (this.module && typeof (this.module as any).c64_quickload === 'function') {

@@ -15,6 +15,9 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="msapplication-starturl" content="/redir.html">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=yes">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
 <link rel="apple-touch-icon" href="/images/icon.png">
 <style type="text/css" media="screen">
 body {
@@ -412,7 +415,13 @@ body {
 <script src="tss/js/Log.js"></script>
 
 <!-- main IDE module -->
-<script src="gen/ui.js" type="module"></script>
+<script>
+// Add cache-busting timestamp to main UI script
+const uiScript = document.createElement('script');
+uiScript.src = `gen/ui.js?t=${Date.now()}`;
+uiScript.type = 'module';
+document.head.appendChild(uiScript);
+</script>
 
 <script>
 // submenus open on click + hover
