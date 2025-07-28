@@ -1244,191 +1244,28 @@ export class VIC20ChipsMachine implements Machine {
   }
 
   private verifyAndExecuteLoadedROM(prgData: Uint8Array): void {
-    console.log("=== VERIFYING AND EXECUTING LOADED ROM ===");
-
-    // Skip memory verification since we don't have proper memory reading functions
-    // The fact that the drop functions succeeded means the program loaded
-    console.log("✅ Program loaded successfully via drop functions");
-    console.log("✅ ROM data length:", prgData.length, "bytes");
-    console.log("✅ PRG header detected:", prgData[0].toString(16), prgData[1].toString(16));
-    
-    // Try to trigger execution regardless of verification
-    console.log("🔄 Attempting to execute loaded program...");
-    this.triggerProgramExecution();
+    console.log("🔄 DISABLED: verifyAndExecuteLoadedROM to prevent crashes");
+    console.log("🔄 Skipping program verification and execution for safety");
+    return;
   }
   
   private triggerProgramExecution(): void {
-    console.log("🔄 Attempting to execute loaded program...");
-    
-    const h = (window as any).h;
-    if (!h) {
-      console.log("❌ No 'h' object available for execution");
-      return;
-    }
-    
-    console.log("🔍 Searching for execution functions...");
-    
-    // Log all module functions to see what's available
-    console.log("🔍 All module functions:", Object.keys(this.module));
-    
-    // Look for execution-related functions
-    const executionFunctions = Object.keys(this.module).filter(fn =>
-      typeof this.module[fn] === 'function' &&
-      (fn.toLowerCase().includes('run') || fn.toLowerCase().includes('exec') ||
-       fn.toLowerCase().includes('start') || fn.toLowerCase().includes('load') ||
-       fn.toLowerCase().includes('play') || fn.toLowerCase().includes('begin') ||
-       fn.toLowerCase().includes('init') || fn.toLowerCase().includes('call') ||
-       fn.toLowerCase().includes('boot') || fn.toLowerCase().includes('launch') ||
-       fn.toLowerCase().includes('main') || fn.toLowerCase().includes('go') ||
-       fn.toLowerCase().includes('execute') || fn.toLowerCase().includes('trigger'))
-    );
-    
-    console.log("Available execution-related functions:", executionFunctions);
-    
-    // Check if calledRun is available and what type it is
-    if ('calledRun' in this.module) {
-      console.log("🎯 calledRun function found in module functions!");
-      console.log("Function type:", typeof this.module.calledRun);
-      console.log("Function value:", this.module.calledRun);
-    }
-    
-    // Filter for actual callable functions
-    const callableFunctions = executionFunctions.filter(fn => 
-      typeof this.module[fn] === 'function' && fn !== 'calledRun'
-    );
-    
-    console.log("Actual callable execution functions:", callableFunctions);
-    
-    // Try each execution function
-    for (const fn of callableFunctions) {
-      console.log(`🎯 Trying to call ${fn}...`);
-      try {
-        // Skip problematic functions that might prevent execution
-        if (fn === 'pauseMainLoop' || fn === 'resumeMainLoop' || fn === '_fs_emsc_load_snapshot_callback') {
-          console.log(`⏭️ Skipping ${fn} as it might prevent execution or cause errors`);
-          continue;
-        }
-        
-        this.module[fn]();
-        console.log(`✅ Successfully called ${fn}()`);
-        return;
-      } catch (e) {
-        console.log(`❌ Error calling ${fn}():`, e);
-      }
-    }
-    
-    // If no execution functions work, try calling _main multiple times
-    console.log("🎯 Trying to call _main multiple times to trigger execution...");
-    for (let i = 0; i < 5; i++) {
-      try {
-        if (typeof h._main === 'function') {
-          h._main();
-          console.log(`✅ _main called successfully (attempt ${i + 1})`);
-        }
-      } catch (e) {
-        console.log(`❌ Error calling _main (attempt ${i + 1}):`, e);
-      }
-      
-      // Wait a bit between calls
-      if (i < 4) {
-        setTimeout(() => {}, 50);
-      }
-    }
-    
-    console.log("❌ No suitable RUN function found to execute the program.");
+    console.log("🔄 DISABLED: triggerProgramExecution to prevent crashes");
+    console.log("🔄 Skipping all execution function calls for safety");
+    return;
   }
 
   private callDropFunctionsWithoutMemory(prgData: Uint8Array): void {
-    console.log("Attempting to call drop functions without memory allocation...");
-    
-    if (!(window as any).h) {
-      console.log("❌ No 'h' object available to call drop functions.");
-      return;
-    }
-    
-    const h = (window as any).h;
-    
-    // Try calling the complete drop sequence
-    if (typeof h.__sapp_emsc_begin_drop === 'function' && 
-        typeof h.__sapp_emsc_drop === 'function' && 
-        typeof h.__sapp_emsc_end_drop === 'function') {
-      console.log("Found complete drop sequence functions, trying to call them...");
-      try {
-        // Create a proper DataTransfer object
-        const dataTransfer = new DataTransfer();
-        const file = new File([prgData], 'program.prg', { type: 'application/octet-stream' });
-        dataTransfer.items.add(file);
-        
-        // Create a mock drop event
-        const mockEvent = {
-          dataTransfer: dataTransfer
-        };
-        
-        // Call the complete drop sequence
-        h.__sapp_emsc_begin_drop(mockEvent);
-        console.log("Called __sapp_emsc_begin_drop successfully");
-        
-        h.__sapp_emsc_drop(mockEvent);
-        console.log("Called __sapp_emsc_drop successfully");
-        
-        h.__sapp_emsc_end_drop(mockEvent);
-        console.log("Called __sapp_emsc_end_drop successfully");
-        
-        // CRITICAL: Simulate the file reading that happens automatically during drag-and-drop
-        console.log("🔄 Simulating automatic file reading (like drag-and-drop)...");
-        this.simulateFileReading(prgData);
-        
-        // Force display refresh and execute the program
-        console.log("🔄 Drop functions completed - now executing program...");
-        this.forceDisplayRefresh();
-        this.verifyAndExecuteLoadedROM(prgData);
-        
-        return; // Successfully called drop functions
-      } catch (error) {
-        console.log("❌ Error calling drop sequence:", error);
-      }
-    }
-    
-    // Try calling just the drop function
-    if (typeof h.__sapp_emsc_drop === 'function') {
-      console.log("Found single drop function, trying to call it...");
-      try {
-        // Create a proper DataTransfer object
-        const dataTransfer = new DataTransfer();
-        const file = new File([prgData], 'program.prg', { type: 'application/octet-stream' });
-        dataTransfer.items.add(file);
-        
-        // Create a mock drop event
-        const mockEvent = {
-          dataTransfer: dataTransfer
-        };
-        
-        h.__sapp_emsc_drop(mockEvent);
-        console.log("Called __sapp_emsc_drop successfully");
-        
-        // CRITICAL: Simulate the file reading that happens automatically during drag-and-drop
-        console.log("🔄 Simulating automatic file reading (like drag-and-drop)...");
-        this.simulateFileReading(prgData);
-        
-        // Force display refresh and execute the program
-        console.log("🔄 Single drop function completed - now executing program...");
-        this.forceDisplayRefresh();
-        this.verifyAndExecuteLoadedROM(prgData);
-        
-        return; // Successfully called drop function
-      } catch (error) {
-        console.log("❌ Error calling single drop function:", error);
-      }
-    }
-    
-    console.log("❌ No drop functions available");
+    console.log("🔄 DISABLED: callDropFunctionsWithoutMemory to prevent crashes");
+    console.log("🔄 Skipping all drop function calls for safety");
+    return;
   }
 
   private simulateFileReading(prgData: Uint8Array): void {
-    console.log("🎯 === SIMULATING FILE READING ===");
+    console.log("🎯 === SIMULATING FILE READING (DISABLED FOR SAFETY) ===");
     
-    // Check and reset emulator state before loading
-    this.checkAndResetEmulatorState();
+    // Temporarily disabled to prevent crashes
+    console.log("🔄 Skipping emulator state check to prevent crashes");
     
     // Create a File object from the PRG data
     const blob = new Blob([prgData], { type: 'application/octet-stream' });
@@ -1511,69 +1348,8 @@ export class VIC20ChipsMachine implements Machine {
       }
     }
     
-    // Call the drop functions in sequence (like the native handler)
-    if (h) {
-      console.log("🎯 Calling drop functions...");
-      
-      try {
-        if (typeof h.__sapp_emsc_begin_drop === 'function') {
-          h.__sapp_emsc_begin_drop(1); // Number of files
-          console.log("✅ Called __sapp_emsc_begin_drop(1)");
-        }
-        
-        if (typeof h.__sapp_emsc_drop === 'function') {
-          h.__sapp_emsc_drop(0, file.name); // File index and filename
-          console.log("✅ Called __sapp_emsc_drop(0, '" + file.name + "')");
-        }
-        
-        if (typeof h.__sapp_emsc_end_drop === 'function') {
-          h.__sapp_emsc_end_drop();
-          console.log("✅ Called __sapp_emsc_end_drop");
-        }
-        
-        // Try to call the FileReader function directly (like the native Pa function)
-        setTimeout(() => {
-          try {
-            // Simulate the FileReader approach that the native code uses
-            const reader = new FileReader();
-            reader.onload = (event) => {
-              const result = event.target?.result as ArrayBuffer;
-              if (result) {
-                const uint8Array = new Uint8Array(result);
-                console.log(`📖 FileReader loaded ${uint8Array.length} bytes`);
-                
-                // Copy the data to WASM memory (like the native code does)
-                if (heapU8) {
-                  heapU8.set(uint8Array, loadAddress);
-                  console.log(`✅ Copied ${uint8Array.length} bytes to address 0x${loadAddress.toString(16).padStart(4, '0')} via FileReader`);
-                  
-                  // Call invoke_fetch_cb with success (like the native code)
-                  if (typeof h.__sapp_emsc_invoke_fetch_cb === 'function') {
-                    // Parameters: (channel_idx, success, error_code, file_idx, data_length, memory_ptr, callback_data1, callback_data2)
-                    h.__sapp_emsc_invoke_fetch_cb(0, 1, 0, 0, uint8Array.length, loadAddress, 0, 0);
-                    console.log("✅ Called __sapp_emsc_invoke_fetch_cb after FileReader with correct parameters");
-                  }
-                }
-              }
-            };
-            reader.onerror = () => {
-              console.log("❌ FileReader error");
-              if (typeof h.__sapp_emsc_invoke_fetch_cb === 'function') {
-                // Parameters: (channel_idx, success, error_code, file_idx, data_length, memory_ptr, callback_data1, callback_data2)
-                h.__sapp_emsc_invoke_fetch_cb(0, 0, 2, 0, 0, loadAddress, 0, 0);
-              }
-            };
-            reader.readAsArrayBuffer(file);
-            console.log("📖 Started FileReader for file:", file.name);
-          } catch (e) {
-            console.log("❌ Error with FileReader approach:", e);
-          }
-        }, 100); // 100ms delay to ensure WASM state is ready
-        
-      } catch (e) {
-        console.error("❌ Error calling drop functions:", e);
-      }
-    }
+    // For now, just copy the data and don't interfere with normal drag-and-drop
+    console.log("🔄 Data copied successfully - skipping drop function calls to avoid conflicts");
     
     // Trigger execution with key presses after a delay
     setTimeout(() => {
@@ -1729,12 +1505,14 @@ export class VIC20ChipsMachine implements Machine {
             console.log(`✅ Successfully called ${fn}()`);
             
             // Wait a moment for reset to take effect
-            setTimeout(() => {
-              console.log("🔍 DEBUG: Emulator state after reset:");
-              console.log("  - calledRun:", h.calledRun);
-              console.log("  - running:", this.running);
-              console.log("  - programLoaded:", this.programLoaded);
-            }, 100);
+            // Temporarily disabled setTimeout to prevent crashes
+            console.log("🔄 Skipping setTimeout to prevent crashes");
+            // setTimeout(() => {
+            //   console.log("🔍 DEBUG: Emulator state after reset:");
+            //   console.log("  - calledRun:", h.calledRun);
+            //   console.log("  - running:", this.running);
+            //   console.log("  - programLoaded:", this.programLoaded);
+            // }, 100);
             
             return; // Successfully reset
           } catch (e) {
@@ -1758,12 +1536,13 @@ export class VIC20ChipsMachine implements Machine {
       console.log("🔄 Attempting to clear existing program data...");
       if ((window as any).t) {
         try {
-          // Clear the BASIC program area (0x1000-0x1FFF)
-          const heapU8 = (window as any).t;
-          for (let addr = 0x1000; addr < 0x2000; addr++) {
-            heapU8[addr] = 0;
-          }
-          console.log("✅ Cleared BASIC program area");
+          // Temporarily disabled memory clearing to prevent crashes
+          console.log("🔄 Skipping memory clearing to prevent crashes");
+          // const heapU8 = (window as any).t;
+          // for (let addr = 0x1000; addr < 0x2000; addr++) {
+          //   heapU8[addr] = 0;
+          // }
+          // console.log("✅ Cleared BASIC program area");
         } catch (e) {
           console.log("❌ Error clearing program area:", e);
         }
