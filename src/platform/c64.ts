@@ -19,15 +19,15 @@ const C64_PRESETS : Preset[] = [
   {id:'scroll3.c', name:'Scrolling (Multidirectional)'},
   {id:'scroll4.c', name:'Scrolling (Color RAM Buffering)'},
   {id:'scroll5.c', name:'Scrolling (Camera Following)'},
-//  {id:'scrollingmap1.c', name:'Scrolling Tile Map'},
+  {id:'scrollingmap1.c', name:'Scrolling Tile Map'},
   {id:'fullscrollgame.c', name:'Full-Scrolling Game'},
   {id:'test_multiplex.c', name:'Sprite Retriggering'},
   {id:'test_multispritelib.c', name:'Sprite Multiplexing Library'},
   {id:'mcbitmap.c', name:'Multicolor Bitmap Mode'},
   {id:'testlz4.c', name:'LZ4 Bitmap Compression'},
-  //{id:'mandel.c', name:'Mandelbrot Fractal'},
+  {id:'mandel.c', name:'Mandelbrot Fractal'},
   {id:'musicplayer.c', name:'Music Player'},
-  //{id:'sidtune.dasm', name:'Tiny SID Tune (ASM)'},
+  {id:'sidtune.dasm', name:'Tiny SID Tune (ASM)'},
   {id:'siddemo.c', name:'SID Player Demo'},
   {id:'digisound.c', name:'Digi Sound Player'},
   {id:'climber.c', name:'Climber Game'},
@@ -121,3 +121,8 @@ abstract class C64MAMEPlatform extends BaseMAME6502Platform {
 PLATFORMS['c64'] = C64WASMPlatform;
 PLATFORMS['c64.wasm'] = C64WASMPlatform;
 PLATFORMS['c64.mame'] = C64MAMEPlatform;
+
+// Temporarily redirect old C64 to chips-test implementation
+// TODO: Remove this once chips-test is fully tested
+import C64ChipsPlatform from "./c64_chips";
+PLATFORMS['c64'] = C64ChipsPlatform;

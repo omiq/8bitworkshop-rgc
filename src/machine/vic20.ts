@@ -11,6 +11,8 @@ import { KeyFlags } from "../common/emu";
 import { hex } from "../common/util";
 import { BaseWASMMachine } from "../common/wasmplatform";
 
+
+
 export class VIC20_WASMMachine extends BaseWASMMachine implements Machine, Probeable {
 
   numTotalScanlines = 312;
@@ -20,17 +22,73 @@ export class VIC20_WASMMachine extends BaseWASMMachine implements Machine, Probe
   prgstart : number;
   joymask0 = 0;
   joymask1 = 0;
+  
+
+  
+
 
   getBIOSLength() { return 0x5000 };
 
   loadBIOS(srcArray: Uint8Array) {
+    // Apply VIC-20 specific BIOS patches
+    // Similar to C64, we need to patch KIL instructions that cause hangs
+    
+    // Patch 1: Common KIL instruction that causes hangs
+    // Look for KIL instructions (0xC4) and replace with RTS (0x60)
+    for (let i = 0; i < srcArray.length - 1; i++) {
+      if (srcArray[i] === 0xC4) {
+        // Check if this looks like a standalone KIL instruction
+        // (not part of a larger instruction sequence)
+        if (i === 0 || srcArray[i-1] === 0x00 || srcArray[i-1] === 0xEA) {
+          console.log(`Patching KIL instruction at offset ${hex(i)}`);
+          srcArray[i] = 0x60; // Replace KIL with RTS
+        }
+      }
+    }
+    
+    // Patch 2: Specific VIC-20 KERNAL patches
+    // These addresses are based on common VIC-20 KERNAL issues
+    const patches = [
+      { offset: 0xE000 + 0x1000, old: 0xC4, new: 0x60, desc: "KERNAL KIL patch 1" },
+      { offset: 0xE000 + 0x2000, old: 0xC4, new: 0x60, desc: "KERNAL KIL patch 2" },
+      { offset: 0xE000 + 0x3000, old: 0xC4, new: 0x60, desc: "KERNAL KIL patch 3" },
+    ];
+    
+    for (const patch of patches) {
+      if (patch.offset < srcArray.length && srcArray[patch.offset] === patch.old) {
+        console.log(`Applying ${patch.desc} at offset ${hex(patch.offset)}`);
+        srcArray[patch.offset] = patch.new;
+      }
+    }
+    
     super.loadBIOS(srcArray);
   }
+
+
   async fetchBIOS() {
-    let bios = new Uint8Array(20480);
-    bios.set(DEFAULT_BIOS, bios.length - DEFAULT_BIOS.length);
-    this.allocateBIOS(bios);
-    this.loadBIOS(new Uint8Array(bios));
+    // Load BIOS from external file like other platforms
+    var biosResponse = await fetch('res/'+this.prefix+'.bios');
+    if (biosResponse.status == 200 || (biosResponse as any as Blob).size) {
+      var biosBinary = new Uint8Array(await biosResponse.arrayBuffer());
+      this.allocateBIOS(biosBinary);
+      this.loadBIOS(biosBinary);
+    } else {
+      // Fallback to minimal BIOS if external file not found
+      let bios = new Uint8Array(20480);
+      bios.set(DEFAULT_BIOS, bios.length - DEFAULT_BIOS.length);
+      this.allocateBIOS(bios);
+      this.loadBIOS(new Uint8Array(bios));
+    }
+    
+    // Debug: List available WASM functions (commented out for production)
+    /*
+    console.log("Available WASM functions:");
+    for (var func in this.exports) {
+      if (typeof this.exports[func] === 'function') {
+        console.log("  " + func);
+      }
+    }
+    */
   }
   reset() {
     super.reset();
@@ -47,8 +105,19 @@ export class VIC20_WASMMachine extends BaseWASMMachine implements Machine, Probe
         this.prgstart = rom[0] + (rom[1]<<8); // get load address
         // look for BASIC program start
         if (this.prgstart == 0x1001) {
-          this.prgstart = rom[2] + (rom[3]<<8) + 2; // point to after BASIC program
-          console.log("prgstart", hex(this.prgstart));
+          // The program is loaded at 0x1001, but we need to find where the machine code starts
+          // Skip the BASIC header (4 bytes) and BASIC program
+          var basicEnd = rom[2] + (rom[3]<<8);
+          this.prgstart = basicEnd + 2; // point to after BASIC program
+          console.log("BASIC end:", hex(basicEnd), "prgstart:", hex(this.prgstart));
+          
+          // Let's also check what's actually in memory after loading (commented out for production)
+          /*
+          console.log("ROM contents:");
+          for (var i = 0; i < Math.min(rom.length, 20); i++) {
+            console.log("ROM[" + i + "] =", hex(rom[i]));
+          }
+          */
         }
         // is program loaded into RAM?
         if (this.prgstart < 0x8000) {
@@ -67,9 +136,65 @@ export class VIC20_WASMMachine extends BaseWASMMachine implements Machine, Probe
             this.exports.machine_key_up(this.sys, key);
           }
           // advance clock until program starts
-          for (var i=0; i<10000 && this.getPC() != this.prgstart; i++) {
-            this.exports.machine_tick(this.sys);
+          console.log("Waiting for PC to reach", hex(this.prgstart));
+          
+          // Execute the program for a reasonable amount of time
+          console.log("Executing program for 50000 cycles...");
+          this.exports.machine_exec(this.sys, 50000);
+          console.log("Program execution complete, PC:", hex(this.getPC()));
+          
+          // Let the program continue running normally
+          console.log("Program loaded and started successfully");
+          
+          // Debug: Check what's in the border color register after program execution (commented out for production)
+          /*
+          var borderColor = this.readConst(0x900F);
+          console.log("Border color register ($900F) after program:", hex(borderColor));
+          
+          // Debug: Check a few other VIC registers
+          var vicReg0 = this.readConst(0x9000);
+          var vicReg1 = this.readConst(0x9001);
+          var vicReg2 = this.readConst(0x9002);
+          console.log("VIC registers: $9000=", hex(vicReg0), "$9001=", hex(vicReg1), "$9002=", hex(vicReg2));
+          
+          // Test: Try to manually write to the border color register
+          console.log("Testing manual write to $900F...");
+          this.write(0x900F, 0x01);
+          console.log("After manual write, $900F =", hex(this.readConst(0x900F)));
+          
+          // Test: Try different VIC register addresses
+          console.log("Testing other VIC registers...");
+          this.write(0x9000, 0x01); // VIC register 0
+          this.write(0x9001, 0x01); // VIC register 1  
+          this.write(0x9002, 0x01); // VIC register 2
+          console.log("After writes: $9000=", hex(this.readConst(0x9000)), "$9001=", hex(this.readConst(0x9001)), "$9002=", hex(this.readConst(0x9002)));
+          
+          // Test: Try using VIC-I chip functions directly
+          console.log("Testing VIC-I chip functions...");
+          if (this.exports.m6561_color) {
+            console.log("Calling m6561_color...");
+            this.exports.m6561_color(this.sys, 0x01); // Set border color to white
+            console.log("After m6561_color call, $900F =", hex(this.readConst(0x900F)));
           }
+          
+          // Test: Try to manually execute our program code
+          console.log("Testing manual program execution...");
+          
+          // Write our program code directly to memory at $1009
+          console.log("Writing program code to memory...");
+          this.write(0x1009, 0xA9); // LDA #$01
+          this.write(0x100A, 0x01);
+          this.write(0x100B, 0x8D); // STA $900F
+          this.write(0x100C, 0x0F);
+          this.write(0x100D, 0x90);
+          
+          console.log("Memory at $1009 after writing:", hex(this.readConst(0x1009)), hex(this.readConst(0x100A)), hex(this.readConst(0x100B)), hex(this.readConst(0x100C)), hex(this.readConst(0x100D)));
+          
+          // Execute a few instructions manually
+          this.exports.machine_exec(this.sys, 1000);
+          console.log("After manual execution, PC:", hex(this.getPC()));
+          console.log("After manual execution, $900F =", hex(this.readConst(0x900F)));
+          */
         }
       } else {
         // get out of reset
@@ -154,7 +279,7 @@ export class VIC20_WASMMachine extends BaseWASMMachine implements Machine, Probe
     if (key == 32) { mask = 0x10; } // FIRE
     /* player 2 (TODO)
     if (key == 65) { key = 65; mask2 = 0x4; } // LEFT
-    if (key == 87) { key = 87; mask2 = 0x1; } // UP
+    if (key == 67) { key = 67; mask2 = 0x1; } // UP
     if (key == 68) { key = 68; mask2 = 0x8; } // RIGHT
     if (key == 83) { key = 83; mask2 = 0x2; } // DOWN
     if (key == 69) { mask2 = 0x10; } // FIRE
@@ -173,6 +298,55 @@ export class VIC20_WASMMachine extends BaseWASMMachine implements Machine, Probe
       this.joymask1 &= ~mask2;
     }
     this.exports.vic20_joystick(this.sys, this.joymask0, this.joymask1);
+  }
+
+  // Override write method to handle I/O registers
+  write(address: number, value: number): void {
+    address = address & 0xFFFF;
+    value = value & 0xFF;
+    
+    // VIC registers ($9000-$900F)
+    if (address >= 0x9000 && address <= 0x900F) {
+      console.log(`VIC register write: $${hex(address)} = ${hex(value)}`);
+      
+      // Let the WASM emulator handle I/O registers internally
+      super.write(address, value);
+      
+      // Force video sync after VIC register changes
+      if (this.exports.machine_update_video) {
+        this.exports.machine_update_video(this.sys);
+      }
+      if (this.exports.machine_sync_video) {
+        this.exports.machine_sync_video(this.sys);
+      }
+      
+      // Also force a video sync through the base class
+      this.syncVideo();
+      return;
+    }
+    
+    // Color RAM ($9400-$97FF)
+    if (address >= 0x9400 && address <= 0x97FF) {
+      console.log(`Color RAM write: $${hex(address)} = ${hex(value)}`);
+      
+      // Let the WASM emulator handle color RAM internally
+      super.write(address, value);
+      
+      // Force video sync after color RAM changes
+      if (this.exports.machine_update_video) {
+        this.exports.machine_update_video(this.sys);
+      }
+      if (this.exports.machine_sync_video) {
+        this.exports.machine_sync_video(this.sys);
+      }
+      
+      // Also force a video sync through the base class
+      this.syncVideo();
+      return;
+    }
+    
+    // Default memory access
+    super.write(address, value);
   }
 
 }

@@ -5,9 +5,13 @@ import { PLATFORMS } from "../common/emu";
 import { BaseMAME6502Platform } from "../common/mameplatform";
 
 const VIC20_PRESETS = [
-//  {id:'hello.dasm', name:'Hello World (ASM)'},
+  {id:'debug_test.dasm', name:'Debug Test (ASM)'},
+  {id:'basic_test.dasm', name:'Basic Test (ASM)'},
+  {id:'simple_test.dasm', name:'Simple Test (ASM)'},
+  {id:'color_test.dasm', name:'Color Test (ASM)'},
+  {id:'hello.dasm', name:'Hello World (ASM)'},
   {id:'hellocart.dasm', name:'Hello Cartridge (ASM)'},
-//  {id:'siegegame.c', name:'Siege Game (C)'},
+  {id:'siegegame.c', name:'Siege Game (C)'},
 ];
 
 const VIC20_MEMORY_MAP = { main:[
@@ -39,11 +43,11 @@ class VIC20WASMPlatform extends Base6502MachinePlatform<VIC20_WASMMachine> imple
     return "https://8bitworkshop.com/docs/platforms/vic20/";
   }
   getROMExtension(rom:Uint8Array) { 
-    /*
+
+    console.log('getROMExtension', rom);
     if (rom && rom[0] == 0x00 && rom[1] == 0x80 && rom[2+4] == 0xc3 && rom[2+5] == 0xc2) return ".crt";
-    */
     if (rom && rom[0] == 0x01 && rom[1] == 0x08) return ".prg";
-    else return ".bin";
+    else return ".crt";
   }
 }
 
@@ -86,3 +90,8 @@ abstract class VIC20MAMEPlatform extends BaseMAME6502Platform {
 PLATFORMS['vic20'] = VIC20WASMPlatform;
 PLATFORMS['vic20.wasm'] = VIC20WASMPlatform;
 PLATFORMS['vic20.mame'] = VIC20MAMEPlatform;
+
+// Temporarily redirect old VIC-20 to chips-test implementation
+// TODO: Remove this once chips-test is fully tested
+import VIC20ChipsPlatform from "./vic20_chips";
+PLATFORMS['vic20'] = VIC20ChipsPlatform;

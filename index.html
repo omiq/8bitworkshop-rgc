@@ -59,7 +59,24 @@ body {
           <li><a class="dropdown-item" href="#" id="item_request_persist">Request Local Storage Permissions</a></li>
         </ul>
       </li>
-
+      
+<!-- github 
+      <li class="dropdown dropdown-submenu">
+        <a tabindex="-1" href="#">Sync</a>
+        <ul class="dropdown-menu">
+          <li><a class="dropdown-item" href="#" id="item_github_login">Sign in to Github...</a></li>
+          <li><a class="dropdown-item" href="#" id="item_github_logout">Log out</a></li>
+          <hr>
+          <li><a class="dropdown-item" href="#" id="item_github_import">Import Project from GitHub...</a></li>
+          <li><a class="dropdown-item" href="#" id="item_github_pull">Pull Latest from Repository</a></li>
+          <hr>
+          <li><a class="dropdown-item" href="#" id="item_github_publish">Publish Project on GitHub...</a></li>
+          <li><a class="dropdown-item" href="#" id="item_github_push">Push Changes to Repository...</a></li>
+          <hr>
+          <li><a class="dropdown-item" href="#" id="item_repo_delete">Delete Local Repository...</a></li>
+        </ul>
+      </li>
+       -->
       <li class="dropdown dropdown-submenu">
         <a tabindex="-1" href="#">Download</a>
         <ul class="dropdown-menu">
@@ -114,70 +131,31 @@ body {
              <ul class="dropdown-menu">
                <li><a class="dropdown-item" href="?platform=vcs">Atari 2600</a></li>
                <li><a class="dropdown-item" href="?platform=nes">NES</a></li>
-               <hr>
-               <li><a class="dropdown-item" href="?platform=astrocade">Bally Astrocade</a></li>
                <li><a class="dropdown-item" href="?platform=coleco">ColecoVision</a></li>
-               <li><a class="dropdown-item" href="?platform=sms-sg1000-libcv">Sega SG-1000</a></li>
                <li><a class="dropdown-item" href="?platform=sms-sms-libcv">Sega Master System</a></li>
                <li><a class="dropdown-item" href="?platform=sms-gg-libcv">Sega Game Gear</a></li>
                <li><a class="dropdown-item" href="?platform=atari8-5200">Atari 5200</a></li>
                <li><a class="dropdown-item" href="?platform=atari7800">Atari 7800</a></li>
-               <li><a class="dropdown-item" href="?platform=pce">PC Engine</a></li>
-               <!--
                <li><a class="dropdown-item" href="?platform=vectrex">Vectrex</a></li>
-               -->
              </ul>
           </li>
           <li class="dropdown dropdown-submenu">
              <a tabindex="-1" href="#">Computers</a>
              <ul class="dropdown-menu">
-               <li><a class="dropdown-item" href="?platform=c64">Commodore 64</a></li>
+               <li><a class="dropdown-item" href="?platform=arm32">ARM7</a></li>
+                     <li><a class="dropdown-item" href="?platform=c64.chips">Commodore 64</a></li>
+      <li><a class="dropdown-item" href="?platform=vic20.chips">Commodore Vic20</a></li>
                <li><a class="dropdown-item" href="?platform=atari8-800">Atari 800</a></li>
                <li><a class="dropdown-item" href="?platform=msx">MSX (BIOS)</a></li>
                <li><a class="dropdown-item" href="?platform=msx-libcv">MSX (libCV)</a></li>
                <li><a class="dropdown-item" href="?platform=apple2">Apple ][+</a></li>
                <li><a class="dropdown-item" href="?platform=zx">ZX Spectrum</a></li>
                <li><a class="dropdown-item" href="?platform=cpc.6128">Amstrad CPC6128</a></li>
-              </ul>
-          </li>
-          <li class="dropdown dropdown-submenu">
-             <a tabindex="-1" href="#">Arcade Systems</a>
-             <ul class="dropdown-menu">
-               <li><a class="dropdown-item" href="?platform=vicdual">VIC Dual</a></li>
-               <li><a class="dropdown-item" href="?platform=mw8080bw">Midway 8080</a></li>
-               <li><a class="dropdown-item" href="?platform=galaxian-scramble">Galaxian/Scramble</a></li>
-               <li><a class="dropdown-item" href="?platform=vector-z80color">Atari Color Vector (Z80)</a></li>
-               <li><a class="dropdown-item" href="?platform=vector-ataricolor">Atari Color Vector (6502)</a></li>
-               <li><a class="dropdown-item" href="?platform=williams-z80">Williams (Z80)</a></li>
-               <li><a class="dropdown-item" href="?platform=sound_williams-z80">Williams Sound (Z80)</a></li>
-             </ul>
-          </li>
-          <li class="dropdown dropdown-submenu">
-             <a tabindex="-1" href="#">Hardware</a>
-             <ul class="dropdown-menu">
-               <li><a class="dropdown-item" href="?platform=verilog">Verilog</a></li>
-               <li><a class="dropdown-item" href="?platform=verilog-vga">Verilog (VGA @ 25 Mhz)</a></li>
-             </ul>
-          </li>
-         <li class="dropdown dropdown-submenu">
-          <a tabindex="-1" href="#">Interpreters</a>
-          <ul class="dropdown-menu">
-            <li><a class="dropdown-item" href="?platform=basic">BASIC</a></li>
-            <li><a class="dropdown-item" href="?platform=zmachine">Z-Machine</a></li>
-          </ul>
-        </li>
-        <li class="dropdown dropdown-submenu">
-          <a tabindex="-1" href="#">MAME/Other</a>
-          <ul class="dropdown-menu">
+               <li><a class="dropdown-item" href="?platform=basic">BASIC</a></li>
+               <li><a class="dropdown-item" href="?platform=zmachine&file=advent.inf">Z-Machine/Inform</a></li>
             <li><a class="dropdown-item" href="?platform=atari8-800.xlmame">Atari 800XL (MAME)</a></li>
             <li><a class="dropdown-item" href="?platform=atari8-5200.mame">Atari 5200 (MAME)</a></li>
-            <hr>
-            <li><a class="dropdown-item" href="?platform=vcs.stellerator">Atari 2600 (Stellerator)</a></li>
-            <li><a class="dropdown-item" href="?platform=vcs.mame">Atari 2600 (MAME)</a></li>
             <li><a class="dropdown-item" href="?platform=coleco.mame">ColecoVision (MAME)</a></li>
-            <li><a class="dropdown-item" href="?platform=nes.mame">NES (MAME)</a></li>
-            <hr>
-            <li><a class="dropdown-item" href="?platform=williams">Williams (6809)</a></li>
             <li><a class="dropdown-item" href="?platform=x86">x86 (FreeDOS)</a></li>
           </ul>
        </li>
@@ -445,21 +423,7 @@ $( ".dropdown-submenu" ).click(function(event) {
 });
 </script>
 
-<!-- Sentry error reporting -->
-<script src='https://js.sentry-cdn.com/1fdd10e76a524c6e8d1e0a47f215fb28.min.js' crossorigin="anonymous"></script>
-<script>
-  if (window.Sentry) Sentry.onLoad(function() {
-      Sentry.init({
-          sampleRate: window.location.host.endsWith('8bitworkshop.com') ? 0.5 : 0.05,
-          beforeSend(event, hint) {
-            const error = hint.originalException;
-            if (error && error.hasOwnProperty('$loc')) return null; // ignore EmuHalt
-            if (error && error.squelchError) return null; // ignore EmuHalt
-            return event;
-          },
-      });
-  });
-</script>
+
 
 </body>
 </html>

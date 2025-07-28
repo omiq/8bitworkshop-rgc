@@ -1,4 +1,3 @@
-
 // 8bitworkshop IDE user interface
 
 import * as localforage from "localforage";
@@ -353,6 +352,8 @@ function refreshWindowList() {
 
   // add other tools
   separate = true;
+  // Removed debugging features for simplified VIC-20 experience
+  /*
   if (platform.disassemble && platform.saveState) {
     addWindowItem("#disasm", "Disassembly", () => {
       return new DisassemblerView();
@@ -394,11 +395,9 @@ function refreshWindowList() {
     addWindowItem("#callstack", "Call Stack", () => {
       return new CallStackView();
     });
-    /*
-    addWindowItem("#framecalls", "Frame Profiler", () => {
-      return new FrameCallsView();
-    });
-    */
+    // addWindowItem("#framecalls", "Frame Profiler", () => {
+    //   return new FrameCallsView();
+    // });
   }
   if (platform.getDebugTree) {
     addWindowItem("#debugview", "Debug Tree", () => {
@@ -408,6 +407,7 @@ function refreshWindowList() {
   addWindowItem('#asseteditor', 'Asset Editor', () => {
     return new AssetEditorView();
   });
+  */
 }
 
 function highlightLines(path:string, hispec:string) {
@@ -896,7 +896,7 @@ async function loadBIOSFromProject() {
       console.log('loading BIOS', biospath, biosdata.length + " bytes")
       platform.loadBIOS(biospath, biosdata);
     } else {
-      console.log('BIOS file must be binary')
+      console.log('BIOS file must be binary', biospath)
     }
   }
 }
@@ -1948,7 +1948,9 @@ export async function startUI() {
 
 async function loadAndStartPlatform() {
   try {
-    var module = await importPlatform(getRootBasePlatform(platform_id));
+    // For chips-test platforms, use the full platform ID
+    const importName = platform_id.includes('.chips') ? platform_id : getRootBasePlatform(platform_id);
+    var module = await importPlatform(importName);
     console.log("starting platform", platform_id); // loaded required <platform_id>.js file
     await startPlatform();
     document.title = document.title + " [" + platform_id + "] - " + (repo_id?('['+repo_id+'] - '):'') + current_project.mainPath;

@@ -28,8 +28,39 @@ export class C64_WASMMachine extends BaseWASMMachine
   lightpen_y = 0;
 
   loadBIOS(srcArray: Uint8Array) {
+    // Apply C64 specific BIOS patches for the new ROMs
+    
+    // Patch 1: Original KIL instruction patch
     var patch1ofs = 0xea24 - 0xe000 + 0x3000;
     if (srcArray[patch1ofs] == 0xc4) srcArray[patch1ofs] = 0x60; // cursor move, KIL -> RTS
+    
+    // Patch 2: Additional KIL instruction patches for new ROMs
+    // Look for other KIL instructions that might cause hangs
+    for (let i = 0; i < srcArray.length - 1; i++) {
+      if (srcArray[i] === 0xC4) {
+        // Check if this looks like a standalone KIL instruction
+        if (i === 0 || srcArray[i-1] === 0x00 || srcArray[i-1] === 0xEA) {
+          console.log(`C64: Patching KIL instruction at offset ${i.toString(16)}`);
+          srcArray[i] = 0x60; // Replace KIL with RTS
+        }
+      }
+    }
+    
+    // Patch 3: Character set initialization patches
+    // Ensure character set is properly initialized
+    const charSetPatches = [
+      { offset: 0x1000, value: 0x3C }, // Ensure proper character set start
+      { offset: 0x1001, value: 0x66 },
+      { offset: 0x1002, value: 0x6E }
+    ];
+    
+    for (const patch of charSetPatches) {
+      if (patch.offset < srcArray.length) {
+        console.log(`C64: Applying character set patch at ${patch.offset.toString(16)}`);
+        srcArray[patch.offset] = patch.value;
+      }
+    }
+    
     super.loadBIOS(srcArray);
   }
   reset() {
