@@ -1094,6 +1094,14 @@ export class VIC20ChipsMachine implements Machine {
         return;
       }
       
+      // SELECTIVE: Only block events from reaching emulator, don't interfere with editor
+      if (activeElement && (activeElement.tagName === 'TEXTAREA' || activeElement.tagName === 'INPUT')) {
+        // Don't stop propagation - let the editor handle the event normally
+        // Just log that we're allowing it to work in the editor
+        console.log(`🛡️ ALLOWING ${event.key} to work in editor - not blocking`);
+        return;
+      }
+      
       // Only log other events on textarea/input, don't interfere
       if (target && (target.tagName === 'TEXTAREA' || target.tagName === 'INPUT')) {
         console.log(`🛡️ ALLOWING ${event.type} for ${event.key} on ${target.tagName} - not interfering`);
