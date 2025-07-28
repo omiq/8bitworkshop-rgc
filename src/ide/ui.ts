@@ -854,6 +854,19 @@ function showErrorAlert(errors : WorkerError[], runtime : boolean) {
   }
   $("#error_alert").show();
   errorWasRuntime = runtime;
+  
+  // CRITICAL: Prevent the error alert from stealing focus
+  // Set tabindex to -1 to make it non-focusable
+  $("#error_alert").attr('tabindex', '-1');
+  $("#error_alert").css('outline', 'none');
+  
+  // Ensure the editor keeps focus
+  setTimeout(() => {
+    const editor = document.querySelector('.CodeMirror textarea');
+    if (editor) {
+      (editor as HTMLElement).focus();
+    }
+  }, 100);
 }
 
 function showExceptionAsError(err, msg:string) {

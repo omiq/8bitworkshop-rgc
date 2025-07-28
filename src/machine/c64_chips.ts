@@ -46,66 +46,76 @@ export class C64ChipsMachine {
       this.canvas.style.maxWidth = '800px';
       this.canvas.style.maxHeight = '600px';
       
-      // Prevent the canvas from grabbing keyboard focus
-      this.canvas.tabIndex = -1;
-      this.canvas.style.outline = 'none';
-      this.canvas.style.pointerEvents = 'auto';
+      // DISABLED: Prevent the canvas from grabbing keyboard focus
+      // this.canvas.tabIndex = -1;
+      // this.canvas.style.outline = 'none';
+      // this.canvas.style.pointerEvents = 'auto';
       
-      // Prevent focus on any mouse event
-      this.canvas.addEventListener('mousedown', (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        // Only allow focus if explicitly requested
-        if (e.target === this.canvas && e.detail === 2) { // Double click
-          this.canvas.focus();
-        }
-      });
+      // DISABLED: Prevent focus on any mouse event
+      // this.canvas.addEventListener('mousedown', (e) => {
+      //   e.preventDefault();
+      //   e.stopPropagation();
+      //   // Only allow focus if explicitly requested
+      //   if (e.target === this.canvas && e.detail === 2) { // Double click
+      //     this.canvas.focus();
+      //   }
+      // });
       
-      this.canvas.addEventListener('mouseup', (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-      });
+      // this.canvas.addEventListener('mouseup', (e) => {
+      //   e.preventDefault();
+      //   e.stopPropagation();
+      // });
       
-      this.canvas.addEventListener('click', (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-      });
+      // this.canvas.addEventListener('click', (e) => {
+      //   e.preventDefault();
+      //   e.stopPropagation();
+      // });
       
-      // Prevent default keyboard handling
-      this.canvas.addEventListener('keydown', (e) => {
-        if (document.activeElement !== this.canvas) {
-          e.preventDefault();
-          e.stopPropagation();
-          return;
-        }
-      });
+      // DISABLED: Prevent default keyboard handling
+      // this.canvas.addEventListener('keydown', (e) => {
+      //   if (document.activeElement !== this.canvas) {
+      //     e.preventDefault();
+      //     e.stopPropagation();
+      //     return;
+      //   }
+      // });
       
-      this.canvas.addEventListener('keyup', (e) => {
-        if (document.activeElement !== this.canvas) {
-          e.preventDefault();
-          e.stopPropagation();
-          return;
-        }
-      });
+      // this.canvas.addEventListener('keyup', (e) => {
+      //   if (document.activeElement !== this.canvas) {
+      //     e.preventDefault();
+      //     e.stopPropagation();
+      //     return;
+      //   }
+      // });
       
-      // Prevent focus on any other events
-      this.canvas.addEventListener('focus', (e) => {
-        // Only allow focus if it was explicitly requested
-        if (!e.isTrusted) {
-          this.canvas.blur();
-        }
-      });
+      // DISABLED: Prevent focus on any other events
+      // this.canvas.addEventListener('focus', (e) => {
+      //   // Only allow focus if it was explicitly requested
+      //   if (!e.isTrusted) {
+      //     this.canvas.blur();
+      //   }
+      // });
       
-      // Prevent any automatic focus
-      this.canvas.addEventListener('focusin', (e) => {
-        if (e.target === this.canvas && !e.isTrusted) {
-          e.preventDefault();
-          e.stopPropagation();
-        }
-      }, true);
+      // DISABLED: Prevent any automatic focus
+      // this.canvas.addEventListener('focusin', (e) => {
+      //   if (e.target === this.canvas && !e.isTrusted) {
+      //     e.preventDefault();
+      //     e.stopPropagation();
+      //   }
+      // }, true);
       
-      // Add the canvas to the DOM so the chips-test emulator can find it
-      document.body.appendChild(this.canvas);
+      // Add canvas to the pre-existing C64 chips div
+      const c64Div = document.getElementById('c64-chips-div');
+      const c64Screen = document.getElementById('c64-chips-screen');
+      if (c64Div && c64Screen) {
+        c64Screen.appendChild(this.canvas);
+        c64Div.style.display = 'block';
+        console.log("✅ Added C64 canvas to pre-existing div");
+      } else {
+        // Fallback to body if div not found
+        document.body.appendChild(this.canvas);
+        console.log("⚠️ C64 div not found, using body fallback");
+      }
       
       // Load the chips-test module if not already loaded
       if (!window.c64_chips_module) {
@@ -183,6 +193,14 @@ export class C64ChipsMachine {
         console.log("Skipping URL parameter parser to avoid DOM access issues");
       } else {
         throw new Error("C64 module not properly initialized");
+      }
+      
+      // CRITICAL: Make canvas non-focusable after emulator is loaded
+      if (this.canvas) {
+        this.canvas.tabIndex = -1;
+        this.canvas.style.outline = 'none';
+        this.canvas.setAttribute('tabindex', '-1');
+        console.log("✅ Made C64 canvas non-focusable");
       }
       
     } catch (error) {
@@ -509,6 +527,13 @@ export class C64ChipsMachine {
     this.stop();
     this.module = null;
     this.canvas = null;
+    
+    // Hide the C64 chips div when destroyed
+    const c64Div = document.getElementById('c64-chips-div');
+    if (c64Div) {
+      c64Div.style.display = 'none';
+      console.log("✅ Hidden C64 chips div");
+    }
   }
 
   // Joystick support

@@ -228,6 +228,14 @@ body {
       <div id="javatari-screen" style="margin: 0 auto; box-shadow: 2px 2px 10px rgb(60, 60, 60);"></div>
       <div id="javatari-console-panel" style="margin: 0 auto; box-shadow: 2px 2px 10px rgb(60, 60, 60);"></div>
     </div>
+    <!-- for VIC-20 chips emulator only -->
+    <div id="vic20-chips-div" style="float:center;margin:10px;display:none">
+      <div id="vic20-chips-screen" style="margin: 0 auto; box-shadow: 2px 2px 10px rgb(60, 60, 60);"></div>
+    </div>
+    <!-- for C64 chips emulator only -->
+    <div id="c64-chips-div" style="float:center;margin:10px;display:none">
+      <div id="c64-chips-screen" style="margin: 0 auto; box-shadow: 2px 2px 10px rgb(60, 60, 60);"></div>
+    </div>
     <!-- control instructions -->
     <div class="emucontrols-vcs emucontrols-c64 text-center small control-insns" style="display:none">
       <span class="control-def"><span class="control-key">&#x2190;&#x2191;&#x2193;&#x2192;</span> Joystick</span>
@@ -430,6 +438,9 @@ $( ".dropdown-submenu" ).click(function(event) {
     $(this).parent().siblings().removeClass('open');
     $(this).parent().toggleClass('open');
 });
+
+
+
 </script>
 
 

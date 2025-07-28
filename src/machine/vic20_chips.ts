@@ -14,6 +14,11 @@ export class VIC20ChipsMachine implements Machine {
   private name: string;
   private description: string;
   private programLoaded = false; // Track if a program has been loaded
+  private focusTrackingHandler: ((event: FocusEvent) => void) | null = null;
+  private keyboardTrackingHandler: ((event: KeyboardEvent) => void) | null = null;
+  private keyboardInterceptor: ((event: KeyboardEvent) => void) | null = null;
+  private modalFocusProtection: (() => void) | null = null;
+  private globalKeyboardBlocker: ((event: KeyboardEvent) => void) | null = null;
   
   // CPU stub for interface compliance
   cpu = {
@@ -54,68 +59,81 @@ export class VIC20ChipsMachine implements Machine {
       this.canvas.style.maxWidth = '800px';
       this.canvas.style.maxHeight = '600px';
       
-      // Prevent focus on canvas
-      this.canvas.tabIndex = -1;
-      this.canvas.style.outline = 'none';
-      this.canvas.style.pointerEvents = 'auto';
+      // DISABLED: Focus prevention code to fix typing issues
+      // this.canvas.tabIndex = -1;
+      // this.canvas.style.outline = 'none';
+      // this.canvas.style.pointerEvents = 'auto';
       
-      // Add comprehensive focus prevention
-      this.canvas.addEventListener('mousedown', (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        // Only allow focus on double-click
-        if (e.target === this.canvas && e.detail === 2) {
-          this.canvas.focus();
-        }
-      });
+      // DISABLED: Add comprehensive focus prevention
+      // this.canvas.addEventListener('mousedown', (e) => {
+      //   e.preventDefault();
+      //   e.stopPropagation();
+      //   // Only allow focus on double-click
+      //   if (e.target === this.canvas && e.detail === 2) {
+      //     this.canvas.focus();
+      //   }
+      // });
       
-      this.canvas.addEventListener('mouseup', (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-      });
+      // this.canvas.addEventListener('mouseup', (e) => {
+      //   e.preventDefault();
+      //   e.stopPropagation();
+      // });
       
-      this.canvas.addEventListener('click', (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-      });
+      // this.canvas.addEventListener('click', (e) => {
+      //   e.preventDefault();
+      //   e.stopPropagation();
+      // });
       
-      this.canvas.addEventListener('keydown', (e) => {
-        if (document.activeElement !== this.canvas) {
-          e.preventDefault();
-          e.stopPropagation();
-          return;
-        }
-      });
+      // this.canvas.addEventListener('keydown', (e) => {
+      //   if (document.activeElement !== this.canvas) {
+      //     e.preventDefault();
+      //     e.stopPropagation();
+      //     return;
+      //   }
+      // });
       
-      this.canvas.addEventListener('keyup', (e) => {
-        if (document.activeElement !== this.canvas) {
-          e.preventDefault();
-          e.stopPropagation();
-          return;
-        }
-      });
+      // this.canvas.addEventListener('keyup', (e) => {
+      //   if (document.activeElement !== this.canvas) {
+      //     e.preventDefault();
+      //     e.stopPropagation();
+      //     return;
+      //   }
+      // });
       
-      // Prevent any focus on canvas
-      this.canvas.addEventListener('focus', (e) => {
-        if (!e.isTrusted) {
-          this.canvas.blur();
-        }
-      });
+      // DISABLED: Prevent any focus on canvas
+      // this.canvas.addEventListener('focus', (e) => {
+      //   if (!e.isTrusted) {
+      //     this.canvas.blur();
+      //   }
+      // });
       
-      // Global focus prevention
-      this.canvas.addEventListener('focusin', (e) => {
-        if (e.target === this.canvas && !e.isTrusted) {
-          console.log("Preventing focusin on canvas");
-          e.preventDefault();
-          e.stopPropagation();
-        }
-      }, true);
+      // DISABLED: Global focus prevention
+      // this.canvas.addEventListener('focusin', (e) => {
+      //   if (e.target === this.canvas && !e.isTrusted) {
+      //     console.log("Preventing focusin on canvas");
+      //     e.preventDefault();
+      //     e.stopPropagation();
+      //   }
+      // }, true);
       
-      // Add canvas to body temporarily
-      document.body.appendChild(this.canvas);
+      // Add canvas to the pre-existing VIC-20 chips div
+      const vic20Div = document.getElementById('vic20-chips-div');
+      const vic20Screen = document.getElementById('vic20-chips-screen');
+      if (vic20Div && vic20Screen) {
+        vic20Screen.appendChild(this.canvas);
+        vic20Div.style.display = 'block';
+        console.log("✅ Added VIC-20 canvas to pre-existing div");
+      } else {
+        // Fallback to body if div not found
+        document.body.appendChild(this.canvas);
+        console.log("⚠️ VIC-20 div not found, using body fallback");
+      }
       
       // Wait a bit for canvas to be ready
       await new Promise(resolve => setTimeout(resolve, 100));
+      
+      // CRITICAL: Add global focus tracking to debug focus stealing
+      this.addFocusTracking();
 
       // Load the VIC-20 script with timestamp to prevent caching
       const script = document.createElement('script');
@@ -140,6 +158,24 @@ export class VIC20ChipsMachine implements Machine {
         // Wait for module to be ready
         setTimeout(() => {
           this.detectModule();
+          
+                // CRITICAL: Make canvas non-focusable after emulator is loaded
+      if (this.canvas) {
+        this.canvas.tabIndex = -1;
+        this.canvas.style.outline = 'none';
+        this.canvas.setAttribute('tabindex', '-1');
+        
+        // CRITICAL: Override the canvas focus method to prevent programmatic focus
+        const originalFocus = this.canvas.focus;
+        this.canvas.focus = function() {
+          console.log("🚨 BLOCKED: Canvas focus() called programmatically!");
+          console.log("  Stack trace:", new Error().stack);
+          // Don't call the original focus method
+          return;
+        };
+        
+        console.log("✅ Made VIC-20 canvas non-focusable and blocked focus() calls");
+      }
         }, 500);
       };
       
@@ -186,26 +222,26 @@ export class VIC20ChipsMachine implements Machine {
         return originalFetch.call(this, input, init);
       };
       
-      // Improved focus handling - don't override HTMLElement.prototype.focus globally
+      // DISABLED: Improved focus handling - don't override HTMLElement.prototype.focus globally
       // Instead, handle focus specifically for the canvas
-      this.canvas.addEventListener('click', (e) => {
-        // Only allow canvas to receive focus when explicitly clicked
-        console.log("Canvas clicked, allowing focus");
-        this.canvas.focus();
-      });
+      // this.canvas.addEventListener('click', (e) => {
+      //   // Only allow canvas to receive focus when explicitly clicked
+      //   console.log("Canvas clicked, allowing focus");
+      //   this.canvas.focus();
+      // });
       
-      // Prevent focus stealing from other elements
-      this.canvas.addEventListener('focus', (e) => {
-        console.log("Canvas focused");
-      });
+      // DISABLED: Prevent focus stealing from other elements
+      // this.canvas.addEventListener('focus', (e) => {
+      //   console.log("Canvas focused");
+      // });
       
-      this.canvas.addEventListener('blur', (e) => {
-        console.log("Canvas blurred");
-      });
+      // this.canvas.addEventListener('blur', (e) => {
+      //   console.log("Canvas blurred");
+      // });
       
-      // Set canvas to not receive focus automatically
-      this.canvas.tabIndex = -1;
-      this.canvas.style.outline = 'none';
+      // DISABLED: Set canvas to not receive focus automatically
+      // this.canvas.tabIndex = -1;
+      // this.canvas.style.outline = 'none';
       
       // Add global debugging objects for console inspection first
       (window as any).VIC20_DEBUG = {
@@ -928,6 +964,203 @@ export class VIC20ChipsMachine implements Machine {
     }
     this.canvas = null;
     this.module = null;
+    
+    // Hide the VIC-20 chips div when destroyed
+    const vic20Div = document.getElementById('vic20-chips-div');
+    if (vic20Div) {
+      vic20Div.style.display = 'none';
+      console.log("✅ Hidden VIC-20 chips div");
+    }
+    
+    // Remove focus tracking
+    this.removeFocusTracking();
+  }
+  
+  private addFocusTracking(): void {
+    console.log("🔍 Adding global focus tracking to debug focus stealing...");
+    
+    // Track focus changes
+    this.focusTrackingHandler = (event: FocusEvent) => {
+      const target = event.target as HTMLElement;
+      const relatedTarget = event.relatedTarget as HTMLElement;
+      
+      // Get stack trace to see what caused the focus change
+      const stack = new Error().stack;
+      
+      console.log("🔍 FOCUS CHANGE DETECTED:");
+      console.log("  From:", relatedTarget?.tagName, relatedTarget?.id, relatedTarget?.className);
+      console.log("  To:", target?.tagName, target?.id, target?.className);
+      console.log("  Event type:", event.type);
+      console.log("  Is trusted:", event.isTrusted);
+      console.log("  Stack trace:", stack);
+      
+      // Check if focus is being stolen by the canvas
+      if (target === this.canvas) {
+        console.log("🚨 WARNING: Canvas gained focus!");
+        console.log("  This might be stealing focus from the editor");
+      }
+      
+      // Check if focus is being stolen from the editor
+      if (relatedTarget && relatedTarget.closest('.CodeMirror')) {
+        console.log("🚨 WARNING: Focus stolen from CodeMirror editor!");
+        console.log("  This is the problem we're trying to solve");
+      }
+      
+      // Check if the canvas is somehow involved in focus changes
+      if (target === this.canvas || relatedTarget === this.canvas) {
+        console.log("🚨 CANVAS FOCUS INVOLVEMENT:");
+        console.log("  Canvas is target:", target === this.canvas);
+        console.log("  Canvas is relatedTarget:", relatedTarget === this.canvas);
+        console.log("  Event type:", event.type);
+        console.log("  Is trusted:", event.isTrusted);
+      }
+      
+      // Check if focus is being stolen from textarea (CodeMirror's input)
+      if (target && target.tagName === 'TEXTAREA' && event.type === 'focusout') {
+        console.log("🚨 TEXTAREA LOSING FOCUS:");
+        console.log("  Textarea losing focus to:", relatedTarget?.tagName, relatedTarget?.id, relatedTarget?.className);
+        console.log("  This might be the typing issue");
+      }
+    };
+    
+    // Add listeners for both focusin and focusout
+    document.addEventListener('focusin', this.focusTrackingHandler, true);
+    document.addEventListener('focusout', this.focusTrackingHandler, true);
+    
+    // Add keyboard event tracking to see what happens when typing
+    this.keyboardTrackingHandler = (event: KeyboardEvent) => {
+      const target = event.target as HTMLElement;
+      
+      // Only track if the target is the textarea (CodeMirror's input)
+      if (target && target.tagName === 'TEXTAREA') {
+        console.log("🔍 KEYBOARD EVENT ON TEXTAREA:");
+        console.log("  Key:", event.key);
+        console.log("  KeyCode:", event.keyCode);
+        console.log("  Type:", event.type);
+        console.log("  Is trusted:", event.isTrusted);
+        console.log("  Default prevented:", event.defaultPrevented);
+        console.log("  Target:", target.tagName, target.id, target.className);
+        
+        // Check if the event is being prevented or stopped
+        if (event.defaultPrevented) {
+          console.log("🚨 WARNING: Keyboard event default was prevented!");
+          console.log("  This might be why typing isn't working");
+        }
+      }
+    };
+    
+    document.addEventListener('keydown', this.keyboardTrackingHandler, true);
+    document.addEventListener('keyup', this.keyboardTrackingHandler, true);
+    document.addEventListener('keypress', this.keyboardTrackingHandler, true);
+    
+    // CRITICAL: Override preventDefault to prevent it from blocking editor events
+    const originalPreventDefault = Event.prototype.preventDefault;
+    Event.prototype.preventDefault = function(this: Event) {
+      const target = this.target as HTMLElement;
+      
+      // If this is a keyboard event on a textarea or input, don't allow preventDefault
+      if ((this.type === 'keypress' || this.type === 'keydown' || this.type === 'keyup') && 
+          target && (target.tagName === 'TEXTAREA' || target.tagName === 'INPUT')) {
+        console.log(`🛡️ BLOCKED preventDefault on ${this.type} event for ${target.tagName} - key: ${(this as KeyboardEvent).key}`);
+        return; // Don't call the original preventDefault
+      }
+      
+      // For all other events, call the original preventDefault
+      return originalPreventDefault.call(this);
+    };
+    
+    console.log("✅ Overrode preventDefault to protect editor keyboard events");
+    
+    // ENHANCED: Handle Tab key and error dialogs
+    this.keyboardInterceptor = (event: KeyboardEvent) => {
+      const target = event.target as HTMLElement;
+      const activeElement = document.activeElement;
+      
+      // If this is a Tab key on a textarea, prevent it from going to URL bar
+      if (event.key === 'Tab' && target && target.tagName === 'TEXTAREA') {
+        console.log(`🛡️ HANDLING Tab key on textarea - preventing URL bar navigation`);
+        // Prevent default to stop browser tab navigation, but let CodeMirror handle it
+        event.preventDefault();
+        event.stopPropagation();
+        return;
+      }
+      
+      // If there's an error dialog visible, block all keyboard events from emulator
+      const errorAlert = document.getElementById('error_alert');
+      if (errorAlert && errorAlert.style.display !== 'none') {
+        console.log(`🛡️ ERROR DIALOG ACTIVE - blocking ${event.key} from emulator`);
+        event.stopImmediatePropagation();
+        event.stopPropagation();
+        return;
+      }
+      
+      // Only log other events on textarea/input, don't interfere
+      if (target && (target.tagName === 'TEXTAREA' || target.tagName === 'INPUT')) {
+        console.log(`🛡️ ALLOWING ${event.type} for ${event.key} on ${target.tagName} - not interfering`);
+      }
+    };
+    
+    // Add the interceptor with high priority
+    document.addEventListener('keydown', this.keyboardInterceptor, true);
+    document.addEventListener('keyup', this.keyboardInterceptor, true);
+    document.addEventListener('keypress', this.keyboardInterceptor, true);
+    
+    // REMOVED: preventDefault override was too aggressive and blocked editor functionality
+    // Now relying only on event propagation stopping to prevent emulator interference
+    console.log("✅ Using event propagation stopping only for keyboard protection");
+    
+    // CRITICAL: Add focus protection for Bootbox modals
+    // This prevents the emulator from stealing focus from modal dialogs
+    this.modalFocusProtection = () => {
+      // Check for any visible Bootbox modals
+      const bootboxModals = document.querySelectorAll('.bootbox.modal.show, .bootbox.modal.in');
+      if (bootboxModals.length > 0) {
+        console.log("🛡️ Bootbox modal detected - protecting focus");
+        
+        // Find the first input in the modal and focus it
+        const modal = bootboxModals[0] as HTMLElement;
+        const inputs = modal.querySelectorAll('input, textarea');
+        if (inputs.length > 0) {
+          const firstInput = inputs[0] as HTMLElement;
+          if (document.activeElement !== firstInput) {
+            console.log("🛡️ Focusing first input in Bootbox modal");
+            firstInput.focus();
+          }
+        }
+      }
+    };
+    
+    // Run modal focus protection periodically
+    setInterval(this.modalFocusProtection, 500);
+    
+    // REMOVED: globalKeyboardBlocker was causing conflicts
+    // Now using only the simplified keyboardInterceptor
+    
+    console.log("✅ Focus and keyboard tracking added with emulator interference prevention");
+  }
+  
+  private removeFocusTracking(): void {
+    if (this.focusTrackingHandler) {
+      document.removeEventListener('focusin', this.focusTrackingHandler, true);
+      document.removeEventListener('focusout', this.focusTrackingHandler, true);
+      this.focusTrackingHandler = null;
+    }
+    
+    if (this.keyboardTrackingHandler) {
+      document.removeEventListener('keydown', this.keyboardTrackingHandler, true);
+      document.removeEventListener('keyup', this.keyboardTrackingHandler, true);
+      document.removeEventListener('keypress', this.keyboardTrackingHandler, true);
+      this.keyboardTrackingHandler = null;
+    }
+    
+    if (this.keyboardInterceptor) {
+      document.removeEventListener('keydown', this.keyboardInterceptor, true);
+      document.removeEventListener('keyup', this.keyboardInterceptor, true);
+      document.removeEventListener('keypress', this.keyboardInterceptor, true);
+      this.keyboardInterceptor = null;
+    }
+    
+    console.log("✅ Focus and keyboard tracking removed");
   }
 
   // Joystick support

@@ -198,6 +198,8 @@ div.is-busy-unused {
 }
 #error_alert {
   max-width: 45%;
+  /* CRITICAL: Prevent focus stealing */
+  outline: none;
 }
 #error_alert_msg {
   margin-right: 2em;
