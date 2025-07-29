@@ -192,7 +192,8 @@ export class VIC20ChipsMachine implements Machine {
         const url = typeof input === 'string' ? input : input.toString();
         
         // If the emulator is trying to fetch the source file, provide our compiled binary instead
-        if (url.includes('siegegame.c') || url.includes('.c')) {
+        // Only intercept .c files, not .wasm or .js files
+        if (url.includes('siegegame.c') || (url.includes('.c') && !url.includes('.wasm') && !url.includes('.js'))) {
           console.log(`🔄 Intercepting fetch request for: ${url}`);
           console.log(`📦 Providing compiled binary data instead`);
           
@@ -1094,11 +1095,13 @@ export class VIC20ChipsMachine implements Machine {
         return;
       }
       
-      // SELECTIVE: Only block events from reaching emulator, don't interfere with editor
+      // AGGRESSIVE: Block ALL keyboard events from reaching emulator when editor has focus
       if (activeElement && (activeElement.tagName === 'TEXTAREA' || activeElement.tagName === 'INPUT')) {
-        // Don't stop propagation - let the editor handle the event normally
-        // Just log that we're allowing it to work in the editor
-        console.log(`🛡️ ALLOWING ${event.key} to work in editor - not blocking`);
+        console.log(`🛡️ BLOCKING ${event.key} from emulator - editor has focus`);
+        // Stop propagation to prevent emulator from seeing the event
+        event.stopImmediatePropagation();
+        event.stopPropagation();
+        // Don't prevent default - let the editor handle it normally
         return;
       }
       
@@ -1112,6 +1115,23 @@ export class VIC20ChipsMachine implements Machine {
     document.addEventListener('keydown', this.keyboardInterceptor, true);
     document.addEventListener('keyup', this.keyboardInterceptor, true);
     document.addEventListener('keypress', this.keyboardInterceptor, true);
+    
+    // CRITICAL: Add global keyboard blocker with highest priority
+    // This prevents ANY keyboard events from reaching the emulator when editor has focus
+    const globalKeyboardBlocker = (event: KeyboardEvent) => {
+      const activeElement = document.activeElement;
+      if (activeElement && (activeElement.tagName === 'TEXTAREA' || activeElement.tagName === 'INPUT')) {
+        console.log(`🛡️ GLOBAL BLOCK: Preventing ${event.key} from reaching emulator (${activeElement.tagName} has focus)`);
+        event.stopImmediatePropagation();
+        event.stopPropagation();
+        return;
+      }
+    };
+    
+    // Add global blocker with highest priority (useCapture: true)
+    document.addEventListener('keydown', globalKeyboardBlocker, true);
+    document.addEventListener('keyup', globalKeyboardBlocker, true);
+    document.addEventListener('keypress', globalKeyboardBlocker, true);
     
     // REMOVED: preventDefault override was too aggressive and blocked editor functionality
     // Now relying only on event propagation stopping to prevent emulator interference

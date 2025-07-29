@@ -304,11 +304,13 @@ export class C64ChipsMachine {
         return;
       }
       
-      // SELECTIVE: Only block events from reaching emulator, don't interfere with editor
+      // AGGRESSIVE: Block ALL keyboard events from reaching emulator when editor has focus
       if (activeElement && (activeElement.tagName === 'TEXTAREA' || activeElement.tagName === 'INPUT')) {
-        // Don't stop propagation - let the editor handle the event normally
-        // Just log that we're allowing it to work in the editor
-        console.log(`🛡️ ALLOWING ${event.key} to work in editor - not blocking`);
+        console.log(`🛡️ BLOCKING ${event.key} from emulator - editor has focus`);
+        // Stop propagation to prevent emulator from seeing the event
+        event.stopImmediatePropagation();
+        event.stopPropagation();
+        // Don't prevent default - let the editor handle it normally
         return;
       }
       
@@ -329,6 +331,23 @@ export class C64ChipsMachine {
     document.addEventListener('keydown', this.keyboardInterceptor, true);
     document.addEventListener('keyup', this.keyboardInterceptor, true);
     document.addEventListener('keypress', this.keyboardInterceptor, true);
+    
+    // CRITICAL: Add global keyboard blocker with highest priority
+    // This prevents ANY keyboard events from reaching the emulator when editor has focus
+    const globalKeyboardBlocker = (event: KeyboardEvent) => {
+      const activeElement = document.activeElement;
+      if (activeElement && (activeElement.tagName === 'TEXTAREA' || activeElement.tagName === 'INPUT')) {
+        console.log(`🛡️ GLOBAL BLOCK: Preventing ${event.key} from reaching emulator (${activeElement.tagName} has focus)`);
+        event.stopImmediatePropagation();
+        event.stopPropagation();
+        return;
+      }
+    };
+    
+    // Add global blocker with highest priority (useCapture: true)
+    document.addEventListener('keydown', globalKeyboardBlocker, true);
+    document.addEventListener('keyup', globalKeyboardBlocker, true);
+    document.addEventListener('keypress', globalKeyboardBlocker, true);
     
     console.log("✅ Focus and keyboard tracking added with emulator interference prevention");
   }
@@ -386,6 +405,10 @@ export class C64ChipsMachine {
     console.log("✅ NEW FOCUS PREVENTION ACTIVE ===");
     console.log("C64 loadProgram called with", program.length, "bytes");
     console.log("First few bytes:", program.slice(0, 10));
+    
+    // CRITICAL: Reset emulator state before loading to prevent automatic execution
+    console.log("🔄 Resetting emulator state to prevent automatic execution");
+    this.reset();
     
     // Debug: Check what functions are available
     console.log("Available window functions:", Object.keys(window).filter(key => key.includes('c64')));

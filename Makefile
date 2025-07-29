@@ -13,6 +13,7 @@ prepare: buildtsc
 	cp node_modules/bootstrap-tourist/*.css node_modules/bootstrap-tourist/*.js ./lib/
 	#cp ./unicorn.js/demos/externals/capstone-arm.min.js ./lib/
 	cp gif.js/dist/* ./lib/
+
 	cd jsnes && npm i
 
 mkdoc:

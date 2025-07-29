@@ -1,6 +1,6 @@
 import { WASIRunner } from "../../common/wasi/wasishim";
 import { CodeListingMap, WorkerError } from "../../common/workertypes";
-import { BuildStep, BuildStepResult, populateFiles, putWorkFile, anyTargetChanged, store } from "../builder";
+import { BuildStep, BuildStepResult, populateFiles, putWorkFile, anyTargetChanged, store, populateExtraFiles } from "../builder";
 import { msvcErrorMatcher, re_crlf, re_msvc } from "../listingutils";
 import { execMain, emglobal, EmscriptenModule, load, loadWASMBinary } from "../wasmutils";
 
@@ -166,6 +166,7 @@ export function assembleDASM(step: BuildStep): BuildStepResult {
     populateFiles(step, FS, {
         mainFilePath: 'main.a'
     });
+    populateExtraFiles(step, FS, step.params?.extra_compile_files);
     var binpath = step.prefix + '.bin';
     var lstpath = step.prefix + '.lst';
     var sympath = step.prefix + '.sym';

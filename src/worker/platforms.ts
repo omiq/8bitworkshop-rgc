@@ -274,6 +274,7 @@ export var PLATFORM_PARAMS = {
       cfgfile: 'c64.cfg', // SYS 2061
       libargs: ['c64.lib'],
       acmeargs: ['-f', 'cbm'],
+      extra_compile_files: ['sidmusic1.bin', 'badspacerobots-c64.multi.bin'],
       //extra_link_files: ['c64-cart.cfg'],
     },
     'vic20.chips': {

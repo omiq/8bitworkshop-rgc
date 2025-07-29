@@ -216,6 +216,14 @@ class C64ChipsPlatform implements Platform {
   isStable(): boolean {
     return true; // Assume stable for chips-test emulator
   }
+
+  getExtraCompileFiles(filename: string): string[] {
+    // Add binary files needed for specific demos
+    if (filename === 'sidplaysfx.s') {
+      return ['sidmusic1.bin'];
+    }
+    return [];
+  }
 }
 
 PLATFORMS['c64.chips'] = C64ChipsPlatform;
