@@ -14,6 +14,7 @@ export class VIC20ChipsMachine implements Machine {
   private name: string;
   private description: string;
   private programLoaded = false; // Track if a program has been loaded
+  private isLoadingProgram = false; // Prevent infinite loops during loading
   private focusTrackingHandler: ((event: FocusEvent) => void) | null = null;
   private keyboardTrackingHandler: ((event: KeyboardEvent) => void) | null = null;
   private keyboardInterceptor: ((event: KeyboardEvent) => void) | null = null;
@@ -58,566 +59,95 @@ export class VIC20ChipsMachine implements Machine {
       this.canvas.style.height = 'auto';
       this.canvas.style.maxWidth = '800px';
       this.canvas.style.maxHeight = '600px';
-      
-      // DISABLED: Focus prevention code to fix typing issues
-      // this.canvas.tabIndex = -1;
-      // this.canvas.style.outline = 'none';
-      // this.canvas.style.pointerEvents = 'auto';
-      
-      // DISABLED: Add comprehensive focus prevention
-      // this.canvas.addEventListener('mousedown', (e) => {
-      //   e.preventDefault();
-      //   e.stopPropagation();
-      //   // Only allow focus on double-click
-      //   if (e.target === this.canvas && e.detail === 2) {
-      //     this.canvas.focus();
-      //   }
-      // });
-      
-      // this.canvas.addEventListener('mouseup', (e) => {
-      //   e.preventDefault();
-      //   e.stopPropagation();
-      // });
-      
-      // this.canvas.addEventListener('click', (e) => {
-      //   e.preventDefault();
-      //   e.stopPropagation();
-      // });
-      
-      // this.canvas.addEventListener('keydown', (e) => {
-      //   if (document.activeElement !== this.canvas) {
-      //     e.preventDefault();
-      //     e.stopPropagation();
-      //     return;
-      //   }
-      // });
-      
-      // this.canvas.addEventListener('keyup', (e) => {
-      //   if (document.activeElement !== this.canvas) {
-      //     e.preventDefault();
-      //     e.stopPropagation();
-      //     return;
-      //   }
-      // });
-      
-      // DISABLED: Prevent any focus on canvas
-      // this.canvas.addEventListener('focus', (e) => {
-      //   if (!e.isTrusted) {
-      //     this.canvas.blur();
-      //   }
-      // });
-      
-      // DISABLED: Global focus prevention
-      // this.canvas.addEventListener('focusin', (e) => {
-      //   if (e.target === this.canvas && !e.isTrusted) {
-      //     console.log("Preventing focusin on canvas");
-      //     e.preventDefault();
-      //     e.stopPropagation();
-      //   }
-      // }, true);
+      this.canvas.style.outline = 'none';
       
       // Add canvas to the pre-existing VIC-20 chips div
       const vic20Div = document.getElementById('vic20-chips-div');
       const vic20Screen = document.getElementById('vic20-chips-screen');
+      
       if (vic20Div && vic20Screen) {
         vic20Screen.appendChild(this.canvas);
-        vic20Div.style.display = 'block';
         console.log("✅ Added VIC-20 canvas to pre-existing div");
       } else {
-        // Fallback to body if div not found
+        // Fallback: add to document body
         document.body.appendChild(this.canvas);
-        console.log("⚠️ VIC-20 div not found, using body fallback");
+        console.log("✅ Added VIC-20 canvas to document body");
       }
-      
-      // Wait a bit for canvas to be ready
-      await new Promise(resolve => setTimeout(resolve, 100));
-      
-      // CRITICAL: Add global focus tracking to debug focus stealing
-      this.addFocusTracking();
 
-      // Load the VIC-20 script with timestamp to prevent caching
-      const script = document.createElement('script');
-      script.src = `res/vic20.js?t=${Date.now()}`;
-      script.async = true;
+      // Connect the canvas to the emulator immediately
+      this.connectCanvasToEmulator();
       
-      // Temporarily clear URL parameters to prevent the emulator from trying to load files on startup
-      const originalSearch = window.location.search;
-      const originalHref = window.location.href;
-      if (window.location.search) {
-        window.history.replaceState({}, '', window.location.pathname + window.location.hash);
-      }
+      // Add simple focus prevention without complex tracking
+      this.addSimpleFocusProtection();
       
-      // Add joystick parameter to ensure joystick support is enabled
-      const newUrl = new URL(window.location.href);
-      newUrl.searchParams.set('joystick', 'true');
-      window.history.replaceState({}, '', newUrl.toString());
+      // Load the VIC-20 script if not already loaded (non-blocking)
+      this.loadVIC20ScriptIfNeeded();
       
-      script.onload = () => {
-        console.log("VIC-20 script loaded");
-        
-        // Restore URL parameters if they were changed
-        if (originalSearch && window.location.search !== originalSearch) {
-          window.history.replaceState({}, '', originalHref);
-        }
-        
-        // Wait for module to be ready
-        setTimeout(() => {
-          this.detectModule();
-          
-                // CRITICAL: Make canvas non-focusable after emulator is loaded
-      if (this.canvas) {
-        this.canvas.tabIndex = -1;
-        this.canvas.style.outline = 'none';
-        this.canvas.setAttribute('tabindex', '-1');
-        
-        // CRITICAL: Override the canvas focus method to prevent programmatic focus
-        const originalFocus = this.canvas.focus;
-        this.canvas.focus = function() {
-          console.log("🚨 BLOCKED: Canvas focus() called programmatically!");
-          console.log("  Stack trace:", new Error().stack);
-          // Don't call the original focus method
-          return;
-        };
-        
-        console.log("✅ Made VIC-20 canvas non-focusable and blocked focus() calls");
-      }
-        }, 500);
-      };
+      // Add drag and drop listeners
+      this.addCanvasDragAndDropListeners();
       
-      script.onerror = (error) => {
-        console.error("Failed to load VIC-20 script:", error);
-        throw new Error("Failed to load VIC-20 script");
-      };
+      // Add global keyboard debugging
+      this.addKeyboardDebugging();
       
-      document.head.appendChild(script);
-      
-      // Add cache-busting for WASM files and intercept source file requests
-      const originalFetch = window.fetch;
-      window.fetch = function(input: RequestInfo | URL, init?: RequestInit) {
-        const url = typeof input === 'string' ? input : input.toString();
-        
-        // If the emulator is trying to fetch the source file, provide our compiled binary instead
-        // Only intercept .c files, not .wasm or .js files
-        if (url.includes('siegegame.c') || (url.includes('.c') && !url.includes('.wasm') && !url.includes('.js'))) {
-          console.log(`🔄 Intercepting fetch request for: ${url}`);
-          console.log(`📦 Providing compiled binary data instead`);
-          
-          // Create a fake response with a simple BASIC program
-          const basicProgram = new Uint8Array([
-            0x18, 0x10,  // PRG header (load address 0x1001)
-            0x0A, 0x00,  // Line 10
-            0x99, 0x20, 0x22, 0x48, 0x45, 0x4C, 0x4C, 0x4F, 0x22, 0x00,  // PRINT "HELLO"
-            0x00, 0x00   // End of program
-          ]);
-          
-          const response = new Response(basicProgram, {
-            status: 200,
-            headers: {
-              'Content-Type': 'application/octet-stream',
-              'Content-Length': basicProgram.length.toString()
-            }
-          });
-          return Promise.resolve(response);
-        }
-        
-        // For WASM/JS files, add cache busting
-        if (typeof input === 'string' && (input.includes('vic20.wasm') || input.includes('vic20.js'))) {
-          const separator = input.includes('?') ? '&' : '?';
-          input = `${input}${separator}t=${Date.now()}`;
-        }
-        return originalFetch.call(this, input, init);
-      };
-      
-      // DISABLED: Improved focus handling - don't override HTMLElement.prototype.focus globally
-      // Instead, handle focus specifically for the canvas
-      // this.canvas.addEventListener('click', (e) => {
-      //   // Only allow canvas to receive focus when explicitly clicked
-      //   console.log("Canvas clicked, allowing focus");
-      //   this.canvas.focus();
-      // });
-      
-      // DISABLED: Prevent focus stealing from other elements
-      // this.canvas.addEventListener('focus', (e) => {
-      //   console.log("Canvas focused");
-      // });
-      
-      // this.canvas.addEventListener('blur', (e) => {
-      //   console.log("Canvas blurred");
-      // });
-      
-      // DISABLED: Set canvas to not receive focus automatically
-      // this.canvas.tabIndex = -1;
-      // this.canvas.style.outline = 'none';
-      
-      // Add global debugging objects for console inspection first
-      (window as any).VIC20_DEBUG = {
-        module: this.module,
-        canvas: this.canvas,
-        machine: this,
-        // Helper function to test with sample program data
-        testWithSampleData: () => {
-          // Create a simple VIC-20 BASIC program: 10 PRINT "HELLO"
-          const basicProgram = new Uint8Array([
-            0x18, 0x10,  // PRG header (load address 0x1001)
-            0x0A, 0x00,  // Line 10
-            0x99, 0x20, 0x22, 0x48, 0x45, 0x4C, 0x4C, 0x4F, 0x22, 0x00,  // PRINT "HELLO"
-            0x00, 0x00   // End of program
-          ]);
-          console.log("Testing with sample BASIC program:", basicProgram);
-          this.loadProgram(basicProgram);
-        },
-        // Helper function to list all Module functions
-        listModuleFunctions: () => {
-          console.log("=== MODULE FUNCTIONS (FIRST METHOD) ===");
-          
-          // Try to get module from window.h first (this is where it actually is)
-          if ((window as any).h) {
-            console.log("✅ Found module via window.h");
-            const h = (window as any).h;
-            const functions = Object.keys(h).filter(key => typeof h[key] === 'function');
-            console.log("Available functions via window.h:", functions);
-            
-            // Look for VIC-20 specific functions
-            const vic20Functions = functions.filter(name => name.toLowerCase().includes('vic20'));
-            console.log("VIC-20 specific functions:", vic20Functions);
-            
-            // Look for reset functions
-            const resetFunctions = functions.filter(name => name.toLowerCase().includes('reset'));
-            console.log("Reset functions:", resetFunctions);
-            
-            // Look for run/start functions
-            const runFunctions = functions.filter(name => name.toLowerCase().includes('run') || name.toLowerCase().includes('start'));
-            console.log("Run/Start functions:", runFunctions);
-            
-            // Look for CPU/execution functions
-            const cpuFunctions = functions.filter(name => name.toLowerCase().includes('cpu') || name.toLowerCase().includes('pc') || name.toLowerCase().includes('exec'));
-            console.log("CPU/Execution functions:", cpuFunctions);
-            
-            // Look for main/entry functions
-            const mainFunctions = functions.filter(name => name.toLowerCase().includes('main'));
-            console.log("Main functions:", mainFunctions);
-            
-            // Look for any function that might trigger execution
-            const executionFunctions = functions.filter(name => 
-              name.toLowerCase().includes('exec') || 
-              name.toLowerCase().includes('run') || 
-              name.toLowerCase().includes('start') || 
-              name.toLowerCase().includes('reset') || 
-              name.toLowerCase().includes('init') ||
-              name.toLowerCase().includes('main') ||
-              name.toLowerCase().includes('step') ||
-              name.toLowerCase().includes('frame')
-            );
-            console.log("Potential execution functions:", executionFunctions);
-            
-            // Show all functions for debugging
-            console.log("=== ALL FUNCTIONS ===");
-            functions.forEach(funcName => {
-              console.log(`  ${funcName}: ${typeof h[funcName]}`);
-            });
-            
-            return functions;
-          } else if (typeof (window as any).Module !== 'undefined' && (window as any).Module) {
-            console.log("✅ Found module via window.Module");
-            const Module = (window as any).Module;
-            const functions = Object.keys(Module).filter(key => typeof Module[key] === 'function');
-            console.log("Available functions via window.Module:", functions);
-            return functions;
-          } else {
-            console.log("❌ No module available via window.h or window.Module");
-            return [];
-          }
-        },
-        // Helper function to wait for Module to be ready
-        waitForModule: () => {
-          return new Promise((resolve) => {
-            const checkModule = () => {
-              if (typeof (window as any).Module !== 'undefined' && (window as any).Module) {
-                console.log("Module object is now available!");
-                resolve((window as any).Module);
-              } else {
-                console.log("Module not ready yet, waiting...");
-                setTimeout(checkModule, 100);
-              }
-            };
-            checkModule();
-          });
-        },
-        // Helper function to check what's available on window
-        checkWindowObjects: () => {
-          console.log("Checking all window objects...");
-          const windowObjects = Object.keys(window).filter(key => 
-            key.toLowerCase().includes('vic20') || 
-            key.toLowerCase().includes('module') ||
-            key.toLowerCase().includes('h') ||
-            key.toLowerCase().includes('quickload') ||
-            key.toLowerCase().includes('load')
-          );
-          console.log("Window objects with VIC-20/Module/load keywords:", windowObjects);
-          
-          // Also check for any function that might be the quickload function
-          const allWindowKeys = Object.keys(window);
-          const functionCandidates = allWindowKeys.filter(key => {
-            const value = (window as any)[key];
-            return typeof value === 'function' && (
-              key.toLowerCase().includes('vic20') ||
-              key.toLowerCase().includes('quickload') ||
-              key.toLowerCase().includes('load') ||
-              key.toLowerCase().includes('run')
-            );
-          });
-          console.log("Function candidates on window:", functionCandidates);
-          
-          // Check what's in the 'h' object
-          if ((window as any).h) {
-            console.log("Found 'h' object:", (window as any).h);
-            console.log("'h' object keys:", Object.keys((window as any).h));
-            
-            // Look for VIC-20 functions in the 'h' object
-            const hKeys = Object.keys((window as any).h);
-            const vic20Functions = hKeys.filter(key => 
-              key.toLowerCase().includes('vic20') ||
-              key.toLowerCase().includes('quickload') ||
-              key.toLowerCase().includes('load') ||
-              key.toLowerCase().includes('run')
-            );
-            console.log("VIC-20 functions in 'h' object:", vic20Functions);
-            
-            // Check if any of these are functions
-            for (const funcName of vic20Functions) {
-              const func = (window as any).h[funcName];
-              if (typeof func === 'function') {
-                console.log(`Found function: ${funcName}`, func);
-              }
-            }
-            
-            // Also check for drop-related functions
-            const dropFunctions = hKeys.filter(key => 
-              key.toLowerCase().includes('drop') ||
-              key.toLowerCase().includes('snapshot') ||
-              key.toLowerCase().includes('load')
-            );
-            console.log("Drop/Load functions in 'h' object:", dropFunctions);
-            
-            // Check if any of these are functions
-            for (const funcName of dropFunctions) {
-              const func = (window as any).h[funcName];
-              if (typeof func === 'function') {
-                console.log(`Found drop/load function: ${funcName}`, func);
-              }
-            }
-            
-            // Check for any function that might be the VIC-20 quickload
-            const allFunctions = hKeys.filter(key => {
-              const value = (window as any).h[key];
-              return typeof value === 'function';
-            });
-            console.log("All functions in 'h' object:", allFunctions);
-          }
-          
-          return { windowObjects, functionCandidates };
-        },
-        
-        // Helper function to try calling the drop function directly
-        tryDropFunction: (prgData: Uint8Array) => {
-          console.log("Trying to call drop function directly...");
-          
-          if (!(window as any).h) {
-            console.log("'h' object not available");
-            return false;
-          }
-          
-          const h = (window as any).h;
-          
-          // Try calling the complete drop sequence
-          if (typeof h.__sapp_emsc_begin_drop === 'function' && 
-              typeof h.__sapp_emsc_drop === 'function' && 
-              typeof h.__sapp_emsc_end_drop === 'function') {
-            console.log("Found complete drop sequence functions, trying to call them...");
-            try {
-              // Create a proper DataTransfer object
-              const dataTransfer = new DataTransfer();
-              const file = new File([prgData], 'program.prg', { type: 'application/octet-stream' });
-              dataTransfer.items.add(file);
-              
-              // Create a mock drop event
-              const mockEvent = {
-                dataTransfer: dataTransfer
-              };
-              
-              // Call the complete drop sequence
-              h.__sapp_emsc_begin_drop(mockEvent);
-              console.log("Called __sapp_emsc_begin_drop successfully");
-              
-              h.__sapp_emsc_drop(mockEvent);
-              console.log("Called __sapp_emsc_drop successfully");
-              
-              h.__sapp_emsc_end_drop(mockEvent);
-              console.log("Called __sapp_emsc_end_drop successfully");
-              
-              return true;
-            } catch (error) {
-              console.log("Error calling drop sequence:", error);
-            }
-          } else if (typeof h.__sapp_emsc_drop === 'function') {
-            console.log("Found __sapp_emsc_drop function only, trying to call it...");
-            try {
-              // Create a proper DataTransfer object
-              const dataTransfer = new DataTransfer();
-              const file = new File([prgData], 'program.prg', { type: 'application/octet-stream' });
-              dataTransfer.items.add(file);
-              
-              // Create a mock drop event
-              const mockEvent = {
-                dataTransfer: dataTransfer
-              };
-              h.__sapp_emsc_drop(mockEvent);
-              console.log("Called __sapp_emsc_drop successfully");
-              
-              // Force display refresh and execute the program
-              console.log("🔄 Single drop function completed - now executing program...");
-              this.forceDisplayRefresh();
-              this.verifyAndExecuteLoadedROM(prgData);
-              
-              return true;
-            } catch (error) {
-              console.log("Error calling __sapp_emsc_drop:", error);
-            }
-          }
-          
-          // Try calling the snapshot callback
-          if (typeof h._fs_emsc_load_snapshot_callback === 'function') {
-            console.log("Found _fs_emsc_load_snapshot_callback function, trying to call it...");
-            try {
-              // Try calling with different parameter combinations
-              // This function typically expects a pointer to data and length
-              const result = h._fs_emsc_load_snapshot_callback(prgData);
-              console.log("✅ Successfully called _fs_emsc_load_snapshot_callback");
-              return true;
-            } catch (error) {
-              console.log("❌ Error calling _fs_emsc_load_snapshot_callback:", error);
-              
-              // Try alternative calling methods
-              try {
-                console.log("Trying alternative call method...");
-                // Some Emscripten functions need the data to be allocated in WASM memory first
-                if (typeof h._malloc === 'function') {
-                  const ptr = h._malloc(prgData.length);
-                  h.HEAPU8.set(prgData, ptr);
-                  h._fs_emsc_load_snapshot_callback(ptr, prgData.length);
-                  h._free(ptr);
-                  console.log("✅ Successfully called _fs_emsc_load_snapshot_callback with malloc");
-                  return true;
-                }
-              } catch (error2) {
-                console.log("❌ Alternative call method also failed:", error2);
-              }
-            }
-          }
-          
-          console.log("No suitable drop function found");
-          return false;
-        },
-        
-        // Helper function to capture drag-and-drop data for comparison
-        captureDragAndDrop: () => {
-          console.log("Setting up drag-and-drop capture...");
-          this.captureDragAndDropData();
-        },
-        
-        // Helper function to check and reset emulator state
-        checkState: () => {
-          console.log("Checking emulator state...");
-          this.checkAndResetEmulatorState();
-        },
-        
-        // Helper function to compare loaded data with working program
-        
-        
-        // Helper function to debug memory after loading
-        debugMemory: () => {
-          console.log("Debugging memory after loading...");
-          this.debugMemoryAfterLoading();
-        },
-        
-        // Load current compiled output
-        loadCurrentOutput: () => {
-          console.log("=== LOADING CURRENT COMPILED OUTPUT ===");
-          if (typeof (window as any).current_output !== 'undefined' && (window as any).current_output) {
-            console.log("Found current output:", (window as any).current_output.length, "bytes");
-            this.loadProgramDirectly((window as any).current_output);
-          } else {
-            console.log("❌ No current output found");
-          }
-        },
-        
-        // Simulate drag and drop with current output
-        simulateDragAndDrop: () => {
-          console.log("=== SIMULATING DRAG AND DROP ===");
-          if (typeof (window as any).current_output !== 'undefined' && (window as any).current_output) {
-            console.log("Found current output:", (window as any).current_output.length, "bytes");
-            this.tryDropApproach((window as any).current_output);
-          } else {
-            console.log("❌ No current output found");
-          }
-        },
-        
-        // Call drop functions directly
-        callDropFunctionsDirectly: () => {
-          console.log("=== CALLING DROP FUNCTIONS DIRECTLY ===");
-          const h = (window as any).h;
-          if (!h) {
-            console.log("❌ No 'h' object available");
-            return;
-          }
-          
-          if (typeof (window as any).current_output !== 'undefined' && (window as any).current_output) {
-            const data = (window as any).current_output;
-            console.log("Using current output:", data.length, "bytes");
-            
-            try {
-              // Call the drop functions directly
-              if (typeof h.__sapp_emsc_begin_drop === 'function') {
-                h.__sapp_emsc_begin_drop();
-                console.log("✅ __sapp_emsc_begin_drop called");
-              }
-              
-              if (typeof h.__sapp_emsc_drop === 'function') {
-                h.__sapp_emsc_drop(data);
-                console.log("✅ __sapp_emsc_drop called with data");
-              }
-              
-              if (typeof h.__sapp_emsc_end_drop === 'function') {
-                h.__sapp_emsc_end_drop();
-                console.log("✅ __sapp_emsc_end_drop called");
-              }
-            } catch (error) {
-              console.log("❌ Error calling drop functions:", error);
-            }
-          } else {
-            console.log("❌ No current output found");
-          }
-        }
-      };
-      
-      console.log("VIC20_DEBUG object available in console for debugging");
-      console.log("Use VIC20_DEBUG.testWithSampleData() to test with sample program");
-      console.log("Use VIC20_DEBUG.loadCurrentOutput() to load the current compiled output");
-      console.log("Use VIC20_DEBUG.simulateDragAndDrop() to simulate drag and drop");
-      console.log("Use VIC20_DEBUG.callDropFunctionsDirectly() to call drop functions directly");
-      console.log("Use VIC20_DEBUG.listModuleFunctions() to see all available functions");
-      console.log("Use VIC20_DEBUG.checkWindowObjects() to see what's available on window");
-      console.log("Use VIC20_DEBUG.tryDropFunction(data) to try calling drop functions directly");
-      console.log("Use VIC20_DEBUG.checkState() to check and reset emulator state");
-      console.log("Use VIC20_DEBUG.debugMemory() to debug memory after loading");
-      
-      // Wait for module to be detected
-      await this.waitForModuleDetection();
+      // Try to detect module after a short delay (non-blocking)
+      setTimeout(() => {
+        this.detectModule();
+        this.enableJoystickSupport();
+      }, 1000);
       
     } catch (error) {
-      console.error("Failed to initialize VIC-20 chips-test emulator:", error);
-      throw error;
+      console.error("Error initializing VIC-20 chips emulator:", error);
     }
+  }
+
+
+
+  private loadVIC20ScriptIfNeeded(): void {
+    // Check if VIC-20 script is already loaded
+    if (typeof (window as any).h !== 'undefined') {
+      console.log("✅ VIC-20 script already loaded");
+      return;
+    }
+    
+    // Check if script tag already exists
+    const existingScript = document.querySelector('script[src*="vic20.js"]');
+    if (existingScript) {
+      console.log("✅ VIC-20 script tag already exists, waiting for it to load");
+      return;
+    }
+    
+    console.log("🔧 Loading VIC-20 script...");
+    
+    // Load the VIC-20 script with timestamp to prevent caching
+    const script = document.createElement('script');
+    script.src = `res/vic20.js?t=${Date.now()}`;
+    script.async = true;
+    
+    script.onload = () => {
+      console.log("✅ VIC-20 script loaded successfully");
+      
+      // Check if the VIC-20 script set up any global keyboard listeners
+      setTimeout(() => {
+        console.log("🔍 Checking for global keyboard event listeners...");
+        const h = (window as any).h;
+        if (h) {
+          console.log("🔍 VIC-20 'h' object functions:", Object.keys(h).filter(k => typeof h[k] === 'function'));
+          
+          // Check if canvas has any event listeners
+          if (h.canvas) {
+            console.log("🔍 VIC-20 canvas found:", h.canvas);
+            console.log("🔍 Canvas tabIndex:", h.canvas.tabIndex);
+            console.log("🔍 Canvas focusable:", h.canvas.tabIndex >= 0);
+          }
+        }
+      }, 1000);
+    };
+    
+    script.onerror = (error) => {
+      console.error("❌ Failed to load VIC-20 script:", error);
+    };
+    
+    document.head.appendChild(script);
   }
 
   private detectModule(): void {
@@ -625,25 +155,15 @@ export class VIC20ChipsMachine implements Machine {
     if (typeof (window as any).Module !== 'undefined' && (window as any).Module) {
       console.log("Found Module object, setting module reference");
       this.module = (window as any).Module;
-      // Update the debug object
-      (window as any).VIC20_DEBUG.module = this.module;
     } else if ((window as any).h) {
       console.log("Found 'h' object, using as module");
       this.module = (window as any).h;
-      // Update the debug object
-      (window as any).VIC20_DEBUG.module = this.module;
     } else {
-      console.log("VIC-20 module detection failed, but emulator is running - using window fallback");
-      this.module = window.vic20_chips_module;
+      console.log("VIC-20 module not detected yet, will retry later");
+      return;
     }
     
-    console.log("VIC-20 chips-test emulator using window fallback - already running");
-    
-    // Connect canvas to the emulator for display output
-    this.connectCanvasToEmulator();
-    
-    // Enable joystick support if available
-    this.enableJoystickSupport();
+    console.log("VIC-20 chips-test emulator module detected");
   }
   
   private enableJoystickSupport(): void {
@@ -697,6 +217,9 @@ export class VIC20ChipsMachine implements Machine {
       }
     }
     
+    // Add drag-and-drop event listeners to the canvas for manual file loading
+    this.addCanvasDragAndDropListeners();
+    
     // Check if the canvas is being used by the emulator
     setTimeout(() => {
       if (this.canvas) {
@@ -733,10 +256,6 @@ export class VIC20ChipsMachine implements Machine {
       console.log("VIC-20 module detection timed out, but emulator should still work");
       this.detectModule();
     }
-    
-    // Skip calling the URL parameter parser for now since it causes DOM access issues
-    // The emulator should work fine without it
-    console.log("Skipping URL parameter parser to avoid DOM access issues");
   }
 
   run(): void {
@@ -779,8 +298,8 @@ export class VIC20ChipsMachine implements Machine {
     // Debug compilation output
     this.debugCompilationOutput();
     
-    // Use the working approach: reset + real File object + drag-and-drop
-    this.loadProgramWithWorkingMethod(prgData);
+    // Use the simplified approach: direct drop event
+    this.loadProgram(prgData);
     
     // Add global debug functions
     this.addGlobalDebugFunctions();
@@ -795,147 +314,119 @@ export class VIC20ChipsMachine implements Machine {
   }
 
   loadProgram(program: Uint8Array): void {
-    console.log("=== VIC-20 LOAD PROGRAM DEBUG (UPDATED VERSION) ===");
-    console.log("✅ NEW FOCUS PREVENTION AND URL LOADING ACTIVE ===");
-    console.log("Input program length:", program.length, "bytes");
-    console.log("Input program type:", typeof program);
-    console.log("Input program constructor:", program.constructor.name);
-    console.log("First 16 bytes (hex):", Array.from(program.slice(0, 16)).map(b => b.toString(16).padStart(2, '0')).join(' '));
-    console.log("First 16 bytes (decimal):", Array.from(program.slice(0, 16)).join(' '));
-    console.log("Full program data:", Array.from(program));
+    console.log("VIC20ChipsPlatform loadROM called with title: hello.c and", program.length, "bytes");
     
-    // Use the working approach: reset + real File object + drag-and-drop
-    this.loadProgramWithWorkingMethod(program);
-  }
-  
-  private loadProgramWithWorkingMethod(program: Uint8Array): void {
-    console.log("=== USING WORKING METHOD: RESET + REAL FILE + DRAG-AND-DROP + RUN ===");
+    if (this.isLoadingProgram) {
+      console.log("⚠️ Program already loading, ignoring to prevent infinite loop");
+      return;
+    }
     
-    // First reset the VIC-20 thoroughly with longer delays
-    const h = (window as any).h;
-    if (h) {
-      console.log("1. Resetting VIC-20 thoroughly...");
-      
-      // Try multiple reset methods to ensure clean state
-      if (typeof h.reset === 'function') {
-        h.reset();
-        console.log("✅ VIC-20 reset() called");
-      }
-      if (typeof h.vic20_reset === 'function') {
-        h.vic20_reset();
-        console.log("✅ VIC-20 vic20_reset() called");
-      }
-      if (typeof h.vic20_clear_screen === 'function') {
-        h.vic20_clear_screen();
-        console.log("✅ VIC-20 screen cleared");
+    this.isLoadingProgram = true;
+    
+    try {
+      // Get the VIC-20 module
+      const h = (window as any).h;
+      if (!h) {
+        console.log("❌ No 'h' object available for loading program");
+        return;
       }
       
-      // Wait much longer for reset to complete, then load program
-      setTimeout(() => {
-        console.log("2. Loading program with real File object...");
+      console.log("✅ Found 'h' object, using as module");
+      
+      // Try to load the program using the drop function
+      if (typeof h.__sapp_emsc_begin_drop === 'function') {
+        console.log("🎯 Loading program via drop function...");
         
-        // Get current output from IDE
-        const output = (window as any).IDE?.getCurrentOutput();
-        if (output) {
-          // Create a real File object
-          let prgFile = new File([output], "main.prg", { type: "application/octet-stream" });
+        // Create a File object
+        const file = new File([program], "main.prg", { type: "application/octet-stream" });
+        
+        // Create a DataTransfer and add the File
+        const dt = new DataTransfer();
+        dt.items.add(file);
+        
+        // Create a synthetic drop event
+        const dropEvent = new DragEvent("drop", {
+          dataTransfer: dt,
+          bubbles: true,
+          cancelable: true
+        });
+        
+        // Find the canvas and dispatch the event
+        const canvas = document.getElementById("canvas");
+        if (canvas) {
+          canvas.dispatchEvent(dropEvent);
+          console.log("✅ Drop event dispatched to canvas");
           
-          // Create a DataTransfer and add the File
-          let dt = new DataTransfer();
-          dt.items.add(prgFile);
-          
-          // Create a synthetic drop event
-          let dropEvent = new DragEvent("drop", {
-            dataTransfer: dt,
-            bubbles: true,
-            cancelable: true
-          });
-          
-          // Find the canvas and dispatch the event
-          let canvas = document.getElementById("canvas");
-          if (canvas) {
-            canvas.dispatchEvent(dropEvent);
-            console.log("✅ Drop event dispatched to canvas");
-            
-            // Wait much longer for program to load, then try multiple execution methods
-            setTimeout(() => {
-              console.log("3. Attempting to execute program...");
-              
-              // Method 1: Try direct execution via emulator functions
-              if (typeof h.vic20_run === 'function') {
-                console.log("3a. Trying vic20_run()...");
-                h.vic20_run();
-                console.log("✅ vic20_run() called");
-              } else if (typeof h.run === 'function') {
-                console.log("3a. Trying run()...");
-                h.run();
-                console.log("✅ run() called");
-              } else if (typeof h.vic20_execute === 'function') {
-                console.log("3a. Trying vic20_execute()...");
-                h.vic20_execute();
-                console.log("✅ vic20_execute() called");
-              } else {
-                // Method 2: Try keyboard input with clear screen
-                console.log("3a. No direct execution functions found, trying keyboard input with clear screen...");
-                setTimeout(() => {
-                  console.log("3b. Sending clear screen + run command...");
-                  // Send clear screen character (0x93) followed by run command
-                  this.simulateKeyboardInput("\x93run\r");
-                  console.log("✅ Clear screen + run command sent");
-                }, 500);
-              }
-            }, 1000); // Increased from 500ms to 1000ms
-          } else {
-            console.log("❌ Canvas not found");
-          }
+          // Wait for program to load, then execute
+          setTimeout(() => {
+            console.log("🎯 Executing loaded program...");
+            this.executeLoadedProgram();
+          }, 1000);
         } else {
-          console.log("❌ No current output found from IDE");
-          // Fallback to using the program parameter
-          let prgFile = new File([program], "main.prg", { type: "application/octet-stream" });
-          let dt = new DataTransfer();
-          dt.items.add(prgFile);
-          let dropEvent = new DragEvent("drop", { dataTransfer: dt, bubbles: true, cancelable: true });
-          let canvas = document.getElementById("canvas");
-          if (canvas) {
-            canvas.dispatchEvent(dropEvent);
-            console.log("✅ Fallback drop event dispatched to canvas");
-            
-            // Wait much longer for program to load, then try multiple execution methods
-            setTimeout(() => {
-              console.log("3. Attempting to execute program...");
-              
-              // Method 1: Try direct execution via emulator functions
-              if (typeof h.vic20_run === 'function') {
-                console.log("3a. Trying vic20_run()...");
-                h.vic20_run();
-                console.log("✅ vic20_run() called");
-              } else if (typeof h.run === 'function') {
-                console.log("3a. Trying run()...");
-                h.run();
-                console.log("✅ run() called");
-              } else if (typeof h.vic20_execute === 'function') {
-                console.log("3a. Trying vic20_execute()...");
-                h.vic20_execute();
-                console.log("✅ vic20_execute() called");
-              } else {
-                // Method 2: Try keyboard input with clear screen
-                console.log("3a. No direct execution functions found, trying keyboard input with clear screen...");
-                setTimeout(() => {
-                  console.log("3b. Sending clear screen + run command...");
-                  // Send clear screen character (0x93) followed by run command
-                  this.simulateKeyboardInput("\x93run\r");
-                  console.log("✅ Clear screen + run command sent");
-                }, 500);
-              }
-            }, 1000); // Increased from 500ms to 1000ms
-          }
+          console.log("❌ Canvas not found");
         }
-      }, 500); // Increased from 200ms to 500ms for reset
-    } else {
-      console.log("❌ No 'h' object available");
+      } else {
+        console.log("❌ No drop function available");
+      }
+    } catch (error) {
+      console.error("Error loading program:", error);
+    } finally {
+      // Reset the flag after a delay
+      setTimeout(() => {
+        this.isLoadingProgram = false;
+      }, 2000);
     }
   }
+  
 
+  
+
+  
+  private executeLoadedProgram(): void {
+    console.log("🎯 Executing loaded program...");
+    
+    const h = (window as any).h;
+    if (!h) {
+      console.log("❌ No 'h' object available for execution");
+      return;
+    }
+    
+    // Try to find and call an execution function
+    const executionFunctions = Object.keys(h).filter(fn => 
+      fn.toLowerCase().includes('run') || 
+      fn.toLowerCase().includes('execute') ||
+      fn.toLowerCase().includes('start') ||
+      fn.toLowerCase().includes('main')
+    );
+    
+    console.log("🎯 Found potential execution functions:", executionFunctions);
+    
+    // Try the most likely execution function
+    if (typeof h.__sapp_emsc_begin_drop === 'function') {
+      console.log("🎯 Trying __sapp_emsc_begin_drop...");
+      try {
+        h.__sapp_emsc_begin_drop();
+        console.log("✅ Successfully called __sapp_emsc_begin_drop");
+      } catch (error) {
+        console.log("❌ Error calling __sapp_emsc_begin_drop:", error);
+      }
+    }
+    
+    // Try other common execution functions
+    for (const funcName of executionFunctions) {
+      if (typeof h[funcName] === 'function') {
+        console.log(`🎯 Trying ${funcName}...`);
+        try {
+          h[funcName]();
+          console.log(`✅ Successfully called ${funcName}`);
+          break;
+        } catch (error) {
+          console.log(`❌ Error calling ${funcName}:`, error);
+        }
+      }
+    }
+  }
+  
   private loadProgramViaURL(program: Uint8Array): void {
     console.log("=== ATTEMPTING URL PARAMETER LOAD ===");
     
@@ -1943,217 +1434,13 @@ export class VIC20ChipsMachine implements Machine {
   }
   
   private addFocusTracking(): void {
-    console.log("🔍 Adding global focus tracking to debug focus stealing...");
-    
-    // Track focus changes
-    this.focusTrackingHandler = (event: FocusEvent) => {
-      const target = event.target as HTMLElement;
-      const relatedTarget = event.relatedTarget as HTMLElement;
-      
-      // Get stack trace to see what caused the focus change
-      const stack = new Error().stack;
-      
-      console.log("🔍 FOCUS CHANGE DETECTED:");
-      console.log("  From:", relatedTarget?.tagName, relatedTarget?.id, relatedTarget?.className);
-      console.log("  To:", target?.tagName, target?.id, target?.className);
-      console.log("  Event type:", event.type);
-      console.log("  Is trusted:", event.isTrusted);
-      console.log("  Stack trace:", stack);
-      
-      // Check if focus is being stolen by the canvas
-      if (target === this.canvas) {
-        console.log("🚨 WARNING: Canvas gained focus!");
-        console.log("  This might be stealing focus from the editor");
-      }
-      
-      // Check if focus is being stolen from the editor
-      if (relatedTarget && relatedTarget.closest('.CodeMirror')) {
-        console.log("🚨 WARNING: Focus stolen from CodeMirror editor!");
-        console.log("  This is the problem we're trying to solve");
-      }
-      
-      // Check if the canvas is somehow involved in focus changes
-      if (target === this.canvas || relatedTarget === this.canvas) {
-        console.log("🚨 CANVAS FOCUS INVOLVEMENT:");
-        console.log("  Canvas is target:", target === this.canvas);
-        console.log("  Canvas is relatedTarget:", relatedTarget === this.canvas);
-        console.log("  Event type:", event.type);
-        console.log("  Is trusted:", event.isTrusted);
-      }
-      
-      // Check if focus is being stolen from textarea (CodeMirror's input)
-      if (target && target.tagName === 'TEXTAREA' && event.type === 'focusout') {
-        console.log("🚨 TEXTAREA LOSING FOCUS:");
-        console.log("  Textarea losing focus to:", relatedTarget?.tagName, relatedTarget?.id, relatedTarget?.className);
-        console.log("  This might be the typing issue");
-      }
-    };
-    
-    // Add listeners for both focusin and focusout
-    document.addEventListener('focusin', this.focusTrackingHandler, true);
-    document.addEventListener('focusout', this.focusTrackingHandler, true);
-    
-    // Add keyboard event tracking to see what happens when typing
-    this.keyboardTrackingHandler = (event: KeyboardEvent) => {
-      const target = event.target as HTMLElement;
-      
-      // Only track if the target is the textarea (CodeMirror's input)
-      if (target && target.tagName === 'TEXTAREA') {
-        console.log("🔍 KEYBOARD EVENT ON TEXTAREA:");
-        console.log("  Key:", event.key);
-        console.log("  KeyCode:", event.keyCode);
-        console.log("  Type:", event.type);
-        console.log("  Is trusted:", event.isTrusted);
-        console.log("  Default prevented:", event.defaultPrevented);
-        console.log("  Target:", target.tagName, target.id, target.className);
-        
-        // Check if the event is being prevented or stopped
-        if (event.defaultPrevented) {
-          console.log("🚨 WARNING: Keyboard event default was prevented!");
-          console.log("  This might be why typing isn't working");
-        }
-      }
-    };
-    
-    document.addEventListener('keydown', this.keyboardTrackingHandler, true);
-    document.addEventListener('keyup', this.keyboardTrackingHandler, true);
-    document.addEventListener('keypress', this.keyboardTrackingHandler, true);
-    
-    // CRITICAL: Override preventDefault to prevent it from blocking editor events
-    const originalPreventDefault = Event.prototype.preventDefault;
-    Event.prototype.preventDefault = function(this: Event) {
-      const target = this.target as HTMLElement;
-      
-      // If this is a keyboard event on a textarea or input, don't allow preventDefault
-      if ((this.type === 'keypress' || this.type === 'keydown' || this.type === 'keyup') && 
-          target && (target.tagName === 'TEXTAREA' || target.tagName === 'INPUT')) {
-        console.log(`🛡️ BLOCKED preventDefault on ${this.type} event for ${target.tagName} - key: ${(this as KeyboardEvent).key}`);
-        return; // Don't call the original preventDefault
-      }
-      
-      // For all other events, call the original preventDefault
-      return originalPreventDefault.call(this);
-    };
-    
-    console.log("✅ Overrode preventDefault to protect editor keyboard events");
-    
-    // ENHANCED: Handle Tab key and error dialogs
-    this.keyboardInterceptor = (event: KeyboardEvent) => {
-      const target = event.target as HTMLElement;
-      const activeElement = document.activeElement;
-      
-      // If this is a Tab key on a textarea, prevent it from going to URL bar
-      if (event.key === 'Tab' && target && target.tagName === 'TEXTAREA') {
-        console.log(`🛡️ HANDLING Tab key on textarea - preventing URL bar navigation`);
-        // Prevent default to stop browser tab navigation, but let CodeMirror handle it
-        event.preventDefault();
-        event.stopPropagation();
-        return;
-      }
-      
-      // If there's an error dialog visible, block all keyboard events from emulator
-      const errorAlert = document.getElementById('error_alert');
-      if (errorAlert && errorAlert.style.display !== 'none') {
-        console.log(`🛡️ ERROR DIALOG ACTIVE - blocking ${event.key} from emulator`);
-        event.stopImmediatePropagation();
-        event.stopPropagation();
-        return;
-      }
-      
-      // AGGRESSIVE: Block ALL keyboard events from reaching emulator when editor has focus
-      if (activeElement && (activeElement.tagName === 'TEXTAREA' || activeElement.tagName === 'INPUT')) {
-        console.log(`🛡️ BLOCKING ${event.key} from emulator - editor has focus`);
-        // Stop propagation to prevent emulator from seeing the event
-        event.stopImmediatePropagation();
-        event.stopPropagation();
-        // Don't prevent default - let the editor handle it normally
-        return;
-      }
-      
-      // Only log other events on textarea/input, don't interfere
-      if (target && (target.tagName === 'TEXTAREA' || target.tagName === 'INPUT')) {
-        console.log(`🛡️ ALLOWING ${event.type} for ${event.key} on ${target.tagName} - not interfering`);
-      }
-    };
-    
-    // Add the interceptor with high priority
-    document.addEventListener('keydown', this.keyboardInterceptor, true);
-    document.addEventListener('keyup', this.keyboardInterceptor, true);
-    document.addEventListener('keypress', this.keyboardInterceptor, true);
-    
-    // CRITICAL: Add global keyboard blocker with highest priority
-    // This prevents ANY keyboard events from reaching the emulator when editor has focus
-    const globalKeyboardBlocker = (event: KeyboardEvent) => {
-      const activeElement = document.activeElement;
-      if (activeElement && (activeElement.tagName === 'TEXTAREA' || activeElement.tagName === 'INPUT')) {
-        console.log(`🛡️ GLOBAL BLOCK: Preventing ${event.key} from reaching emulator (${activeElement.tagName} has focus)`);
-        event.stopImmediatePropagation();
-        event.stopPropagation();
-        return;
-      }
-    };
-    
-    // Add global blocker with highest priority (useCapture: true)
-    document.addEventListener('keydown', globalKeyboardBlocker, true);
-    document.addEventListener('keyup', globalKeyboardBlocker, true);
-    document.addEventListener('keypress', globalKeyboardBlocker, true);
-    
-    // REMOVED: preventDefault override was too aggressive and blocked editor functionality
-    // Now relying only on event propagation stopping to prevent emulator interference
-    console.log("✅ Using event propagation stopping only for keyboard protection");
-    
-    // CRITICAL: Add focus protection for Bootbox modals
-    // This prevents the emulator from stealing focus from modal dialogs
-    this.modalFocusProtection = () => {
-      // Check for any visible Bootbox modals
-      const bootboxModals = document.querySelectorAll('.bootbox.modal.show, .bootbox.modal.in');
-      if (bootboxModals.length > 0) {
-        console.log("🛡️ Bootbox modal detected - protecting focus");
-        
-        // Find the first input in the modal and focus it
-        const modal = bootboxModals[0] as HTMLElement;
-        const inputs = modal.querySelectorAll('input, textarea');
-        if (inputs.length > 0) {
-          const firstInput = inputs[0] as HTMLElement;
-          if (document.activeElement !== firstInput) {
-            console.log("🛡️ Focusing first input in Bootbox modal");
-            firstInput.focus();
-          }
-        }
-      }
-    };
-    
-    // Run modal focus protection periodically
-    setInterval(this.modalFocusProtection, 500);
-    
-    // REMOVED: globalKeyboardBlocker was causing conflicts
-    // Now using only the simplified keyboardInterceptor
-    
-    console.log("✅ Focus and keyboard tracking added with emulator interference prevention");
+    // DISABLED: Complex focus tracking removed to fix typing issues
+    console.log("✅ Focus tracking disabled to prevent typing issues");
   }
   
   private removeFocusTracking(): void {
-    if (this.focusTrackingHandler) {
-      document.removeEventListener('focusin', this.focusTrackingHandler, true);
-      document.removeEventListener('focusout', this.focusTrackingHandler, true);
-      this.focusTrackingHandler = null;
-    }
-    
-    if (this.keyboardTrackingHandler) {
-      document.removeEventListener('keydown', this.keyboardTrackingHandler, true);
-      document.removeEventListener('keyup', this.keyboardTrackingHandler, true);
-      document.removeEventListener('keypress', this.keyboardTrackingHandler, true);
-      this.keyboardTrackingHandler = null;
-    }
-    
-    if (this.keyboardInterceptor) {
-      document.removeEventListener('keydown', this.keyboardInterceptor, true);
-      document.removeEventListener('keyup', this.keyboardInterceptor, true);
-      document.removeEventListener('keypress', this.keyboardInterceptor, true);
-      this.keyboardInterceptor = null;
-    }
-    
-    console.log("✅ Focus and keyboard tracking removed");
+    // DISABLED: Complex focus tracking removed to fix typing issues
+    console.log("✅ Focus tracking removal disabled");
   }
 
   // Joystick support
@@ -2221,7 +1508,7 @@ export class VIC20ChipsMachine implements Machine {
 
   // Simulate keyboard input for typing commands
   private simulateKeyboardInput(text: string): void {
-    console.log("Attempting to simulate keyboard input for:", text);
+    console.log("🎯 Attempting to simulate keyboard input for:", text);
     
     // Look for keyboard-related functions
     const h = (window as any).h;
@@ -2231,15 +1518,17 @@ export class VIC20ChipsMachine implements Machine {
         fn.toLowerCase().includes('input') || 
         fn.toLowerCase().includes('char') ||
         fn.toLowerCase().includes('type') ||
-        fn.toLowerCase().includes('text')
+        fn.toLowerCase().includes('text') ||
+        fn.toLowerCase().includes('send') ||
+        fn.toLowerCase().includes('write')
       );
       
-      console.log("Found keyboard functions:", keyboardFunctions);
+      console.log("🎯 Found keyboard functions:", keyboardFunctions);
       
       // Try each keyboard function
       for (const fn of keyboardFunctions) {
         if (typeof h[fn] === 'function') {
-          console.log(`Trying keyboard function: ${fn}`);
+          console.log(`🎯 Trying keyboard function: ${fn}`);
           try {
             h[fn](text);
             console.log(`✅ Successfully called ${fn} with text: ${text}`);
@@ -2249,13 +1538,41 @@ export class VIC20ChipsMachine implements Machine {
           }
         }
       }
+      
+      // Try to find a function that can send text to the emulator
+      if (typeof h.sendText === 'function') {
+        console.log("🎯 Trying sendText function...");
+        try {
+          h.sendText(text);
+          console.log(`✅ Successfully sent text via sendText: ${text}`);
+          return;
+        } catch (e) {
+          console.log(`❌ Error calling sendText:`, e);
+        }
+      }
+      
+      // Try to find a function that can write to the emulator input
+      if (typeof h.writeInput === 'function') {
+        console.log("🎯 Trying writeInput function...");
+        try {
+          h.writeInput(text);
+          console.log(`✅ Successfully wrote input: ${text}`);
+          return;
+        } catch (e) {
+          console.log(`❌ Error calling writeInput:`, e);
+        }
+      }
     }
     
-    // Fallback to individual key simulation
-    console.log("No keyboard function found, trying individual key simulation...");
+    // Fallback to individual key simulation with delays
+    console.log("🎯 No keyboard function found, trying individual key simulation with delays...");
+    let delay = 0;
     for (const char of text) {
-      const keyCode = char.charCodeAt(0);
-      this.simulateKeyPress(keyCode);
+      setTimeout(() => {
+        const keyCode = char.charCodeAt(0);
+        this.simulateKeyPress(keyCode);
+      }, delay);
+      delay += 50; // 50ms delay between characters
     }
   }
 
@@ -2875,6 +2192,78 @@ export class VIC20ChipsMachine implements Machine {
     }
   }
 
+  private addCanvasDragAndDropListeners(): void {
+    // Try multiple canvas references
+    let targetCanvas = this.canvas;
+    
+    if (!targetCanvas) {
+      // Try to find canvas from the emulator
+      const h = (window as any).h;
+      if (h && h.canvas) {
+        targetCanvas = h.canvas;
+        console.log("🎯 Using emulator canvas for drag-and-drop listeners");
+      } else if (h && h.xc) {
+        targetCanvas = h.xc;
+        console.log("🎯 Using emulator xc for drag-and-drop listeners");
+      } else {
+        // Try to find canvas by ID
+        targetCanvas = document.getElementById("canvas") as HTMLCanvasElement;
+        console.log("🎯 Using document canvas for drag-and-drop listeners");
+      }
+    }
+    
+    if (!targetCanvas) {
+      console.log("❌ No canvas available for drag-and-drop listeners");
+      return;
+    }
+    
+    console.log("🎯 Adding drag-and-drop event listeners to canvas for manual file loading...");
+    
+    try {
+      // Add drag-and-drop event listeners for manual file loading
+      targetCanvas.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        console.log("🎯 Drag over detected on canvas");
+      });
+      
+      targetCanvas.addEventListener('drop', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        console.log("🎯 Manual drop event detected on canvas");
+        
+        // Prevent infinite loops - only handle manual drops, not programmatic ones
+        if (this.isLoadingProgram) {
+          console.log("⚠️ Program already loading, ignoring drop event to prevent infinite loop");
+          return;
+        }
+        
+        const files = e.dataTransfer?.files;
+        if (files && files.length > 0) {
+          const file = files[0];
+          console.log("🎯 Manual file dropped:", file.name, file.size, "bytes");
+          
+          const reader = new FileReader();
+          reader.onload = (event) => {
+            if (event.target?.result instanceof ArrayBuffer) {
+              const data = new Uint8Array(event.target.result);
+              console.log("🎯 Manual file data loaded:", data.length, "bytes");
+              console.log("🎯 First 16 bytes:", Array.from(data.slice(0, 16)));
+              
+              // Load the manually dropped file using the simplified method
+              this.loadProgram(data);
+            }
+          };
+          reader.readAsArrayBuffer(file);
+        }
+      });
+      
+      console.log("✅ Manual drag-and-drop listeners added to canvas");
+    } catch (error) {
+      console.log("❌ Error adding drag-and-drop listeners:", error);
+    }
+  }
+
   // Add this method to help debug drag-and-drop vs our approach
   private captureDragAndDropData(): void {
     console.log("🔍 DEBUG: Setting up drag-and-drop capture...");
@@ -2927,5 +2316,28 @@ export class VIC20ChipsMachine implements Machine {
     } catch (error) {
       console.log("❌ Error setting up drag-and-drop capture:", error);
     }
+  }
+
+  private addSimpleFocusProtection(): void {
+    if (!this.canvas) return;
+    
+    // Make canvas non-focusable
+    this.canvas.tabIndex = -1;
+    this.canvas.style.outline = 'none';
+    
+    // Add debugging to see if canvas is getting focus
+    this.canvas.addEventListener('focus', (e) => {
+      console.log("⚠️ WARNING: Canvas received focus! Blurring immediately...");
+      this.canvas?.blur();
+    });
+    
+    // Monitor keyboard events on canvas
+    this.canvas.addEventListener('keydown', (e) => {
+      console.log("⚠️ WARNING: Keyboard event on canvas:", e.key);
+      e.preventDefault();
+      e.stopPropagation();
+    });
+    
+    console.log("✅ Added simple focus protection to VIC-20 canvas");
   }
 } 

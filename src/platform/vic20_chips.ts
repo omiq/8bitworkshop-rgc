@@ -43,13 +43,31 @@ class VIC20ChipsPlatform implements Platform {
   async start(): Promise<void> {
     console.log("VIC20ChipsPlatform start() called");
     
-    // Initialize the machine
-    await this.machine.init();
-    console.log("VIC20ChipsPlatform: machine initialized");
+    // Initialize the machine (non-blocking)
+    this.machine.init().catch(error => {
+      console.error("VIC-20 machine initialization failed:", error);
+    });
+    console.log("VIC20ChipsPlatform: machine initialization started");
     
-    // Give the chips-test emulator a moment to fully initialize
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    console.log("VIC20ChipsPlatform: waited 1 second for initialization");
+    // Show the VIC-20 chips div immediately
+    const vic20Div = document.getElementById('vic20-chips-div');
+    if (vic20Div) {
+      vic20Div.style.display = 'block';
+      console.log("VIC20ChipsPlatform: showed vic20-chips-div");
+    }
+    
+    // Hide other emulator divs
+    const javatariDiv = document.getElementById('javatari-div');
+    if (javatariDiv) {
+      javatariDiv.style.display = 'none';
+      console.log("VIC20ChipsPlatform: hid javatari-div");
+    }
+    
+    const c64Div = document.getElementById('c64-chips-div');
+    if (c64Div) {
+      c64Div.style.display = 'none';
+      console.log("VIC20ChipsPlatform: hid c64-chips-div");
+    }
     
     // Clear the main element and add the chips-test canvas
     this.mainElement.innerHTML = '';
@@ -73,10 +91,12 @@ class VIC20ChipsPlatform implements Platform {
       console.error("VIC20ChipsPlatform: no canvas available!");
     }
     
-    // Start the emulator
-    await this.machine.run();
-    this.running = true;
-    console.log("VIC20ChipsPlatform: emulator started");
+    // Start the emulator (non-blocking)
+    setTimeout(() => {
+      this.machine.run();
+      this.running = true;
+      console.log("VIC20ChipsPlatform: emulator started");
+    }, 1000);
     
     console.log("VIC20ChipsPlatform start() completed");
     
