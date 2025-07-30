@@ -2323,29 +2323,184 @@ export class VIC20ChipsMachine implements Machine {
   private addSimpleFocusProtection(): void {
     if (!this.canvas) return;
     
-    // Simple approach: Just make canvas non-focusable and let natural focus work
+    // Make canvas non-focusable
     this.canvas.tabIndex = -1;
     this.canvas.style.outline = 'none';
     
-    // Simple click handler - just log focus changes
-    this.canvas.addEventListener('click', (e) => {
-      console.log("🎮 Canvas clicked");
+    // CRITICAL: Override preventDefault to protect editor keyboard events (like C64)
+    const originalPreventDefault = Event.prototype.preventDefault;
+    Event.prototype.preventDefault = function(this: Event) {
+      const target = this.target as HTMLElement;
+      // If this is a keyboard event on a textarea or input, don't allow preventDefault
+      if ((this.type === 'keypress' || this.type === 'keydown' || this.type === 'keyup') && 
+          target && (target.tagName === 'TEXTAREA' || target.tagName === 'INPUT')) {
+        console.log(`🛡️ BLOCKED preventDefault on ${this.type} event for ${target.tagName} - key: ${(this as KeyboardEvent).key}`);
+        return; // Don't call the original preventDefault
+      }
+      // For all other events, call the original preventDefault
+      return originalPreventDefault.call(this);
+    };
+    console.log("✅ Overrode preventDefault to protect editor keyboard events");
+
+    // Global keyboard event interceptor
+    const globalKeyboardInterceptor = (event: KeyboardEvent) => {
+      const target = event.target as HTMLElement;
+      const activeElement = document.activeElement;
+      
+      // Check if this is a hidden textarea
+      const isHiddenTextarea = target && target.tagName === 'TEXTAREA' && 
+        (target.style.position === 'absolute' || 
+         window.getComputedStyle(target).position === 'absolute');
+      
+      // Check if we're in the CodeMirror editor
+      const isInEditor = activeElement && (
+        activeElement.classList.contains('CodeMirror') ||
+        activeElement.closest('.CodeMirror') !== null
+      );
+      
+      // If it's a hidden textarea, block it and redirect to editor
+      if (isHiddenTextarea) {
+        console.log("🛡️ Blocked keyboard input on hidden textarea");
+        event.preventDefault();
+        event.stopPropagation();
+        
+        // Redirect to editor - target the CodeMirror textarea, not the container
+        const editor = document.querySelector('.CodeMirror textarea') as HTMLTextAreaElement;
+        if (editor) {
+          editor.focus();
+          console.log("🎯 Redirected focus to CodeMirror textarea");
+          
+          // Create a new keyboard event and dispatch it to the textarea
+          const newEvent = new KeyboardEvent(event.type, {
+            key: event.key,
+            code: event.code,
+            keyCode: event.keyCode,
+            which: event.which,
+            shiftKey: event.shiftKey,
+            ctrlKey: event.ctrlKey,
+            altKey: event.altKey,
+            metaKey: event.metaKey,
+            bubbles: true,
+            cancelable: true
+          });
+          
+          editor.dispatchEvent(newEvent);
+          console.log("🎯 Dispatched keyboard event to CodeMirror textarea:", event.key);
+        } else {
+          console.log("❌ Could not find CodeMirror textarea");
+        }
+        return;
+      }
+      
+      // If we're not in the editor and not on the canvas, redirect to editor
+      if (!isInEditor && target !== this.canvas && !this.canvas?.contains(target)) {
+        console.log("🎯 Redirecting keyboard input to editor");
+        
+        // Redirect to editor - target the CodeMirror textarea, not the container
+        const editor = document.querySelector('.CodeMirror textarea') as HTMLTextAreaElement;
+        if (editor) {
+          editor.focus();
+          
+          // Create a new keyboard event and dispatch it to the textarea
+          const newEvent = new KeyboardEvent(event.type, {
+            key: event.key,
+            code: event.code,
+            keyCode: event.keyCode,
+            which: event.which,
+            shiftKey: event.shiftKey,
+            ctrlKey: event.ctrlKey,
+            altKey: event.altKey,
+            metaKey: event.metaKey,
+            bubbles: true,
+            cancelable: true
+          });
+          
+          editor.dispatchEvent(newEvent);
+          console.log("🎯 Dispatched keyboard event to CodeMirror textarea:", event.key);
+          event.preventDefault();
+          event.stopPropagation();
+          return;
+        } else {
+          console.log("❌ Could not find CodeMirror textarea");
+        }
+      }
+    };
+    
+    // Add global keyboard interceptors
+    document.addEventListener('keydown', globalKeyboardInterceptor, true);
+    document.addEventListener('keyup', globalKeyboardInterceptor, true);
+    document.addEventListener('keypress', globalKeyboardInterceptor, true);
+    
+    // Prevent hidden textarea from stealing focus
+    const preventHiddenTextareaFocus = () => {
+      const textareas = document.querySelectorAll('textarea');
+      textareas.forEach(textarea => {
+        // Check if this is the hidden emulator textarea
+        const style = window.getComputedStyle(textarea);
+        if (style.position === 'absolute' && 
+            (style.bottom === '-1em' || style.bottom === '-12.8px' || 
+             style.top === '-1em' || style.top === '-12.8px')) {
+          
+          // Make it non-focusable
+          textarea.tabIndex = -1;
+          textarea.style.pointerEvents = 'none';
+          
+          // Prevent focus events
+          textarea.addEventListener('focus', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            console.log("🛡️ Prevented focus on hidden textarea");
+            
+            // Redirect focus to editor
+            setTimeout(() => {
+              const editor = document.querySelector('.CodeMirror') as HTMLElement;
+              if (editor) {
+                editor.focus();
+              }
+            }, 0);
+          }, true);
+          
+          console.log("✅ Disabled hidden textarea focus");
+        }
+      });
+    };
+    
+    // Run immediately and also set up a mutation observer to catch new textareas
+    preventHiddenTextareaFocus();
+    
+    const observer = new MutationObserver((mutations) => {
+      mutations.forEach((mutation) => {
+        if (mutation.type === 'childList') {
+          mutation.addedNodes.forEach((node) => {
+            if (node.nodeType === Node.ELEMENT_NODE) {
+              const element = node as Element;
+              if (element.tagName === 'TEXTAREA') {
+                preventHiddenTextareaFocus();
+              }
+              // Also check child textareas
+              const childTextareas = element.querySelectorAll('textarea');
+              if (childTextareas.length > 0) {
+                preventHiddenTextareaFocus();
+              }
+            }
+          });
+        }
+      });
     });
     
-    // Simple blur handler
-    this.canvas.addEventListener('blur', (e) => {
-      console.log("⌨️ Canvas lost focus");
-    });
+    observer.observe(document.body, { childList: true, subtree: true });
     
     // Set initial focus to editor
     setTimeout(() => {
-      const editor = document.querySelector('.CodeMirror') as HTMLElement;
+      const editor = document.querySelector('.CodeMirror textarea') as HTMLTextAreaElement;
       if (editor) {
         editor.focus();
-        console.log("✅ Set initial focus to editor");
+        console.log("✅ Set initial focus to CodeMirror textarea");
+      } else {
+        console.log("❌ Could not find CodeMirror textarea for initial focus");
       }
     }, 100);
     
-    console.log("✅ Added simple focus protection to VIC-20 canvas");
+    console.log("✅ Added comprehensive focus protection to VIC-20 canvas");
   }
 } 
