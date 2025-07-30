@@ -2318,6 +2318,18 @@ export class VIC20ChipsMachine implements Machine {
     }
   }
 
+  private addKeyboardDebugging(): void {
+    // Add global keyboard event listener to see if events are being captured
+    document.addEventListener('keydown', (e) => {
+      console.log("🔍 Global keydown event:", e.key, "target:", e.target);
+      if (e.target === this.canvas) {
+        console.log("⚠️ WARNING: Keyboard event targeting canvas!");
+      }
+    }, true); // Use capture phase to see events before they're handled
+    
+    console.log("✅ Added keyboard debugging");
+  }
+
   private addSimpleFocusProtection(): void {
     if (!this.canvas) return;
     
