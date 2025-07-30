@@ -28,7 +28,6 @@ export function importPlatform(name: string) : Promise<any> {
       case "vector": return import("../platform/vector");
       case "vectrex": return import("../platform/vectrex");
       case "verilog": return import("../platform/verilog");
-      case "vic20": return import("../platform/vic20");
       case "vic20.chips": return import("../platform/vic20_chips");
       case "vicdual": return import("../platform/vicdual");
       case "williams": return import("../platform/williams");

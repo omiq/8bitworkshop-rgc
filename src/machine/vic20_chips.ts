@@ -20,6 +20,7 @@ export class VIC20ChipsMachine implements Machine {
   private keyboardInterceptor: ((event: KeyboardEvent) => void) | null = null;
   private modalFocusProtection: (() => void) | null = null;
   private globalKeyboardBlocker: ((event: KeyboardEvent) => void) | null = null;
+  private emulatorFocused = false; // Track if emulator is focused
   
   // CPU stub for interface compliance
   cpu = {
@@ -86,12 +87,9 @@ export class VIC20ChipsMachine implements Machine {
       // Add drag and drop listeners
       this.addCanvasDragAndDropListeners();
       
-      // Add global keyboard debugging
-      this.addKeyboardDebugging();
-      
       // Try to detect module after a short delay (non-blocking)
-      setTimeout(() => {
-        this.detectModule();
+        setTimeout(() => {
+          this.detectModule();
         this.enableJoystickSupport();
       }, 1000);
       
@@ -129,7 +127,7 @@ export class VIC20ChipsMachine implements Machine {
       // Check if the VIC-20 script set up any global keyboard listeners
       setTimeout(() => {
         console.log("🔍 Checking for global keyboard event listeners...");
-        const h = (window as any).h;
+            const h = (window as any).h;
         if (h) {
           console.log("🔍 VIC-20 'h' object functions:", Object.keys(h).filter(k => typeof h[k] === 'function'));
           
@@ -325,7 +323,7 @@ export class VIC20ChipsMachine implements Machine {
     
     try {
       // Get the VIC-20 module
-      const h = (window as any).h;
+    const h = (window as any).h;
       if (!h) {
         console.log("❌ No 'h' object available for loading program");
         return;
@@ -339,40 +337,40 @@ export class VIC20ChipsMachine implements Machine {
         
         // Create a File object
         const file = new File([program], "main.prg", { type: "application/octet-stream" });
-        
-        // Create a DataTransfer and add the File
+          
+          // Create a DataTransfer and add the File
         const dt = new DataTransfer();
         dt.items.add(file);
-        
-        // Create a synthetic drop event
-        const dropEvent = new DragEvent("drop", {
-          dataTransfer: dt,
-          bubbles: true,
-          cancelable: true
-        });
-        
-        // Find the canvas and dispatch the event
-        const canvas = document.getElementById("canvas");
-        if (canvas) {
-          canvas.dispatchEvent(dropEvent);
-          console.log("✅ Drop event dispatched to canvas");
           
+          // Create a synthetic drop event
+        const dropEvent = new DragEvent("drop", {
+            dataTransfer: dt,
+            bubbles: true,
+            cancelable: true
+          });
+          
+          // Find the canvas and dispatch the event
+        const canvas = document.getElementById("canvas");
+          if (canvas) {
+            canvas.dispatchEvent(dropEvent);
+            console.log("✅ Drop event dispatched to canvas");
+            
           // Wait for program to load, then execute
-          setTimeout(() => {
+            setTimeout(() => {
             console.log("🎯 Executing loaded program...");
-            this.executeLoadedProgram();
+              this.executeLoadedProgram();
           }, 1000);
+          } else {
+            console.log("❌ Canvas not found");
+          }
         } else {
-          console.log("❌ Canvas not found");
-        }
-      } else {
         console.log("❌ No drop function available");
       }
     } catch (error) {
       console.error("Error loading program:", error);
     } finally {
       // Reset the flag after a delay
-      setTimeout(() => {
+            setTimeout(() => {
         this.isLoadingProgram = false;
       }, 2000);
     }
@@ -2318,37 +2316,35 @@ export class VIC20ChipsMachine implements Machine {
     }
   }
 
-  private addKeyboardDebugging(): void {
-    // Add global keyboard event listener to see if events are being captured
-    document.addEventListener('keydown', (e) => {
-      console.log("🔍 Global keydown event:", e.key, "target:", e.target);
-      if (e.target === this.canvas) {
-        console.log("⚠️ WARNING: Keyboard event targeting canvas!");
-      }
-    }, true); // Use capture phase to see events before they're handled
-    
-    console.log("✅ Added keyboard debugging");
-  }
+
+
+
 
   private addSimpleFocusProtection(): void {
     if (!this.canvas) return;
     
-    // Make canvas non-focusable
+    // Simple approach: Just make canvas non-focusable and let natural focus work
     this.canvas.tabIndex = -1;
     this.canvas.style.outline = 'none';
     
-    // Add debugging to see if canvas is getting focus
-    this.canvas.addEventListener('focus', (e) => {
-      console.log("⚠️ WARNING: Canvas received focus! Blurring immediately...");
-      this.canvas?.blur();
+    // Simple click handler - just log focus changes
+    this.canvas.addEventListener('click', (e) => {
+      console.log("🎮 Canvas clicked");
     });
     
-    // Monitor keyboard events on canvas
-    this.canvas.addEventListener('keydown', (e) => {
-      console.log("⚠️ WARNING: Keyboard event on canvas:", e.key);
-      e.preventDefault();
-      e.stopPropagation();
+    // Simple blur handler
+    this.canvas.addEventListener('blur', (e) => {
+      console.log("⌨️ Canvas lost focus");
     });
+    
+    // Set initial focus to editor
+    setTimeout(() => {
+      const editor = document.querySelector('.CodeMirror') as HTMLElement;
+      if (editor) {
+        editor.focus();
+        console.log("✅ Set initial focus to editor");
+      }
+    }, 100);
     
     console.log("✅ Added simple focus protection to VIC-20 canvas");
   }
