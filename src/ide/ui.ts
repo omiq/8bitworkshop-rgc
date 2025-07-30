@@ -2148,6 +2148,7 @@ function exposeToGlobal() {
     clearBreakpoint,
     reloadWorkspaceFile,
     highlightSearch,
+    _downloadROMImage,
     // Helper function to load ROM with proper context
     loadROM: (data?: Uint8Array) => {
       const output = data || getCurrentOutput();
@@ -2161,10 +2162,69 @@ function exposeToGlobal() {
       }
       console.log("✅ Loading ROM with", output.length, "bytes");
       platform.loadROM(getCurrentMainFilename(), output);
+    },
+    
+    // Debug function to access compilation output
+    debugCompilation: () => {
+      console.log("=== DEBUGGING COMPILATION OUTPUT ===");
+      
+      // Check current output
+      const output = getCurrentOutput();
+      if (output) {
+        console.log("✅ Current output found:", output);
+        console.log("Current output length:", output.length);
+        
+        if (output.length > 0) {
+          console.log("First 32 bytes (hex):", Array.from(output.slice(0, 32)).map((b: number) => b.toString(16).padStart(2, '0')).join(' '));
+          console.log("First 32 bytes (decimal):", Array.from(output.slice(0, 32)).join(' '));
+        }
+      } else {
+        console.log("❌ No current output found");
+      }
+      
+      // Check compilation parameters
+      if (typeof compparams !== 'undefined') {
+        console.log("✅ Compilation parameters found:", compparams);
+      } else {
+        console.log("❌ No compilation parameters found");
+      }
+      
+      // Check platform
+      if (platform) {
+        console.log("✅ Platform found:", (platform as any).getName ? (platform as any).getName() : 'Unknown');
+        if ((platform as any).debugSymbols) {
+          console.log("✅ Debug symbols found:", (platform as any).debugSymbols);
+        }
+      } else {
+        console.log("❌ No platform found");
+      }
+      
+      // Check worker (access via global scope)
+      if ((window as any).worker) {
+        console.log("✅ Worker found");
+        if ((window as any).worker.store) {
+          console.log("✅ Store found");
+          const files = Object.keys((window as any).worker.store.workfs || {});
+          console.log("Files in virtual file system:", files);
+          
+          for (const file of files) {
+            const fileEntry = (window as any).worker.store.workfs[file];
+            console.log(`File: ${file} (${fileEntry.data.length} bytes)`);
+            
+            if (fileEntry.data.length > 0) {
+              const first16 = Array.from(fileEntry.data.slice(0, 16));
+              console.log(`  First 16 bytes: ${first16.map((b: number) => b.toString(16).padStart(2, '0')).join(' ')}`);
+            }
+          }
+        }
+      } else {
+        console.log("❌ No worker found");
+      }
     }
   };
   console.log("IDE variables exposed globally. Access via window.IDE");
   console.log("Use window.IDE.loadROM() to load the current compiled output");
+  console.log("Use window.IDE.debugCompilation() to debug compilation output");
 }
 
 // Auto-expose when module loads

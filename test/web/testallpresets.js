@@ -116,4 +116,5 @@ testPlatform(ex, 'zmachine', 'Z-Machine', 19);
 testPlatform(ex, 'msx', 'MSX', 5);
 //testPlatform(ex, 'zx', 'ZX', 3);
 testPlatform(ex, 'c64', 'Commodore 64', 16);
+testPlatform(ex, 'vic20', 'VIC-20', 9);
 testPlatform(ex, 'atari8-800', 'Atari 800', 9);
