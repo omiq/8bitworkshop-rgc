@@ -4,7 +4,7 @@ import { hex } from "../common/util";
 // Global variable to hold the chips-test C64 module
 declare global {
   interface Window {
-    c64_chips_module?: any;
+    c64_module?: any;
     Module?: any;
   }
   var Module: any;
@@ -123,7 +123,7 @@ export class C64ChipsMachine {
       }
       
       // Load the chips-test module if not already loaded
-      if (!window.c64_chips_module) {
+      if (!window.c64_module) {
         const script = document.createElement('script');
         script.src = `res/c64.js?t=${Date.now()}`;
         script.async = true;
@@ -136,7 +136,7 @@ export class C64ChipsMachine {
               // Check if the chips-test functions are available
               if (typeof (window as any).c64_quickload === 'function') {
                 console.log("C64 quickload function found - using direct access");
-                window.c64_chips_module = window;
+                window.c64_module = window;
                 resolve();
                 return;
               }
@@ -144,14 +144,14 @@ export class C64ChipsMachine {
               // Also check for the Module object
               if (typeof (window as any).Module !== 'undefined' && (window as any).Module) {
                 console.log("C64 Module found - using Module object");
-                window.c64_chips_module = (window as any).Module;
+                window.c64_module = (window as any).Module;
                 resolve();
                 return;
               }
               
               // If we still can't find it, just assume it's working and use window
               console.log("C64 module detection failed, but emulator is running - using window fallback");
-              window.c64_chips_module = window;
+              window.c64_module = window;
               resolve();
             }, 500); // Wait 500ms for initialization
           };
@@ -170,7 +170,7 @@ export class C64ChipsMachine {
         return originalFetch.call(this, input, init);
       }
       
-      this.module = window.c64_chips_module;
+      this.module = window.c64_module;
 
       // Initialize the module
       if (this.module && this.module._main) {
@@ -428,12 +428,12 @@ export class C64ChipsMachine {
       console.log("Module object keys:", Object.keys((window as any).Module));
     }
     
-    // Check what's in the c64_chips_module
-    if ((window as any).c64_chips_module) {
-      console.log("c64_chips_module keys:", Object.keys((window as any).c64_chips_module));
+    // Check what's in the c64_module
+    if ((window as any).c64_module) {
+      console.log("c64_module keys:", Object.keys((window as any).c64_module));
       
       // Search for any function that might be the quickload function
-      const allKeys = Object.keys((window as any).c64_chips_module);
+      const allKeys = Object.keys((window as any).c64_module);
       const quickloadCandidates = allKeys.filter(key => 
         key.toLowerCase().includes('quickload') || 
         key.toLowerCase().includes('load') || 
@@ -444,7 +444,7 @@ export class C64ChipsMachine {
       
       // Check if any of these are functions
       for (const candidate of quickloadCandidates) {
-        const value = (window as any).c64_chips_module[candidate];
+        const value = (window as any).c64_module[candidate];
         if (typeof value === 'function') {
           console.log(`Found function: ${candidate}`, value);
         }

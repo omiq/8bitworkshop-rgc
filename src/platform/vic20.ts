@@ -1,21 +1,15 @@
-import { VIC20ChipsMachine } from "../machine/vic20_chips";
+import { VIC20ChipsMachine } from "../machine/vic20";
 import { Platform, Preset } from "../common/baseplatform";
 import { PLATFORMS } from "../common/emu";
 import { RasterVideo, AnimationTimer } from "../common/emu";
 
-const VIC20_CHIPS_PRESETS : Preset[] = [
-  {id:'hello.dasm', name:'Hello World (DASM)', category:'Assembly Language'},
+const VIC20_PRESETS : Preset[] = [
+  {id:'hello.c', name:'Hello World', category:'C'},
   {id:'siegegame.c', name:'Siege Game', category:'C'},
-  {id:'basic_test.dasm', name:'BASIC Test', category:'Assembly Language'},
-  {id:'color_test.dasm', name:'Color Test', category:'Assembly Language'},
-  {id:'simple_test.dasm', name:'Simple Test', category:'Assembly Language'},
-  {id:'debug_test.dasm', name:'Debug Test', category:'Assembly Language'},
-  {id:'hellocart.dasm', name:'Hello Cartridge', category:'Assembly Language'},
-  {id:'cartheader.dasm', name:'Cartridge Header', category:'Assembly Language'},
   {id:'skeleton.cc65', name:'CC65 Skeleton', category:'C'},
 ];
 
-const VIC20_CHIPS_MEMORY_MAP = { main:[
+const VIC20_MEMORY_MAP = { main:[
   {name:'RAM',          start:0x0000,size:0x1000,type:'ram'},
   {name:'Screen RAM',   start:0x1000,size:0x0400,type:'ram'},
   {name:'Color RAM',    start:0x9400,size:0x0400,type:'io'},
@@ -145,7 +139,7 @@ class VIC20ChipsPlatform implements Platform {
   }
 
   getPresets(): Preset[] {
-    return VIC20_CHIPS_PRESETS;
+    return VIC20_PRESETS;
   }
 
   getDefaultExtension(): string {
@@ -168,7 +162,7 @@ class VIC20ChipsPlatform implements Platform {
   }
 
   getMemoryMap() {
-    return VIC20_CHIPS_MEMORY_MAP;
+    return VIC20_MEMORY_MAP;
   }
 
   showHelp(): string {
@@ -216,7 +210,7 @@ class VIC20ChipsPlatform implements Platform {
   }
 }
 
-PLATFORMS['vic20.chips'] = VIC20ChipsPlatform;
+PLATFORMS['vic20'] = VIC20ChipsPlatform;
 
 // Export the platform class for dynamic loading
 export default VIC20ChipsPlatform; 

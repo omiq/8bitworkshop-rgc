@@ -1,7 +1,7 @@
-
-import { Platform, Base6502MachinePlatform, getToolForFilename_6502, getOpcodeMetadata_6502, Preset } from "../common/baseplatform";
+import { C64ChipsMachine } from "../machine/c64";
+import { Platform, Preset } from "../common/baseplatform";
 import { PLATFORMS } from "../common/emu";
-import { BaseMAME6502Platform } from "../common/mameplatform";
+import { RasterVideo, AnimationTimer } from "../common/emu";
 
 const C64_PRESETS : Preset[] = [
   {id:'helloc.c', name:'Hello World', category:'C'},
@@ -47,7 +47,6 @@ const C64_MEMORY_MAP = { main:[
   {name:'6510 Registers',start:0x0,  size:0x2,type:'io'},
   {name:'BIOS Reserved', start:0x200,   size:0xa7},
   {name:'Default Screen RAM', start:0x400,   size:1024,type:'ram'},
-  //{name:'RAM',          start:0x2,   size:0x7ffe,type:'ram'},
   {name:'Cartridge ROM',start:0x8000,size:0x2000,type:'rom'},
   {name:'BASIC ROM',    start:0xa000,size:0x2000,type:'rom'},
   {name:'Upper RAM',    start:0xc000,size:0x1000,type:'ram'},
@@ -62,46 +61,172 @@ const C64_MEMORY_MAP = { main:[
   {name:'KERNAL ROM',   start:0xe000,size:0x2000,type:'rom'},
 ] }
 
-// WASM C64 platform - REMOVED (using chips-test instead)
+// Chips-test C64 platform
+class C64ChipsPlatform implements Platform {
+  private machine: C64ChipsMachine;
+  private mainElement: HTMLElement;
+  private timer: AnimationTimer;
+  private video: RasterVideo;
+  private running = false;
 
-// C64 MAME platform
-abstract class C64MAMEPlatform extends BaseMAME6502Platform {
-  getPresets() { return C64_PRESETS; }
-  getToolForFilename = getToolForFilename_6502;
-  getOpcodeMetadata = getOpcodeMetadata_6502;
-  getDefaultExtension() { return ".c"; }
-  loadROM(title, data) {
-    if (!this.started) {
-      this.startModule(this.mainElement, {
-        jsfile:'mame8bitpc.js',
-        biosfile:'c64.zip',
-        cfgfile:'c64.cfg',
-        driver:'c64',
-        width:418,
-        height:235,
-        romfn:'/emulator/image.crt',
-        romdata:new Uint8Array(data),
-        romsize:0x10000,
-        extraargs: ['-autoboot_delay','5','-autoboot_command','load "$",8,1\n'],
-        preInit:function(_self) {
-        },
-      });
-    } else {
-      this.loadROMFile(data);
-      this.loadRegion(":quickload", data);
-      var result = this.luacall(`image:load("/emulator/image.prg")`)
-      console.log('load rom', result);
-      //this.loadRegion(":exp:standard", data);
+  constructor(mainElement: HTMLElement) {
+    this.mainElement = mainElement;
+    this.machine = new C64ChipsMachine();
+  }
+
+  async start(): Promise<void> {
+    console.log("C64ChipsPlatform start() called");
+    
+    // Initialize the machine
+    await this.machine.init();
+    
+    // Give the chips-test emulator a moment to fully initialize
+    await new Promise(resolve => setTimeout(resolve, 1000));
+    
+    // Clear the main element and add the chips-test canvas
+    this.mainElement.innerHTML = '';
+    
+    // Get canvas from the chips-test emulator
+    const canvas = this.machine.getCanvas();
+    if (canvas) {
+      // Remove the canvas from document.body and add it to our main element
+      if (canvas.parentNode) {
+        canvas.parentNode.removeChild(canvas);
+      }
+      this.mainElement.appendChild(canvas);
+    }
+    
+    // Start the emulator
+    await this.machine.run();
+    this.running = true;
+    
+    console.log("C64ChipsPlatform start() completed");
+    
+    // Start animation timer
+    this.timer = new AnimationTimer(50, this.nextFrame.bind(this));
+  }
+
+  private nextFrame(): void {
+    if (this.running) {
+      // The chips-test emulator handles its own frame updates
+      // We just need to keep the timer running
     }
   }
-  start() {
+
+  reset(): void {
+    if (this.machine) {
+      this.machine.reset();
+    }
   }
-  getMemoryMap() { return C64_MEMORY_MAP; }
+
+  isRunning(): boolean {
+    return this.running;
+  }
+
+  pause(): void {
+    if (this.machine) {
+      this.machine.stop();
+      this.running = false;
+    }
+  }
+
+  resume(): void {
+    if (this.machine) {
+      this.machine.run();
+      this.running = true;
+    }
+  }
+
+  loadROM(title: string, rom: Uint8Array): void {
+    console.log("C64ChipsPlatform loadROM called with title:", title, "and", rom.length, "bytes");
+    if (this.machine) {
+      this.machine.loadProgram(rom);
+    } else {
+      console.error("C64ChipsPlatform: machine is null!");
+    }
+  }
+
+  getPresets(): Preset[] {
+    return C64_PRESETS;
+  }
+
+  getDefaultExtension(): string {
+    return ".c";
+  }
+
+  getToolForFilename(filename: string): string {
+    if (filename.endsWith(".c")) return "cc65";
+    if (filename.endsWith(".dasm")) return "dasm";
+    if (filename.endsWith(".acme")) return "acme";
+    if (filename.endsWith(".wiz")) return "wiz";
+    return "cc65";
+  }
+
+  readAddress(addr: number): number {
+    if (this.machine) {
+      return this.machine.read(addr);
+    }
+    return 0;
+  }
+
+  getMemoryMap() {
+    return C64_MEMORY_MAP;
+  }
+
+  showHelp(): string {
+    return "https://8bitworkshop.com/docs/platforms/c64/";
+  }
+
+  getROMExtension(rom: Uint8Array): string {
+    if (rom && rom[0] == 0x01 && rom[1] == 0x08) return ".prg";
+    else return ".bin";
+  }
+
+  // Optional methods with default implementations
+  getCPUState() {
+    if (this.machine) {
+      return this.machine.getCPUState();
+    }
+    return { PC: 0, SP: 0 };
+  }
+
+  saveState() {
+    if (this.machine) {
+      return this.machine.saveState();
+    }
+    return { c: { PC: 0, SP: 0 }, b: new Uint8Array(0) };
+  }
+
+  loadState(state: any): void {
+    if (this.machine) {
+      this.machine.loadState(state);
+    }
+  }
+
+  getPC(): number {
+    const cpuState = this.getCPUState();
+    return cpuState.PC;
+  }
+
+  getSP(): number {
+    const cpuState = this.getCPUState();
+    return cpuState.SP;
+  }
+
+  isStable(): boolean {
+    return true; // Assume stable for chips-test emulator
+  }
+
+  getExtraCompileFiles(filename: string): string[] {
+    // Add binary files needed for specific demos
+    if (filename === 'sidplaysfx.s') {
+      return ['sidmusic1.bin'];
+    }
+    return [];
+  }
 }
 
-
-// Temporarily redirect old C64 to chips-test implementation
-// TODO: Remove this once chips-test is fully tested
-import C64ChipsPlatform from "./c64_chips";
 PLATFORMS['c64'] = C64ChipsPlatform;
-PLATFORMS['c64.mame'] = C64MAMEPlatform;
+
+// Export the platform class for dynamic loading
+export default C64ChipsPlatform; 

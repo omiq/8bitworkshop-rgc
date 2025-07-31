@@ -1988,7 +1988,7 @@ export async function startUI() {
 async function loadAndStartPlatform() {
   try {
     // For chips-test platforms, use the full platform ID
-    const importName = platform_id.includes('.chips') ? platform_id : getRootBasePlatform(platform_id);
+    const importName = platform_id.includes('') ? platform_id : getRootBasePlatform(platform_id);
     var module = await importPlatform(importName);
     console.log("starting platform", platform_id); // loaded required <platform_id>.js file
     await startPlatform();

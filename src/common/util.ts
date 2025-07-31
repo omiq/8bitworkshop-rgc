@@ -465,6 +465,7 @@ export function getWithBinary(url:string, success:(text:string|Uint8Array)=>void
       }
       success(data);
     } else if (oReq.status == 404) {
+      console.warn("File not found: " + url);
       success(null);
     } else {
       throw Error("Error " + oReq.status + " loading " + url);

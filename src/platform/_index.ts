@@ -8,8 +8,8 @@ export function importPlatform(name: string) : Promise<any> {
       case "atari7800": return import("../platform/atari7800");
       case "atari8": return import("../platform/atari8");
       case "basic": return import("../platform/basic");
-      case "c64": return import("../platform/c64");
-      case "c64.chips": return import("../platform/c64_chips");
+      case "c64": return import("./c64");
+      case "c64": return import("./c64");
       case "coleco": return import("../platform/coleco");
       case "cpc": return import("../platform/cpc");
       case "devel": return import("../platform/devel");
@@ -28,7 +28,7 @@ export function importPlatform(name: string) : Promise<any> {
       case "vector": return import("../platform/vector");
       case "vectrex": return import("../platform/vectrex");
       case "verilog": return import("../platform/verilog");
-      case "vic20.chips": return import("../platform/vic20_chips");
+      case "vic20": return import("./vic20");
       case "vicdual": return import("../platform/vicdual");
       case "williams": return import("../platform/williams");
       case "x86": return import("../platform/x86");

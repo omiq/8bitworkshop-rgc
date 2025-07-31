@@ -268,7 +268,7 @@ export var PLATFORM_PARAMS = {
       libargs: ['crt0.o', 'none.lib'],
       extra_link_files: ['crt0.o', 'atari7800.cfg'],
     },
-    'c64.chips': {
+    'c64': {
       arch: '6502',
       define: ['__CBM__', '__C64__'],
       cfgfile: 'c64.cfg', // SYS 2061
@@ -277,7 +277,7 @@ export var PLATFORM_PARAMS = {
       extra_compile_files: ['sidmusic1.bin', 'badspacerobots-c64.multi.bin'],
       //extra_link_files: ['c64-cart.cfg'],
     },
-    'vic20.chips': {
+    'vic20': {
       arch: '6502',
       define: ['__CBM__', '__VIC20__'],
       cfgfile: 'vic20.cfg',
@@ -369,6 +369,6 @@ export var PLATFORM_PARAMS = {
 PLATFORM_PARAMS['sms-gg-libcv'] = PLATFORM_PARAMS['sms-sms-libcv'];
 
 // Aliases for chips-test platforms
-PLATFORM_PARAMS['c64'] = PLATFORM_PARAMS['c64.chips'];
-PLATFORM_PARAMS['vic20'] = PLATFORM_PARAMS['vic20.chips'];
+PLATFORM_PARAMS['c64'] = PLATFORM_PARAMS['c64'];
+PLATFORM_PARAMS['vic20'] = PLATFORM_PARAMS['vic20'];
   

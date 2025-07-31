@@ -10,10 +10,10 @@ The chips-test project provides high-quality, accurate emulators for various ret
 
 ### New Files Created
 
-1. **`src/machine/c64_chips.ts`** - C64 machine implementation using chips-test WebAssembly
-2. **`src/machine/vic20_chips.ts`** - VIC-20 machine implementation using chips-test WebAssembly  
-3. **`src/platform/c64_chips.ts`** - C64 platform implementation integrating the chips-test machine
-4. **`src/platform/vic20_chips.ts`** - VIC-20 platform implementation integrating the chips-test machine
+1. **`src/machine/c64.ts`** - C64 machine implementation using chips-test WebAssembly
+2. **`src/machine/vic20.ts`** - VIC-20 machine implementation using chips-test WebAssembly  
+3. **`src/platform/c64.ts`** - C64 platform implementation integrating the chips-test machine
+4. **`src/platform/vic20.ts`** - VIC-20 platform implementation integrating the chips-test machine
 
 ### WebAssembly Files Copied
 
@@ -25,7 +25,7 @@ From `/Users/chrisg/github/chips-test/workspace/fips-deploy/chips-webpage/` to `
 
 ### Files Modified
 
-1. **`src/platform/_index.ts`** - Added platform registration for `c64.chips` and `vic20.chips`
+1. **`src/platform/_index.ts`** - Added platform registration for `c64` and `vic20`
 2. **`src/ide/ui.ts`** - Modified `loadAndStartPlatform()` to handle full platform IDs for chips-test platforms
 3. **`src/worker/platforms.ts`** - Added configuration for new chips-test platforms
 4. **`index.html`** - Added dropdown menu options for chips-test platforms
@@ -71,7 +71,7 @@ if (typeof window.Module !== 'undefined' && window.Module) {
   // Global Module detection
 } else if (typeof (window as any).c64_quickload === 'function') {
   // Direct function access
-  window.c64_chips_module = window;
+  window.c64_module = window;
 }
 ```
 
@@ -112,7 +112,7 @@ if (typeof (window as any).c64_read_memory === 'function') {
 
 ### Platform URLs
 
-- **New platforms**: `http://localhost:8000/?platform=c64.chips` or `http://localhost:8000/?platform=vic20.chips`
+- **New platforms**: `http://localhost:8000/?platform=c64` or `http://localhost:8000/?platform=vic20`
 - **Legacy support**: `http://localhost:8000/?platform=c64` or `http://localhost:8000/?platform=vic20` (redirects to chips-test)
 
 ## Testing Results
