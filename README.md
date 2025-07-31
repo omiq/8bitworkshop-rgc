@@ -1,9 +1,12 @@
 # 8bitworkshop Fork for Retro Game Coders tutorial series
+<img width="1461" height="577" alt="image" src="https://github.com/user-attachments/assets/f32ce499-b951-42f4-a501-cfbef9c53029" />
 
 
 ### Use the original if you want stable and working code! 
 
-WARNING: This repo contains small amounts of `AI SLOP`
+WARNING: This version of the repo contains small amounts of `AI SLOP` because my coding abilities were not good enough to get Vic 20 working unaided.
+
+
 
 Original README follows
 
