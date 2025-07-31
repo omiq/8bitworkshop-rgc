@@ -8,7 +8,7 @@ export function importPlatform(name: string) : Promise<any> {
       case "atari7800": return import("../platform/atari7800");
       case "atari8": return import("../platform/atari8");
       case "basic": return import("../platform/basic");
-      case "c64": return import("./c64");
+     // case "c64": return import("./c64");
       case "c64": return import("./c64");
       case "coleco": return import("../platform/coleco");
       case "cpc": return import("../platform/cpc");

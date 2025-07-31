@@ -17,10 +17,6 @@ export class C64ChipsMachine {
   private name: string;
   private description: string;
   
-  // Focus and keyboard protection properties
-  private keyboardInterceptor: ((event: KeyboardEvent) => void) | null = null;
-  private focusTrackingHandler: ((event: FocusEvent) => void) | null = null;
-  private keyboardTrackingHandler: ((event: KeyboardEvent) => void) | null = null;
 
   constructor() {
     this.name = "C64 (chips-test)";
@@ -51,63 +47,7 @@ export class C64ChipsMachine {
       this.canvas.style.maxWidth = '800px';
       this.canvas.style.maxHeight = '600px';
       
-      // DISABLED: Prevent the canvas from grabbing keyboard focus
-      // this.canvas.tabIndex = -1;
-      // this.canvas.style.outline = 'none';
-      // this.canvas.style.pointerEvents = 'auto';
-      
-      // DISABLED: Prevent focus on any mouse event
-      // this.canvas.addEventListener('mousedown', (e) => {
-      //   e.preventDefault();
-      //   e.stopPropagation();
-      //   // Only allow focus if explicitly requested
-      //   if (e.target === this.canvas && e.detail === 2) { // Double click
-      //     this.canvas.focus();
-      //   }
-      // });
-      
-      // this.canvas.addEventListener('mouseup', (e) => {
-      //   e.preventDefault();
-      //   e.stopPropagation();
-      // });
-      
-      // this.canvas.addEventListener('click', (e) => {
-      //   e.preventDefault();
-      //   e.stopPropagation();
-      // });
-      
-      // DISABLED: Prevent default keyboard handling
-      // this.canvas.addEventListener('keydown', (e) => {
-      //   if (document.activeElement !== this.canvas) {
-      //     e.preventDefault();
-      //     e.stopPropagation();
-      //     return;
-      //   }
-      // });
-      
-      // this.canvas.addEventListener('keyup', (e) => {
-      //   if (document.activeElement !== this.canvas) {
-      //     e.preventDefault();
-      //     e.stopPropagation();
-      //     return;
-      //   }
-      // });
-      
-      // DISABLED: Prevent focus on any other events
-      // this.canvas.addEventListener('focus', (e) => {
-      //   // Only allow focus if it was explicitly requested
-      //   if (!e.isTrusted) {
-      //     this.canvas.blur();
-      //   }
-      // });
-      
-      // DISABLED: Prevent any automatic focus
-      // this.canvas.addEventListener('focusin', (e) => {
-      //   if (e.target === this.canvas && !e.isTrusted) {
-      //     e.preventDefault();
-      //     e.stopPropagation();
-      //   }
-      // }, true);
+     
       
       // Add canvas to the pre-existing C64 chips div
       const c64Div = document.getElementById('c64-chips-div');
@@ -200,180 +140,15 @@ export class C64ChipsMachine {
         throw new Error("C64 module not properly initialized");
       }
       
-      // CRITICAL: Make canvas non-focusable after emulator is loaded
-      if (this.canvas) {
-        this.canvas.tabIndex = -1;
-        this.canvas.style.outline = 'none';
-        this.canvas.setAttribute('tabindex', '-1');
-        console.log("✅ Made C64 canvas non-focusable");
-      }
-      
-      // Add focus and keyboard protection
-      this.addFocusTracking();
-      
+
+
     } catch (error) {
       console.error("Failed to initialize C64 chips-test emulator:", error);
       throw error;
     }
   }
 
-  // Focus and keyboard protection methods
-  private addFocusTracking(): void {
-    console.log("🔍 Adding global focus tracking to debug focus stealing...");
-    
-    // Focus tracking handler
-    this.focusTrackingHandler = (event: FocusEvent) => {
-      const fromElement = event.relatedTarget as HTMLElement;
-      const toElement = event.target as HTMLElement;
-      
-      console.log("🔍 FOCUS CHANGE DETECTED:");
-      console.log("  From:", fromElement?.tagName, fromElement?.className, fromElement?.id);
-      console.log("  To:", toElement?.tagName, toElement?.className, toElement?.id);
-      console.log("  Event type:", event.type);
-      console.log("  Is trusted:", event.isTrusted);
-      console.log("  Stack trace:", new Error().stack);
-      
-      // Check if focus is being stolen from CodeMirror editor
-      if (fromElement && fromElement.tagName === 'TEXTAREA' && 
-          toElement && toElement.tagName !== 'TEXTAREA' && 
-          toElement.tagName !== 'INPUT') {
-        console.log("🚨 WARNING: Focus stolen from CodeMirror editor!");
-        console.log("🚨 TEXTAREA LOSING FOCUS:");
-        console.log("Textarea losing focus to:", toElement.tagName, toElement.className);
-      }
-    };
-    
-    // Keyboard tracking handler
-    this.keyboardTrackingHandler = (event: KeyboardEvent) => {
-      const target = event.target as HTMLElement;
-      
-      if (target && (target.tagName === 'TEXTAREA' || target.tagName === 'INPUT')) {
-        console.log("🔍 KEYBOARD EVENT ON TEXTAREA:");
-        console.log("  Key:", event.key);
-        console.log("  KeyCode:", event.keyCode);
-        console.log("  Type:", event.type);
-        console.log("  Is trusted:", event.isTrusted);
-        console.log("  Default prevented:", event.defaultPrevented);
-        console.log("  Target:", target.tagName, target.className);
-        
-        if (event.defaultPrevented) {
-          console.log("🚨 WARNING: Keyboard event default was prevented!");
-          console.log("  This might be why typing isn't working");
-        }
-      }
-    };
-    
-    // CRITICAL: Override preventDefault to prevent it from blocking editor events
-    const originalPreventDefault = Event.prototype.preventDefault;
-    Event.prototype.preventDefault = function(this: Event) {
-      const target = this.target as HTMLElement;
-      
-      // If this is a keyboard event on a textarea or input, don't allow preventDefault
-      if ((this.type === 'keypress' || this.type === 'keydown' || this.type === 'keyup') && 
-          target && (target.tagName === 'TEXTAREA' || target.tagName === 'INPUT')) {
-        console.log(`🛡️ BLOCKED preventDefault on ${this.type} event for ${target.tagName} - key: ${(this as KeyboardEvent).key}`);
-        return; // Don't call the original preventDefault
-      }
-      
-      // For all other events, call the original preventDefault
-      return originalPreventDefault.call(this);
-    };
-    
-    console.log("✅ Overrode preventDefault to protect editor keyboard events");
-    
-    // ENHANCED: Handle Tab key and error dialogs
-    this.keyboardInterceptor = (event: KeyboardEvent) => {
-      const target = event.target as HTMLElement;
-      const activeElement = document.activeElement;
-      
-      // If this is a Tab key on a textarea, prevent it from going to URL bar
-      if (event.key === 'Tab' && target && target.tagName === 'TEXTAREA') {
-        console.log(`🛡️ HANDLING Tab key on textarea - preventing URL bar navigation`);
-        // Prevent default to stop browser tab navigation, but let CodeMirror handle it
-        event.preventDefault();
-        event.stopPropagation();
-        return;
-      }
-      
-      // If there's an error dialog visible, block all keyboard events from emulator
-      const errorAlert = document.getElementById('error_alert');
-      if (errorAlert && errorAlert.style.display !== 'none') {
-        console.log(`🛡️ ERROR DIALOG ACTIVE - blocking ${event.key} from emulator`);
-        event.stopImmediatePropagation();
-        event.stopPropagation();
-        return;
-      }
-      
-      // AGGRESSIVE: Block ALL keyboard events from reaching emulator when editor has focus
-      if (activeElement && (activeElement.tagName === 'TEXTAREA' || activeElement.tagName === 'INPUT')) {
-        console.log(`🛡️ BLOCKING ${event.key} from emulator - editor has focus`);
-        // Stop propagation to prevent emulator from seeing the event
-        event.stopImmediatePropagation();
-        event.stopPropagation();
-        // Don't prevent default - let the editor handle it normally
-        return;
-      }
-      
-      // Only log other events on textarea/input, don't interfere
-      if (target && (target.tagName === 'TEXTAREA' || target.tagName === 'INPUT')) {
-        console.log(`🛡️ ALLOWING ${event.type} for ${event.key} on ${target.tagName} - not interfering`);
-      }
-    };
-    
-    // Add event listeners with high priority
-    document.addEventListener('focusin', this.focusTrackingHandler, true);
-    document.addEventListener('focusout', this.focusTrackingHandler, true);
-    document.addEventListener('keydown', this.keyboardTrackingHandler, true);
-    document.addEventListener('keyup', this.keyboardTrackingHandler, true);
-    document.addEventListener('keypress', this.keyboardTrackingHandler, true);
-    
-    // Add keyboard interceptor
-    document.addEventListener('keydown', this.keyboardInterceptor, true);
-    document.addEventListener('keyup', this.keyboardInterceptor, true);
-    document.addEventListener('keypress', this.keyboardInterceptor, true);
-    
-    // CRITICAL: Add global keyboard blocker with highest priority
-    // This prevents ANY keyboard events from reaching the emulator when editor has focus
-    const globalKeyboardBlocker = (event: KeyboardEvent) => {
-      const activeElement = document.activeElement;
-      if (activeElement && (activeElement.tagName === 'TEXTAREA' || activeElement.tagName === 'INPUT')) {
-        console.log(`🛡️ GLOBAL BLOCK: Preventing ${event.key} from reaching emulator (${activeElement.tagName} has focus)`);
-        event.stopImmediatePropagation();
-        event.stopPropagation();
-        return;
-      }
-    };
-    
-    // Add global blocker with highest priority (useCapture: true)
-    document.addEventListener('keydown', globalKeyboardBlocker, true);
-    document.addEventListener('keyup', globalKeyboardBlocker, true);
-    document.addEventListener('keypress', globalKeyboardBlocker, true);
-    
-    console.log("✅ Focus and keyboard tracking added with emulator interference prevention");
-  }
   
-  private removeFocusTracking(): void {
-    if (this.focusTrackingHandler) {
-      document.removeEventListener('focusin', this.focusTrackingHandler, true);
-      document.removeEventListener('focusout', this.focusTrackingHandler, true);
-      this.focusTrackingHandler = null;
-    }
-    
-    if (this.keyboardTrackingHandler) {
-      document.removeEventListener('keydown', this.keyboardTrackingHandler, true);
-      document.removeEventListener('keyup', this.keyboardTrackingHandler, true);
-      document.removeEventListener('keypress', this.keyboardTrackingHandler, true);
-      this.keyboardTrackingHandler = null;
-    }
-    
-    if (this.keyboardInterceptor) {
-      document.removeEventListener('keydown', this.keyboardInterceptor, true);
-      document.removeEventListener('keyup', this.keyboardInterceptor, true);
-      document.removeEventListener('keypress', this.keyboardInterceptor, true);
-      this.keyboardInterceptor = null;
-    }
-  }
-
   run(): void {
     if (this.module && this.running) return;
     this.running = true;
@@ -683,8 +458,7 @@ export class C64ChipsMachine {
     this.stop();
     
     // Remove focus tracking
-    this.removeFocusTracking();
-    
+
     this.module = null;
     this.canvas = null;
     

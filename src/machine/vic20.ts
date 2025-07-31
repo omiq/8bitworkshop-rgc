@@ -15,11 +15,7 @@ export class VIC20ChipsMachine implements Machine {
   private description: string;
   private programLoaded = false; // Track if a program has been loaded
   private isLoadingProgram = false; // Prevent infinite loops during loading
-  private focusTrackingHandler: ((event: FocusEvent) => void) | null = null;
-  private keyboardTrackingHandler: ((event: KeyboardEvent) => void) | null = null;
-  private keyboardInterceptor: ((event: KeyboardEvent) => void) | null = null;
-  private modalFocusProtection: (() => void) | null = null;
-  private globalKeyboardBlocker: ((event: KeyboardEvent) => void) | null = null;
+
   private emulatorFocused = false; // Track if emulator is focused
   
   // CPU stub for interface compliance
@@ -1427,20 +1423,11 @@ export class VIC20ChipsMachine implements Machine {
       console.log("✅ Hidden VIC-20 chips div");
     }
     
-    // Remove focus tracking
-    this.removeFocusTracking();
-  }
-  
-  private addFocusTracking(): void {
-    // DISABLED: Complex focus tracking removed to fix typing issues
-    console.log("✅ Focus tracking disabled to prevent typing issues");
-  }
-  
-  private removeFocusTracking(): void {
-    // DISABLED: Complex focus tracking removed to fix typing issues
-    console.log("✅ Focus tracking removal disabled");
-  }
 
+  }
+  
+
+ 
   // Joystick support
   private joymask0 = 0;
   private joymask1 = 0;
