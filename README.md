@@ -1,4 +1,17 @@
-# 8bitworkshop
+# 8bitworkshop Fork for Retro Game Coders tutorial series
+<a href="https://ide.retrogamecoders.com/">
+<img width="1461" height="577" alt="image" src="https://github.com/user-attachments/assets/f32ce499-b951-42f4-a501-cfbef9c53029" />
+</a>
+
+### Use the original if you want stable and working code! 
+
+WARNING: This version of the repo contains small amounts of `AI SLOP` because my coding abilities were not good enough to get Vic 20 working unaided.
+
+
+
+Original README follows
+
+--- 
 
 ![Build Status](https://github.com/sehugg/8bitworkshop/actions/workflows/node.js.yml/badge.svg)
 
