@@ -1,4 +1,13 @@
-# 8bitworkshop
+# 8bitworkshop Fork for Retro Game Coders tutorial series
+
+
+### Use the original if you want stable and working code! 
+
+WARNING: This repo contains small amounts of `AI SLOP`
+
+Original README follows
+
+--- 
 
 ![Build Status](https://github.com/sehugg/8bitworkshop/actions/workflows/node.js.yml/badge.svg)
 
