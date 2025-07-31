@@ -1,10 +1,11 @@
 /*
+Keyboard control version of the original 
 Text-based version of a Blockade-style game.
 For more information, see "Making Arcade Games in C".
 */
-
+#include <stdio.h>
 #include "common.h"
-
+#include <ctype.h>
 // get the character at a specfic x/y position
 byte readcharxy(byte x, byte y) {
   return PEEK(SCRNADR(0x400, x, y));
@@ -110,21 +111,39 @@ void move_player(Player* p) {
   draw_player(p);
 }
 
-// read joystick and move player
+// read the keyboard and move the player
 void human_control(Player* p) {
   byte dir = 0xff;
-  char joy;
+  char c;
   if (!p->human) return;
+
   if (!kbhit()) return;
-  joy = joy_read(1);
-  if (JOY_UP(joy)) dir = D_UP;
-  if (JOY_LEFT(joy)) dir = D_LEFT;
-  if (JOY_RIGHT(joy)) dir = D_RIGHT;
-  if (JOY_DOWN(joy)) dir = D_DOWN;
+  c = (cgetc());
+
+  switch(c) {
+    case 'w': case 'W':
+     dir = D_UP;
+     break;
+    case 'a': case 'A': 
+     dir = D_LEFT;
+     break;
+    case 'd': case 'D':  
+     dir = D_RIGHT;
+     break;
+    case 's': case 'S': 
+     dir = D_DOWN;
+     break;
+    default:
+     gotoxy(0,0);
+     cputc(c);
+
+
+  }
   // don't let the player reverse direction
   if (dir < 0x80 && dir != (p->dir ^ 2)) {
     p->dir = dir;
   }
+
 }
 
 // AI player: try to move in direction 'dir'
@@ -242,6 +261,14 @@ void play_game() {
 
 // main routine
 void main() {
-  joy_install (joy_static_stddrv);
+  clrscr();
+  cputs("seige by 8bitworkshop\n\r\n\r");
+  cputs("kind of a light cycle game\n\r");
+  cputs("but without ip infringement\n\r\n\r");
+  cputs("use wasd to control your ... thing\n\r\n\r");
+  cputs("press a key to continue\n\r");
+  cgetc();
+
+ 
   play_game();
 }

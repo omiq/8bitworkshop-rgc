@@ -5,6 +5,7 @@ import { RasterVideo, AnimationTimer } from "../common/emu";
 
 const C64_PRESETS : Preset[] = [
   {id:'helloc.c', name:'Hello World', category:'C'},
+  {id:'demo.c', name:'Scrolling Text and Music Demo', category:'C'},
   {id:'screen_ram.c', name:'Screen RAM'},
   {id:'siegegame.c', name:'Siege Game'},
   {id:'joymove.c', name:'Sprite Movement'},

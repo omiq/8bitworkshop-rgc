@@ -8,7 +8,7 @@ _sid_playing: .byte $00
 
 .segment "SIDFILE"
 
-.incbin "sidmusic1.bin"
+.incbin "sidmusic.bin"
 
 .segment "LOWCODE"
 

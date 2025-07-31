@@ -124,6 +124,7 @@ export function assembleCA65(step: BuildStep): BuildStepResult {
         var FS = CA65.FS;
         setupFS(FS, '65-' + getRootBasePlatform(step.platform));
         populateFiles(step, FS);
+        populateExtraFiles(step, FS, step.params.extra_compile_files);
         fixParamsWithDefines(step.path, step.params);
         var args = ['-v', '-g', '-I', '/share/asminc', '-o', objpath, '-l', lstpath, step.path];
         args.unshift.apply(args, ["-D", "__8BITWORKSHOP__=1"]);
