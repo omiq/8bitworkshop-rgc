@@ -48,6 +48,28 @@ class VIC20ChipsPlatform implements Platform {
     setTimeout(() => {
       this.setupIframeWithAutoCompilation();
     }, 1000);
+    
+    // Set up a listener for compilation events to reload the iframe
+    this.setupCompilationListener();
+  }
+
+  private setupCompilationListener(): void {
+    // Listen for compilation events from the IDE
+    const originalSetCompileOutput = (window as any).setCompileOutput;
+    if (originalSetCompileOutput) {
+      (window as any).setCompileOutput = (data: any) => {
+        // Call the original function
+        originalSetCompileOutput(data);
+        
+        // If compilation was successful, reload the iframe with the new program
+        if (data && data.output && !data.errors) {
+          console.log("VIC20ChipsPlatform: Compilation detected, reloading iframe");
+          setTimeout(() => {
+            this.setupIframeWithAutoCompilation();
+          }, 500);
+        }
+      };
+    }
   }
 
   private nextFrame(): void {
@@ -77,6 +99,11 @@ class VIC20ChipsPlatform implements Platform {
         console.log("VIC20ChipsPlatform: Generated iframe URL:", iframeURL);
         
         if (iframeURL) {
+          // Add cache busting to ensure we get the latest version
+          const cacheBuster = '&t=' + Date.now();
+          const freshURL = iframeURL + cacheBuster;
+          console.log("VIC20ChipsPlatform: Loading fresh URL with cache buster:", freshURL);
+          
           // Set up a one-time load event listener
           const onLoad = () => {
             console.log("VIC20ChipsPlatform: iframe loaded, calling checkForProgramInURL");
@@ -88,7 +115,7 @@ class VIC20ChipsPlatform implements Platform {
           frame.addEventListener('load', onLoad);
           
           // Set the location (this triggers the load event)
-          frame.contentWindow.location = iframeURL;
+          frame.contentWindow.location = freshURL;
         } else {
           console.error("VIC20ChipsPlatform: openIframeWithCurrentProgram returned null");
         }
@@ -127,9 +154,12 @@ class VIC20ChipsPlatform implements Platform {
     console.log("VIC20ChipsPlatform: Initial iframe URL check:", iframeURL);
     
     if (iframeURL) {
-      // We have a compiled program, load it
+      // We have a compiled program, load it with cache busting
       console.log("VIC20ChipsPlatform: Found compiled program, loading iframe");
-      this.loadIframeWithProgram(iframeURL);
+      const cacheBuster = '&t=' + Date.now();
+      const freshURL = iframeURL + cacheBuster;
+      console.log("VIC20ChipsPlatform: Loading fresh URL with cache buster:", freshURL);
+      this.loadIframeWithProgram(freshURL);
     } else {
       // No compiled program, trigger compilation
       console.log("VIC20ChipsPlatform: No compiled program found, triggering compilation");
@@ -183,7 +213,11 @@ class VIC20ChipsPlatform implements Platform {
           if (vic20_debug && vic20_debug.openIframeWithCurrentProgram) {
             const newIframeURL = vic20_debug.openIframeWithCurrentProgram();
             if (newIframeURL) {
-              this.loadIframeWithProgram(newIframeURL);
+              // Add a cache-busting parameter to ensure we get the latest version
+              const cacheBuster = '&t=' + Date.now();
+              const freshURL = newIframeURL + cacheBuster;
+              console.log("VIC20ChipsPlatform: Loading fresh URL with cache buster:", freshURL);
+              this.loadIframeWithProgram(freshURL);
             }
           }
           

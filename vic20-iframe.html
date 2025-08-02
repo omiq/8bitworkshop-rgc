@@ -39,37 +39,6 @@
             max-width: 300px;
             word-wrap: break-word;
         }
-        
-        .controls {
-            position: fixed;
-            top: 10px;
-            right: 10px;
-            color: white;
-            background: rgba(0,0,0,0.7);
-            padding: 5px 10px;
-            border-radius: 4px;
-            font-size: 12px;
-        }
-        
-        .controls button {
-            background: #4CAF50;
-            color: white;
-            border: none;
-            padding: 5px 10px;
-            margin: 2px;
-            border-radius: 3px;
-            cursor: pointer;
-            font-size: 11px;
-        }
-        
-        .controls button:hover {
-            background: #45a049;
-        }
-        
-        .controls button:disabled {
-            background: #666;
-            cursor: not-allowed;
-        }
     </style>
 </head>
 <body>
@@ -82,10 +51,6 @@
         
         const canvas = document.getElementById('canvas');
         const status = document.getElementById('status');
-        const loadLatestBtn = document.getElementById('loadLatestBtn');
-        const refreshBtn = document.getElementById('refreshBtn');
-        const manualLoadBtn = document.getElementById('manualLoadBtn');
-        const getFromMainBtn = document.getElementById('getFromMainBtn');
         
         let emulatorReady = false;
         let lastCompiledProgram = null;
@@ -97,138 +62,18 @@
         
 
         
-        function loadProgramFromHex(hexData) {
-            if (hexData) {
-                try {
-                    // Parse hex string to Uint8Array
-                    const hexBytes = hexData.trim().split(/\s+/);
-                    const programData = new Uint8Array(hexBytes.map(byte => parseInt(byte, 16)));
-                    
-                    console.log("Manual load: " + programData.length + " bytes");
-                    
-                    // Use the same drop event approach
-                    if (window.h && typeof window.h.__sapp_emsc_begin_drop === 'function') {
-                        console.log("🎯 Loading manual program via drop function...");
-                        
-                        // Create a File object
-                        const file = new File([programData], "manual.prg", { type: "application/octet-stream" });
-                        
-                        // Create a DataTransfer and add the File
-                        const dt = new DataTransfer();
-                        dt.items.add(file);
-                        
-                        // Create a synthetic drop event
-                        const dropEvent = new DragEvent("drop", {
-                            dataTransfer: dt,
-                            bubbles: true,
-                            cancelable: true
-                        });
-                        
-                        // Dispatch the event to the canvas
-                        canvas.dispatchEvent(dropEvent);
-                        console.log("✅ Manual drop event dispatched to canvas");
-                        
-                        // Wait for program to load
-                        setTimeout(() => {
-                            console.log("🎯 Manual program loaded successfully");
-                            updateStatus("Manual program loaded: " + programData.length + " bytes");
-                        }, 1000);
-                        
-                    } else {
-                        updateStatus("Manual program loaded: " + programData.length + " bytes (fallback method)");
-                    }
-                } catch (e) {
-                    updateStatus("Error parsing hex data: " + e.message);
-                    console.error("Error parsing hex data:", e);
-                }
-            }
-        }
 
-        function showManualLoadDialog() {
-            const hexData = prompt("Enter program hex data (space-separated bytes):");
-            loadProgramFromHex(hexData);
-        }
         
-        function refreshStatus() {
-            if (!emulatorReady) {
-                updateStatus("Emulator not ready yet");
-                return;
-            }
-            
-            console.log("VIC-20 iframe: Checking for compiled programs...");
-            
-            // Try to access the main application's worker
-            let worker = null;
-            let store = null;
-            
-            // Method 1: Direct parent access (works when embedded)
-            if (window.parent && window.parent.worker) {
-                worker = window.parent.worker;
-                console.log("VIC-20 iframe: Found worker via window.parent.worker");
-            }
-            
-            window.checkForProgramInURL()
 
-            // Method 2: Try to access IDE global object
-            if (!worker && window.parent && window.parent.IDE) {
-                console.log("VIC-20 iframe: Found IDE object, checking for worker access");
-                // Try to access worker through IDE object
-                if (window.parent.IDE.worker) {
-                    worker = window.parent.IDE.worker;
-                    console.log("VIC-20 iframe: Found worker via window.parent.IDE.worker");
-                }
-            }
-            
-            // Method 3: Try to access global worker (if same origin)
-            if (!worker && window.worker) {
-                worker = window.worker;
-                console.log("VIC-20 iframe: Found worker via window.worker");
-            }
-            
-            if (worker && worker.store) {
-                store = worker.store;
-                console.log("VIC-20 iframe: Found store:", store);
-                
-                if (store.workfs) {
-                    const files = Object.keys(store.workfs);
-                    console.log("VIC-20 iframe: Files in virtual FS:", files);
-                    updateStatus("Found " + files.length + " files in virtual FS: " + files.join(', '));
-                    
-                    // Check for main compiled program
-                    if (store.workfs['main']) {
-                        const mainFile = store.workfs['main'];
-                        console.log("VIC-20 iframe: Main file found:", mainFile);
-                        console.log("VIC-20 iframe: Main file size:", mainFile.data.length);
-                        updateStatus("Latest program: " + mainFile.data.length + " bytes");
-                        lastCompiledProgram = mainFile.data;
-                        loadLatestBtn.disabled = false;
-                    } else {
-                        console.log("VIC-20 iframe: No main file found in workfs");
-                        updateStatus("No compiled program found - use Manual Load or check main app");
-                        loadLatestBtn.disabled = true;
-                    }
-                } else {
-                    console.log("VIC-20 iframe: No workfs found in store");
-                    updateStatus("Cannot access virtual file system - use Manual Load");
-                    loadLatestBtn.disabled = true;
-                }
-            } else {
-                console.log("VIC-20 iframe: No worker or store found");
-                console.log("VIC-20 iframe: window.parent:", window.parent);
-                console.log("VIC-20 iframe: window.parent.worker:", window.parent ? window.parent.worker : "no parent");
-                console.log("VIC-20 iframe: window.worker:", window.worker);
-                updateStatus("Cannot access main application worker - use Manual Load button");
-                loadLatestBtn.disabled = true;
-            }
-        }
         
-        function loadLatestCompiledProgram() {
-            if (!emulatorReady || !lastCompiledProgram) {
+        // Core function to load program into emulator
+        function loadProgramIntoEmulator(programData) {
+            if (!emulatorReady || !programData) {
                 updateStatus("Emulator not ready or no program available");
                 return;
             }
             
-            updateStatus("Loading latest compiled program...");
+            updateStatus("Loading program into emulator...");
             
             try {
                 // Use the same drop event approach as the main application
@@ -236,7 +81,7 @@
                     console.log("🎯 Loading program via drop function...");
                     
                     // Create a File object
-                    const file = new File([lastCompiledProgram], "main.prg", { type: "application/octet-stream" });
+                    const file = new File([programData], "main.prg", { type: "application/octet-stream" });
                     
                     // Create a DataTransfer and add the File
                     const dt = new DataTransfer();
@@ -256,7 +101,7 @@
                     // Wait for program to load, then check if it's running
                     setTimeout(() => {
                         console.log("🎯 Checking if program loaded successfully...");
-                        updateStatus("Program loaded via drop event: " + lastCompiledProgram.length + " bytes");
+                        updateStatus("Program loaded via drop event: " + programData.length + " bytes");
                         
                         // Try to trigger execution if needed
                         if (typeof window.h.__sapp_emsc_begin_drop === 'function') {
@@ -270,11 +115,11 @@
                     }, 1000);
                     
                 } else if (window.h && typeof window.h.loadProgram === 'function') {
-                    window.h.loadProgram(lastCompiledProgram);
-                    updateStatus("Program loaded: " + lastCompiledProgram.length + " bytes");
+                    window.h.loadProgram(programData);
+                    updateStatus("Program loaded: " + programData.length + " bytes");
                 } else if (window.h && typeof window.h.loadROM === 'function') {
-                    window.h.loadROM(lastCompiledProgram);
-                    updateStatus("ROM loaded: " + lastCompiledProgram.length + " bytes");
+                    window.h.loadROM(programData);
+                    updateStatus("ROM loaded: " + programData.length + " bytes");
                 } else {
                     updateStatus("No program loading method found");
                     console.log("❌ No drop function or loadProgram/loadROM available");
@@ -282,54 +127,6 @@
             } catch (e) {
                 updateStatus("Error loading program: " + e.message);
                 console.error("Error loading program:", e);
-            }
-        }
-        
-        function getFromMainApp() {
-            updateStatus("Attempting to get program from main app...");
-            
-            // Try multiple methods to access the main app
-            let success = false;
-            
-            // Method 1: Direct parent access
-            if (window.parent && window.parent.worker && window.parent.worker.store && window.parent.worker.store.workfs) {
-                if (window.parent.worker.store.workfs['main']) {
-                    const mainFile = window.parent.worker.store.workfs['main'];
-                    lastCompiledProgram = mainFile.data;
-                    loadLatestBtn.disabled = false;
-                    updateStatus("Got program from main app: " + mainFile.data.length + " bytes");
-                    success = true;
-                }
-            }
-            
-            // Method 2: Try to access via postMessage
-            if (!success) {
-                updateStatus("Requesting program from main app via postMessage...");
-                window.parent.postMessage({type: 'request_compiled_program'}, '*');
-                
-                // Set up a timeout to show instructions if no response
-                setTimeout(() => {
-                    if (!lastCompiledProgram) {
-                        updateStatus("No response from main app. Please use Manual Load or run this in main app console:");
-                        console.log("=== INSTRUCTIONS ===");
-                        console.log("1. Go to the main application (http://localhost:8000/)");
-                        console.log("2. Compile a VIC-20 program");
-                        console.log("3. Open browser console (F12)");
-                        console.log("4. Run this command:");
-                        console.log("   const output = window.IDE.getCurrentOutput();");
-                        console.log("   const hexString = Array.from(output).map(b => b.toString(16).padStart(2, '0')).join(' ');");
-                        console.log("   console.log('Program hex data:', hexString);");
-                        console.log("5. Copy the hex data and use Manual Load in this iframe");
-                        console.log("");
-                        console.log("Alternative method:");
-                        console.log("   window.IDE.debugCompilation();");
-                        console.log("   // Look for 'First 32 bytes (hex):' in the output");
-                    }
-                }, 2000);
-            }
-            
-            if (success && emulatorReady) {
-                loadLatestCompiledProgram();
             }
         }
         
@@ -361,7 +158,7 @@
                                 updateStatus("VIC-20 emulator started - Ready to load programs");
                                 
                                 // Check for latest compiled program
-                                setTimeout(refreshStatus, 1000);
+                                setTimeout(() => window.checkForProgramInURL(), 1000);
                                 
                             } catch (e) {
                                 updateStatus("Error starting emulator: " + e.message);
@@ -384,7 +181,7 @@
                                 console.log("VIC-20 iframe: Emulator already running (calledRun = true)");
                                 emulatorReady = true;
                                 updateStatus("VIC-20 emulator already running - Ready to load programs");
-                                setTimeout(refreshStatus, 1000);
+                                setTimeout(() => window.checkForProgramInURL(), 1000);
                             } else {
                                 // Try alternative start functions
                                 if (typeof window.h._main === 'function') {
@@ -392,7 +189,7 @@
                                         window.h._main();
                                         emulatorReady = true;
                                         updateStatus("VIC-20 emulator started via _main - Ready to load programs");
-                                        setTimeout(refreshStatus, 1000);
+                                        setTimeout(() => window.checkForProgramInURL(), 1000);
                                     } catch (e) {
                                         updateStatus("Error starting emulator via _main: " + e.message);
                                         console.error("VIC-20 iframe: Error starting emulator via _main:", e);
@@ -402,7 +199,7 @@
                                         window.h.resumeMainLoop();
                                         emulatorReady = true;
                                         updateStatus("VIC-20 emulator started via resumeMainLoop - Ready to load programs");
-                                        setTimeout(refreshStatus, 1000);
+                                        setTimeout(() => window.checkForProgramInURL(), 1000);
                                     } catch (e) {
                                         updateStatus("Error starting emulator via resumeMainLoop: " + e.message);
                                         console.error("VIC-20 iframe: Error starting emulator via resumeMainLoop:", e);
@@ -412,7 +209,7 @@
                                         window.h.vic20_run();
                                         emulatorReady = true;
                                         updateStatus("VIC-20 emulator started via vic20_run - Ready to load programs");
-                                        setTimeout(refreshStatus, 1000);
+                                        setTimeout(() => window.checkForProgramInURL(), 1000);
                                     } catch (e) {
                                         updateStatus("Error starting emulator via vic20_run: " + e.message);
                                         console.error("VIC-20 iframe: Error starting emulator via vic20_run:", e);
@@ -422,7 +219,7 @@
                                         window.h.run();
                                         emulatorReady = true;
                                         updateStatus("VIC-20 emulator started via run - Ready to load programs");
-                                        setTimeout(refreshStatus, 1000);
+                                        setTimeout(() => window.checkForProgramInURL(), 1000);
                                     } catch (e) {
                                         updateStatus("Error starting emulator via run: " + e.message);
                                         console.error("VIC-20 iframe: Error starting emulator via run:", e);
@@ -432,7 +229,7 @@
                                         window.h.start();
                                         emulatorReady = true;
                                         updateStatus("VIC-20 emulator started via start - Ready to load programs");
-                                        setTimeout(refreshStatus, 1000);
+                                        setTimeout(() => window.checkForProgramInURL(), 1000);
                                     } catch (e) {
                                         updateStatus("Error starting emulator via start: " + e.message);
                                         console.error("VIC-20 iframe: Error starting emulator via start:", e);
@@ -442,7 +239,7 @@
                                     console.log("VIC-20 iframe: No explicit start function found, assuming emulator is running");
                                     emulatorReady = true;
                                     updateStatus("VIC-20 emulator ready (assumed running) - Ready to load programs");
-                                    setTimeout(refreshStatus, 1000);
+                                    setTimeout(() => window.checkForProgramInURL(), 1000);
                                 }
                             }
                         }
@@ -592,19 +389,17 @@
             if (event.data && event.data.type === 'compiled_program') {
                 updateStatus("Received compiled program: " + event.data.program.length + " bytes");
                 lastCompiledProgram = event.data.program;
-                loadLatestBtn.disabled = false;
                 
                 // Auto-load if requested
                 if (event.data.autoLoad && emulatorReady) {
-                    loadLatestCompiledProgram();
+                    loadProgramIntoEmulator(event.data.program);
                 }
             } else if (event.data && event.data.type === 'compiled_program_response') {
                 updateStatus("Received program response: " + event.data.program.length + " bytes");
                 lastCompiledProgram = event.data.program;
-                loadLatestBtn.disabled = false;
                 
                 if (emulatorReady) {
-                    loadLatestCompiledProgram();
+                    loadProgramIntoEmulator(event.data.program);
                 }
             }
         });
@@ -613,11 +408,10 @@
         window.sendCompiledProgramToIframe = function(programData) {
             if (programData && programData.length > 0) {
                 lastCompiledProgram = programData;
-                loadLatestBtn.disabled = false;
                 updateStatus("Received program via global function: " + programData.length + " bytes");
                 
                 if (emulatorReady) {
-                    loadLatestCompiledProgram();
+                    loadProgramIntoEmulator(programData);
                 }
             } else {
                 updateStatus("Invalid program data received");
@@ -633,11 +427,10 @@
                 if (window.parent.worker.store.workfs['main']) {
                     const mainFile = window.parent.worker.store.workfs['main'];
                     lastCompiledProgram = mainFile.data;
-                    loadLatestBtn.disabled = false;
                     updateStatus("Got program from main app: " + mainFile.data.length + " bytes");
                     
                     if (emulatorReady) {
-                        loadLatestCompiledProgram();
+                        loadProgramIntoEmulator(mainFile.data);
                     }
                     return true;
                 }
@@ -683,13 +476,12 @@
                     console.log("VIC-20 iframe: First 16 bytes:", Array.from(programArray.slice(0, 16)).map(b => b.toString(16).padStart(2, '0')).join(' '));
                     
                     lastCompiledProgram = programArray;
-                    loadLatestBtn.disabled = false;
                     updateStatus("Program loaded from URL: " + programArray.length + " bytes");
                     
                     // Auto-load when emulator is ready
                     if (emulatorReady) {
                         console.log("VIC-20 iframe: Emulator ready, auto-loading program...");
-                        setTimeout(() => loadLatestCompiledProgram(), 500);
+                        setTimeout(() => loadProgramIntoEmulator(programArray), 500);
                     } else {
                         console.log("VIC-20 iframe: Emulator not ready yet, will auto-load when ready");
                     }
@@ -711,13 +503,12 @@
                     console.log("VIC-20 iframe: First 16 bytes:", Array.from(programArray.slice(0, 16)).map(b => b.toString(16).padStart(2, '0')).join(' '));
                     
                     lastCompiledProgram = programArray;
-                    loadLatestBtn.disabled = false;
                     updateStatus("Program loaded from URL (hex): " + programArray.length + " bytes");
                     
                     // Auto-load when emulator is ready
                     if (emulatorReady) {
                         console.log("VIC-20 iframe: Emulator ready, auto-loading program...");
-                        setTimeout(() => loadLatestCompiledProgram(), 500);
+                        setTimeout(() => loadProgramIntoEmulator(programArray), 500);
                     } else {
                         console.log("VIC-20 iframe: Emulator not ready yet, will auto-load when ready");
                     }
