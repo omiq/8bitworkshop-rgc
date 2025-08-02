@@ -1,3 +1,81 @@
+// Add global VIC-20 debug functions that are available even when machine isn't initialized
+(function() {
+  // Add global functions for VIC-20 iframe URL generation
+  (window as any).vic20_debug = {
+    // Generate iframe URL with program data
+    generateIframeURL: (programData: Uint8Array, useBase64: boolean = true) => {
+      const baseURL = 'vic20-iframe.html';
+      
+      if (useBase64) {
+        // Convert to base64 for shorter URLs
+        const binaryString = String.fromCharCode.apply(null, Array.from(programData));
+        const base64Data = btoa(binaryString);
+        return `${baseURL}?program=${encodeURIComponent(base64Data)}`;
+      } else {
+        // Convert to hex string
+        const hexString = Array.from(programData).map(b => b.toString(16).padStart(2, '0')).join(' ');
+        return `${baseURL}?hex=${encodeURIComponent(hexString)}`;
+      }
+    },
+    
+    // Open iframe with current compiled program
+    openIframeWithCurrentProgram: () => {
+      const output = (window as any).IDE?.getCurrentOutput();
+      if (output && output instanceof Uint8Array) {
+        const url = (window as any).vic20_debug.generateIframeURL(output);
+        //window.open(url, '_blank');
+        console.log('Opened VIC-20 iframe with current program:', url);
+        return url;
+      } else {
+        console.error('No compiled program available. Compile first.');
+        return null;
+      }
+    },
+    
+    // Get current program as hex string for manual loading
+    getCurrentProgramHex: () => {
+      const output = (window as any).IDE?.getCurrentOutput();
+      if (output && output instanceof Uint8Array) {
+        const hexString = Array.from(output).map(b => b.toString(16).padStart(2, '0')).join(' ');
+        console.log('Current program hex:', hexString);
+        return hexString;
+      } else {
+        console.error('No compiled program available. Compile first.');
+        return null;
+      }
+    },
+    
+    // Get current program info
+    getCurrentProgramInfo: () => {
+      const output = (window as any).IDE?.getCurrentOutput();
+      if (output && output instanceof Uint8Array) {
+        console.log('Current program info:');
+        console.log('  Size:', output.length, 'bytes');
+        console.log('  First 16 bytes:', Array.from(output.slice(0, 16)).map(b => b.toString(16).padStart(2, '0')).join(' '));
+        if (output.length >= 2) {
+          const loadAddress = (output[1] << 8) | output[0];
+          console.log('  Load address: 0x' + loadAddress.toString(16));
+        }
+        return {
+          size: output.length,
+          loadAddress: output.length >= 2 ? (output[1] << 8) | output[0] : null,
+          firstBytes: Array.from(output.slice(0, 16))
+        };
+      } else {
+        console.error('No compiled program available. Compile first.');
+        return null;
+      }
+    }
+  };
+  
+  console.log("✅ VIC-20 debug functions added to window.vic20_debug");
+  console.log("Available functions:");
+  console.log("  - vic20_debug.generateIframeURL(programData, useBase64)");
+  console.log("  - vic20_debug.openIframeWithCurrentProgram()");
+  console.log("  - vic20_debug.getCurrentProgramHex()");
+  console.log("  - vic20_debug.getCurrentProgramInfo()");
+})();
+
 import { Machine, CpuState, EmuState } from '../common/baseplatform';
 
 declare global {
@@ -735,455 +813,58 @@ export class VIC20ChipsMachine implements Machine {
   }
   
   private addGlobalDebugFunctions(): void {
-    // Add global debug functions for manual testing
-    (window as any).VIC20_DEBUG = {
-      // Test with sample data
-      testWithSampleData: () => {
-        console.log("=== TESTING WITH SAMPLE DATA ===");
-        const sampleData = new Uint8Array([
-          0x01, 0x10,  // PRG header (load address 0x1001)
-          0x0A, 0x00,  // Line 10
-          0x99, 0x20, 0x22, 0x48, 0x45, 0x4C, 0x4C, 0x4F, 0x22, 0x00,  // PRINT "HELLO"
-          0x00, 0x00   // End of program
-        ]);
-        this.loadProgramDirectly(sampleData);
-      },
-      
-      // Load program directly
-      loadProgramDirectly: (data: Uint8Array) => {
-        console.log("=== LOADING PROGRAM DIRECTLY ===");
-        this.loadProgramDirectly(data);
-      },
-      
-      // Check module functions
-      listModuleFunctions: () => {
-        console.log("=== MODULE FUNCTIONS ===");
-        const h = (window as any).h;
-        if (h) {
-          const functions = Object.keys(h).filter(key => typeof h[key] === 'function');
-          console.log("Available functions:", functions);
-          
-          // Look for VIC-20 specific functions
-          const vic20Functions = functions.filter(name => name.toLowerCase().includes('vic20'));
-          console.log("VIC-20 specific functions:", vic20Functions);
-          
-          // Look for reset functions
-          const resetFunctions = functions.filter(name => name.toLowerCase().includes('reset'));
-          console.log("Reset functions:", resetFunctions);
-          
-          // Look for run/start functions
-          const runFunctions = functions.filter(name => name.toLowerCase().includes('run') || name.toLowerCase().includes('start'));
-          console.log("Run/Start functions:", runFunctions);
-          
-          // Look for CPU/execution functions
-          const cpuFunctions = functions.filter(name => name.toLowerCase().includes('cpu') || name.toLowerCase().includes('pc') || name.toLowerCase().includes('exec'));
-          console.log("CPU/Execution functions:", cpuFunctions);
-          
-          // Look for main/entry functions
-          const mainFunctions = functions.filter(name => name.toLowerCase().includes('main'));
-          console.log("Main functions:", mainFunctions);
-          
-          // Look for any function that might trigger execution
-          const executionFunctions = functions.filter(name => 
-            name.toLowerCase().includes('exec') || 
-            name.toLowerCase().includes('run') || 
-            name.toLowerCase().includes('start') || 
-            name.toLowerCase().includes('reset') || 
-            name.toLowerCase().includes('init') ||
-            name.toLowerCase().includes('main') ||
-            name.toLowerCase().includes('step') ||
-            name.toLowerCase().includes('frame')
-          );
-          console.log("Potential execution functions:", executionFunctions);
-          
-          // Look for memory/load functions
-          const memoryFunctions = functions.filter(name => 
-            name.toLowerCase().includes('mem') ||
-            name.toLowerCase().includes('load') ||
-            name.toLowerCase().includes('write') ||
-            name.toLowerCase().includes('read')
-          );
-          console.log("Memory/Load functions:", memoryFunctions);
-          
-          // Look for BASIC specific functions
-          const basicFunctions = functions.filter(name => 
-            name.toLowerCase().includes('basic') ||
-            name.toLowerCase().includes('token') ||
-            name.toLowerCase().includes('interpreter')
-          );
-          console.log("BASIC functions:", basicFunctions);
-          
-          // Show all functions for debugging
-          console.log("=== ALL FUNCTIONS ===");
-          functions.forEach(funcName => {
-            console.log(`  ${funcName}: ${typeof h[funcName]}`);
-          });
-        } else {
-          console.log("❌ No 'h' object available");
-        }
-      },
-      
-      // Check window objects
-      checkWindowObjects: () => {
-        console.log("=== WINDOW OBJECTS ===");
-        console.log("h object:", (window as any).h);
-        console.log("Module object:", (window as any).Module);
-        console.log("VIC20 module:", (window as any).vic20_module);
-      },
-      
-      // Try drop function directly
-      tryDropFunction: (data: Uint8Array) => {
-        console.log("=== TRYING DROP FUNCTION DIRECTLY ===");
-        if (this.module && typeof this.module.__sapp_emsc_begin_drop === 'function') {
-          try {
-            this.module.__sapp_emsc_begin_drop();
-            console.log("✅ __sapp_emsc_begin_drop called");
-          } catch (e) {
-            console.log("❌ Error calling __sapp_emsc_begin_drop:", e);
-          }
-        }
-      },
-      
-      // Check and reset emulator state
-      checkState: () => {
-        console.log("=== CHECKING EMULATOR STATE ===");
-        if (this.module) {
-          console.log("Module available:", !!this.module);
-          console.log("Canvas connected:", !!this.canvas);
-          console.log("Running:", this.running);
-        }
-      },
-      
-      // Debug memory after loading
-      debugMemory: () => {
-        console.log("=== DEBUGGING MEMORY ===");
-        this.debugMemoryAfterLoading();
-      },
-      
-      // Resume main loop
-      resumeMainLoop: () => {
-        console.log("=== RESUMING MAIN LOOP ===");
-        const h = (window as any).h;
-        if (h && typeof h.resumeMainLoop === 'function') {
-          try {
-            h.resumeMainLoop();
-            console.log("✅ resumeMainLoop() called successfully");
-          } catch (e) {
-            console.log("❌ Error calling resumeMainLoop():", e);
-          }
-        } else {
-          console.log("❌ resumeMainLoop function not available");
-        }
-      },
-      
-      // Try execution with resume
-      tryExecutionWithResume: () => {
-        console.log("=== TRYING EXECUTION WITH RESUME ===");
-        const h = (window as any).h;
-        if (h) {
-          try {
-            // First resume the main loop
-            if (typeof h.resumeMainLoop === 'function') {
-              h.resumeMainLoop();
-              console.log("✅ resumeMainLoop() called");
-            }
-            
-            // Then call _main to trigger execution
-            if (typeof h._main === 'function') {
-              h._main();
-              console.log("✅ _main() called");
-            }
-            
-            // Force a display refresh
-            if (typeof h.requestAnimationFrame === 'function') {
-              h.requestAnimationFrame(() => {
-                console.log("✅ Display refresh triggered");
-              });
-            }
-          } catch (e) {
-            console.log("❌ Error in execution sequence:", e);
-          }
-        } else {
-          console.log("❌ No 'h' object available");
-        }
-      },
-      
-      // Load current compiled output
-      loadCurrentOutput: () => {
-        console.log("=== LOADING CURRENT COMPILED OUTPUT ===");
-        if (typeof (window as any).current_output !== 'undefined' && (window as any).current_output) {
-          console.log("Found current output:", (window as any).current_output.length, "bytes");
-          this.loadProgramDirectly((window as any).current_output);
-        } else {
-          console.log("❌ No current output found");
-        }
-      },
-      
-      // Simulate drag and drop with current output
-      simulateDragAndDrop: () => {
-        console.log("=== SIMULATING DRAG AND DROP ===");
-        if (typeof (window as any).current_output !== 'undefined' && (window as any).current_output) {
-          console.log("Found current output:", (window as any).current_output.length, "bytes");
-          this.tryDropApproach((window as any).current_output);
-        } else {
-          console.log("❌ No current output found");
-        }
-      },
-      
-      // Call drop functions directly
-      callDropFunctionsDirectly: () => {
-        console.log("=== CALLING DROP FUNCTIONS DIRECTLY ===");
-        const h = (window as any).h;
-        if (!h) {
-          console.log("❌ No 'h' object available");
-          return;
-        }
+    // Add global functions for debugging and testing
+    (window as any).vic20_debug = {
+      loadProgram: (data: Uint8Array) => this.loadProgram(data),
+      getCanvas: () => this.getCanvas(),
+      getModule: () => this.module,
+      getCPUState: () => this.getCPUState(),
+      readMemory: (address: number) => this.read(address),
+      writeMemory: (address: number, value: number) => this.write(address, value),
+      reset: () => this.reset(),
+      run: () => this.run(),
+      stop: () => this.stop(),
+      // Add function to generate iframe URL with program data
+      generateIframeURL: (programData: Uint8Array, useBase64: boolean = true) => {
+        const baseURL = 'vic20-iframe.html';
         
-        if (typeof (window as any).current_output !== 'undefined' && (window as any).current_output) {
-          const data = (window as any).current_output;
-          console.log("Using current output:", data.length, "bytes");
-          
-          try {
-            // Call the drop functions directly
-            if (typeof h.__sapp_emsc_begin_drop === 'function') {
-              h.__sapp_emsc_begin_drop();
-              console.log("✅ __sapp_emsc_begin_drop called");
-            }
-            
-            if (typeof h.__sapp_emsc_drop === 'function') {
-              h.__sapp_emsc_drop(data);
-              console.log("✅ __sapp_emsc_drop called with data");
-            }
-            
-            if (typeof h.__sapp_emsc_end_drop === 'function') {
-              h.__sapp_emsc_end_drop();
-              console.log("✅ __sapp_emsc_end_drop called");
-            }
-          } catch (error) {
-            console.log("❌ Error calling drop functions:", error);
-          }
+        if (useBase64) {
+          // Convert to base64 for shorter URLs
+          const binaryString = String.fromCharCode.apply(null, Array.from(programData));
+          const base64Data = btoa(binaryString);
+          return `${baseURL}?program=${encodeURIComponent(base64Data)}`;
         } else {
-          console.log("❌ No current output found");
+          // Convert to hex string
+          const hexString = Array.from(programData).map(b => b.toString(16).padStart(2, '0')).join(' ');
+          return `${baseURL}?hex=${encodeURIComponent(hexString)}`;
         }
       },
-      
-
-      
-      // Navigate to new location with current program
-      gotoNewLocation: () => {
-        console.log("=== NAVIGATING TO NEW LOCATION ===");
-        if (typeof (window as any).IDE !== 'undefined' && (window as any).IDE.gotoNewLocation) {
-          try {
-            console.log("✅ Calling window.IDE.gotoNewLocation()");
-            (window as any).IDE.gotoNewLocation();
-            console.log("✅ Navigation triggered - this should reload the page with the program");
-          } catch (e) {
-            console.log("❌ Error calling gotoNewLocation():", e);
-          }
+      // Add function to open iframe with current compiled program
+      openIframeWithCurrentProgram: () => {
+        const output = (window as any).IDE?.getCurrentOutput();
+        if (output && output instanceof Uint8Array) {
+          const url = (window as any).vic20_debug.generateIframeURL(output);
+          window.open(url, '_blank');
+          console.log('Opened VIC-20 iframe with current program:', url);
         } else {
-          console.log("❌ window.IDE.gotoNewLocation not available");
-        }
-      },
-      
-      // Try the complete sequence: load program, then navigate
-      tryCompleteSequence: () => {
-        console.log("=== TRYING COMPLETE SEQUENCE ===");
-        if (typeof (window as any).current_output !== 'undefined' && (window as any).current_output) {
-          console.log("1. Loading current output into memory...");
-          this.loadProgramDirectly((window as any).current_output);
-          console.log("2. Navigating to new location to trigger execution...");
-          if (typeof (window as any).IDE !== 'undefined' && (window as any).IDE.gotoNewLocation) {
-            (window as any).IDE.gotoNewLocation();
-          }
-        } else {
-          console.log("❌ No current output found");
-        }
-      },
-      
-      // Simulate the download ROM process
-      simulateDownloadROM: () => {
-        console.log("=== SIMULATING DOWNLOAD ROM PROCESS ===");
-        if (typeof (window as any).current_output !== 'undefined' && (window as any).current_output) {
-          console.log("✅ Found current output:", (window as any).current_output.length, "bytes");
-          
-          // Create a blob like the download function does
-          const blob = new Blob([(window as any).current_output], { type: "application/octet-stream" });
-          console.log("✅ Created blob:", blob.size, "bytes");
-          
-          // Create a URL for the blob
-          const url = URL.createObjectURL(blob);
-          console.log("✅ Created blob URL:", url);
-          
-          // Now try to load this URL into the emulator
-          console.log("🔧 Attempting to load blob URL into emulator...");
-          
-          // Try to add this URL as a file parameter
-          const h = (window as any).h;
-          if (h && typeof h.__sargs_add_kvp === 'function') {
-            try {
-              h.__sargs_add_kvp('file', url);
-              h.__sargs_add_kvp('autorun', '1');
-              h.__sargs_add_kvp('joystick', 'true');
-              console.log("✅ Added blob URL as file parameter");
-              
-              // Try calling _main to trigger execution
-              if (typeof h._main === 'function') {
-                h._main();
-                console.log("✅ Called _main() to trigger execution");
-              }
-            } catch (e) {
-              console.log("❌ Error adding blob URL:", e);
-            }
-          } else {
-            console.log("❌ No __sargs_add_kvp function available");
-          }
-          
-          // Clean up the URL after a delay
-          setTimeout(() => {
-            URL.revokeObjectURL(url);
-            console.log("🧹 Cleaned up blob URL");
-          }, 5000);
-          
-        } else {
-          console.log("❌ No current output found");
-        }
-      },
-      
-      // Try the complete download simulation sequence
-      tryDownloadSimulation: () => {
-        console.log("=== TRYING DOWNLOAD SIMULATION SEQUENCE ===");
-        console.log("1. First, let's see what the download function actually does...");
-        if (typeof (window as any).IDE !== 'undefined' && (window as any).IDE._downloadROMImage) {
-          console.log("2. Download function is available, let's trace it...");
-          // Instead of calling it directly, let's trace what it does
-          const originalAlert = window.alert;
-          window.alert = (msg) => {
-            console.log("🔍 ALERT INTERCEPTED:", msg);
-            return false; // Prevent the alert from showing
-          };
-          
-          try {
-            const result = (window as any).IDE._downloadROMImage();
-            console.log("3. Download function returned:", result);
-          } finally {
-            window.alert = originalAlert;
-          }
-        } else {
-          console.log("❌ Download function not available");
-        }
-      },
-      
-      // Reset VIC-20 and then load program
-      resetAndLoadProgram: () => {
-        console.log("=== RESETTING VIC-20 AND LOADING PROGRAM ===");
-        
-        // First reset the VIC-20
-        const h = (window as any).h;
-        if (h) {
-          console.log("1. Resetting VIC-20...");
-          if (typeof h.reset === 'function') {
-            h.reset();
-            console.log("✅ VIC-20 reset called");
-          } else if (typeof h.vic20_reset === 'function') {
-            h.vic20_reset();
-            console.log("✅ VIC-20 reset called");
-          } else {
-            console.log("❌ No reset function found");
-          }
-          
-          // Wait a moment for reset to complete
-          setTimeout(() => {
-            console.log("2. Loading program...");
-            
-            // Get current output
-            const output = (window as any).IDE.getCurrentOutput();
-            if (output) {
-              // Create a real File object
-              let prgFile = new File([output], "main.prg", { type: "application/octet-stream" });
-              
-              // Create a DataTransfer and add the File
-              let dt = new DataTransfer();
-              dt.items.add(prgFile);
-              
-              // Create a synthetic drop event
-              let dropEvent = new DragEvent("drop", {
-                dataTransfer: dt,
-                bubbles: true,
-                cancelable: true
-              });
-              
-              // Find the canvas and dispatch the event
-              let canvas = document.getElementById("canvas");
-              if (canvas) {
-                canvas.dispatchEvent(dropEvent);
-                console.log("✅ Drop event dispatched to canvas");
-              } else {
-                console.log("❌ Canvas not found");
-              }
-            } else {
-              console.log("❌ No current output found");
-            }
-          }, 100);
-        } else {
-          console.log("❌ No 'h' object available");
-        }
-      },
-      
-      // Refresh the VIC20_DEBUG object to get latest functions
-      refresh: () => {
-        console.log("=== REFRESHING VIC20_DEBUG OBJECT ===");
-        console.log("This will re-add all debug functions to the existing VIC20_DEBUG object");
-        
-        // Get the current VIC20_DEBUG object
-        const currentDebug = (window as any).VIC20_DEBUG;
-        if (currentDebug) {
-          console.log("✅ Found existing VIC20_DEBUG object, refreshing functions...");
-          
-          // Re-add all the functions to the existing object
-          const newFunctions = {
-            testWithSampleData: currentDebug.testWithSampleData,
-            loadCurrentOutput: currentDebug.loadCurrentOutput,
-            simulateDragAndDrop: currentDebug.simulateDragAndDrop,
-            callDropFunctionsDirectly: currentDebug.callDropFunctionsDirectly,
-            listModuleFunctions: currentDebug.listModuleFunctions,
-            checkWindowObjects: currentDebug.checkWindowObjects,
-            tryDropFunction: currentDebug.tryDropFunction,
-            checkState: currentDebug.checkState,
-            debugMemory: currentDebug.debugMemory,
-            gotoNewLocation: currentDebug.gotoNewLocation,
-            tryCompleteSequence: currentDebug.tryCompleteSequence,
-            simulateDownloadROM: currentDebug.simulateDownloadROM,
-            tryDownloadSimulation: currentDebug.tryDownloadSimulation,
-            resetAndLoadProgram: currentDebug.resetAndLoadProgram
-          };
-          
-          // Copy all functions to the existing object
-          Object.assign(currentDebug, newFunctions);
-          
-          console.log("✅ VIC20_DEBUG object refreshed with all functions");
-          console.log("Available functions:", Object.keys(currentDebug));
-        } else {
-          console.log("❌ No existing VIC20_DEBUG object found");
+          console.error('No compiled program available. Compile first.');
         }
       }
     };
     
-    console.log("VIC20_DEBUG object available in console for debugging");
-    console.log("Use VIC20_DEBUG.testWithSampleData() to test with sample program");
-    console.log("Use VIC20_DEBUG.loadCurrentOutput() to load the current compiled output");
-    console.log("Use VIC20_DEBUG.simulateDragAndDrop() to simulate drag and drop");
-    console.log("Use VIC20_DEBUG.callDropFunctionsDirectly() to call drop functions directly");
-    console.log("Use VIC20_DEBUG.listModuleFunctions() to see all available functions");
-    console.log("Use VIC20_DEBUG.checkWindowObjects() to see what's available on window");
-    console.log("Use VIC20_DEBUG.tryDropFunction(data) to try calling drop functions directly");
-    console.log("Use VIC20_DEBUG.checkState() to check and reset emulator state");
-    console.log("Use VIC20_DEBUG.debugMemory() to debug memory after loading");
-    console.log("Use VIC20_DEBUG.refresh() to refresh the debug object if functions are missing");
-    console.log("Use VIC20_DEBUG.gotoNewLocation() to navigate to new location with program");
-    console.log("Use VIC20_DEBUG.tryCompleteSequence() to load program and navigate");
-    console.log("Use VIC20_DEBUG.simulateDownloadROM() to simulate download ROM process");
-    console.log("Use VIC20_DEBUG.tryDownloadSimulation() to trace download function");
-    console.log("Use VIC20_DEBUG.resetAndLoadProgram() to reset VIC-20 and load program");
+    console.log("✅ VIC-20 debug functions added to window.vic20_debug");
+    console.log("Available functions:");
+    console.log("  - vic20_debug.loadProgram(data)");
+    console.log("  - vic20_debug.getCanvas()");
+    console.log("  - vic20_debug.getModule()");
+    console.log("  - vic20_debug.getCPUState()");
+    console.log("  - vic20_debug.readMemory(address)");
+    console.log("  - vic20_debug.writeMemory(address, value)");
+    console.log("  - vic20_debug.reset()");
+    console.log("  - vic20_debug.run()");
+    console.log("  - vic20_debug.stop()");
+    console.log("  - vic20_debug.generateIframeURL(programData, useBase64)");
+    console.log("  - vic20_debug.openIframeWithCurrentProgram()");
   }
   
   private loadProgramDirectly(data: Uint8Array): void {

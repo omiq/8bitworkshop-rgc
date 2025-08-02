@@ -40,9 +40,9 @@ class VIC20ChipsPlatform implements Platform {
     // The platform is available but no emulator is loaded or displayed
     
     // Clear the main element but don't add any emulator
-    this.mainElement.innerHTML = '<div style="padding: 20px; text-align: center; color: #666;">VIC-20 Emulator disabled for testing.<br>Use the isolated emulator in another tab.</div>';
-    
-    console.log("VIC20ChipsPlatform: emulator disabled, editor ready for use");
+ //   this.mainElement.innerHTML = '<div style="padding: 20px; text-align: center; color: #666;">VIC-20 Emulator disabled for testing.<br>Use the isolated emulator in another tab.</div>';
+   this.mainElement.innerHTML = '<iframe id="vic20-iframe" src="vic20-iframe.html" style="width: 100%; height: 500px; border: none;"></iframe>'; 
+    console.log("VIC20ChipsPlatform: , editor ready for use");
   }
 
   private nextFrame(): void {
@@ -62,6 +62,38 @@ class VIC20ChipsPlatform implements Platform {
 
   loadROM(title: string, rom: Uint8Array): void {
     console.log("VIC20ChipsPlatform loadROM called with title:", title, "and", rom.length, "bytes");
+    
+    var frame = document.getElementById("vic20-iframe") as HTMLIFrameElement;
+    if (frame && frame.contentWindow) {
+      const vic20_debug = (window as any).vic20_debug;
+      if (vic20_debug && vic20_debug.openIframeWithCurrentProgram) {
+        // Debug: Log the URL being generated
+        const iframeURL = vic20_debug.openIframeWithCurrentProgram();
+        console.log("VIC20ChipsPlatform: Generated iframe URL:", iframeURL);
+        
+        if (iframeURL) {
+          // Set up a one-time load event listener
+          const onLoad = () => {
+            console.log("VIC20ChipsPlatform: iframe loaded, calling checkForProgramInURL");
+            if ((frame.contentWindow as any).checkForProgramInURL) {
+              (frame.contentWindow as any).checkForProgramInURL();
+            }
+            frame.removeEventListener('load', onLoad);
+          };
+          frame.addEventListener('load', onLoad);
+          
+          // Set the location (this triggers the load event)
+          frame.contentWindow.location = iframeURL;
+        } else {
+          console.error("VIC20ChipsPlatform: openIframeWithCurrentProgram returned null");
+        }
+      } else {
+        console.error("VIC20ChipsPlatform: vic20_debug not available");
+      }
+    } else {
+      console.error("VIC20ChipsPlatform: iframe not found or contentWindow not available");
+    }
+    
     if (this.machine) {
       this.machine.loadProgram(rom);
     } else {

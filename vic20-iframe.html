@@ -101,8 +101,9 @@
             console.log("VIC-20 iframe:", message);
         }
         
-        function showManualLoadDialog() {
-            const hexData = prompt("Enter program hex data (space-separated bytes):");
+
+        
+        function loadProgramFromHex(hexData) {
             if (hexData) {
                 try {
                     // Parse hex string to Uint8Array
@@ -148,6 +149,11 @@
                 }
             }
         }
+
+        function showManualLoadDialog() {
+            const hexData = prompt("Enter program hex data (space-separated bytes):");
+            loadProgramFromHex(hexData);
+        }
         
         function refreshStatus() {
             if (!emulatorReady) {
@@ -167,6 +173,8 @@
                 console.log("VIC-20 iframe: Found worker via window.parent.worker");
             }
             
+            window.checkForProgramInURL()
+
             // Method 2: Try to access IDE global object
             if (!worker && window.parent && window.parent.IDE) {
                 console.log("VIC-20 iframe: Found IDE object, checking for worker access");
@@ -646,7 +654,88 @@
         };
         
         // Initialize when page loads
-        window.addEventListener('load', initVIC20Emulator);
+        window.addEventListener('load', function() {
+            initVIC20Emulator();
+            
+            // Check for program data in URL parameters
+            checkForProgramInURL();
+        });
+        
+        function checkForProgramInURL() {
+            console.log("VIC-20 iframe: Checking for program in URL parameters...");
+            console.log("VIC-20 iframe: Current URL:", window.location.href);
+            console.log("VIC-20 iframe: Search params:", window.location.search);
+            
+            const urlParams = new URLSearchParams(window.location.search);
+            const programData = urlParams.get('program');
+            const programHex = urlParams.get('hex');
+            
+            console.log("VIC-20 iframe: program param:", programData ? "found (" + programData.length + " chars)" : "not found");
+            console.log("VIC-20 iframe: hex param:", programHex ? "found (" + programHex.length + " chars)" : "not found");
+            
+            if (programData) {
+                try {
+                    console.log("VIC-20 iframe: Attempting to decode base64 program data...");
+                    // Try to decode base64 program data
+                    const binaryData = atob(programData);
+                    console.log("VIC-20 iframe: Base64 decoded to binary data:", binaryData.length, "bytes");
+                    
+                    const programArray = new Uint8Array(binaryData.length);
+                    for (let i = 0; i < binaryData.length; i++) {
+                        programArray[i] = binaryData.charCodeAt(i);
+                    }
+                    
+                    console.log("VIC-20 iframe: Found program in URL (base64): " + programArray.length + " bytes");
+                    console.log("VIC-20 iframe: First 16 bytes:", Array.from(programArray.slice(0, 16)).map(b => b.toString(16).padStart(2, '0')).join(' '));
+                    
+                    lastCompiledProgram = programArray;
+                    loadLatestBtn.disabled = false;
+                    updateStatus("Program loaded from URL: " + programArray.length + " bytes");
+                    
+                    // Auto-load when emulator is ready
+                    if (emulatorReady) {
+                        console.log("VIC-20 iframe: Emulator ready, auto-loading program...");
+                        setTimeout(() => loadLatestCompiledProgram(), 500);
+                    } else {
+                        console.log("VIC-20 iframe: Emulator not ready yet, will auto-load when ready");
+                    }
+                    
+                } catch (e) {
+                    console.error("VIC-20 iframe: Error decoding base64 program data:", e);
+                    updateStatus("Error decoding program from URL: " + e.message);
+                }
+            } else if (programHex) {
+                try {
+                    console.log("VIC-20 iframe: Attempting to parse hex program data...");
+                    // Parse hex string from URL
+                    const hexBytes = programHex.trim().split(/\s+/);
+                    console.log("VIC-20 iframe: Hex bytes array:", hexBytes.length, "bytes");
+                    
+                    const programArray = new Uint8Array(hexBytes.map(byte => parseInt(byte, 16)));
+                    
+                    console.log("VIC-20 iframe: Found program in URL (hex): " + programArray.length + " bytes");
+                    console.log("VIC-20 iframe: First 16 bytes:", Array.from(programArray.slice(0, 16)).map(b => b.toString(16).padStart(2, '0')).join(' '));
+                    
+                    lastCompiledProgram = programArray;
+                    loadLatestBtn.disabled = false;
+                    updateStatus("Program loaded from URL (hex): " + programArray.length + " bytes");
+                    
+                    // Auto-load when emulator is ready
+                    if (emulatorReady) {
+                        console.log("VIC-20 iframe: Emulator ready, auto-loading program...");
+                        setTimeout(() => loadLatestCompiledProgram(), 500);
+                    } else {
+                        console.log("VIC-20 iframe: Emulator not ready yet, will auto-load when ready");
+                    }
+                    
+                } catch (e) {
+                    console.error("VIC-20 iframe: Error parsing hex program data:", e);
+                    updateStatus("Error parsing hex program from URL: " + e.message);
+                }
+            } else {
+                console.log("VIC-20 iframe: No program parameters found in URL");
+            }
+        }
     </script>
 </body>
 </html> 
