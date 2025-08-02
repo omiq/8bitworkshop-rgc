@@ -25,9 +25,8 @@ const VIC20_MEMORY_MAP = { main:[
 class VIC20ChipsPlatform implements Platform {
   private machine: VIC20ChipsMachine;
   private mainElement: HTMLElement;
-  private timer: AnimationTimer;
-  private video: RasterVideo;
   private running = false;
+  private timer: AnimationTimer | null = null;
 
   constructor(mainElement: HTMLElement) {
     this.mainElement = mainElement;
@@ -35,98 +34,30 @@ class VIC20ChipsPlatform implements Platform {
   }
 
   async start(): Promise<void> {
-    console.log("VIC20ChipsPlatform start() called");
+    console.log("VIC20ChipsPlatform start() called - EMULATOR DISABLED FOR TESTING");
     
-    // Initialize the machine (non-blocking)
-    this.machine.init().catch(error => {
-      console.error("VIC-20 machine initialization failed:", error);
-    });
-    console.log("VIC20ChipsPlatform: machine initialization started");
+    // DISABLED: Emulator loading for testing editor in one tab and isolated emulator in another
+    // The platform is available but no emulator is loaded or displayed
     
-    // Show the VIC-20 chips div immediately
-    const vic20Div = document.getElementById('vic20-chips-div');
-    if (vic20Div) {
-      vic20Div.style.display = 'block';
-      console.log("VIC20ChipsPlatform: showed vic20-chips-div");
-    }
+    // Clear the main element but don't add any emulator
+    this.mainElement.innerHTML = '<div style="padding: 20px; text-align: center; color: #666;">VIC-20 Emulator disabled for testing.<br>Use the isolated emulator in another tab.</div>';
     
-    // Hide other emulator divs
-    const javatariDiv = document.getElementById('javatari-div');
-    if (javatariDiv) {
-      javatariDiv.style.display = 'none';
-      console.log("VIC20ChipsPlatform: hid javatari-div");
-    }
-    
-    const c64Div = document.getElementById('c64-chips-div');
-    if (c64Div) {
-      c64Div.style.display = 'none';
-      console.log("VIC20ChipsPlatform: hid c64-chips-div");
-    }
-    
-    // Clear the main element and add the chips-test canvas
-    this.mainElement.innerHTML = '';
-    console.log("VIC20ChipsPlatform: cleared main element");
-    
-    // Get canvas from the chips-test emulator
-    const canvas = this.machine.getCanvas();
-    console.log("VIC20ChipsPlatform: got canvas:", canvas);
-    
-    if (canvas) {
-      // Remove the canvas from document.body and add it to our main element
-      if (canvas.parentNode) {
-        console.log("VIC20ChipsPlatform: removing canvas from", canvas.parentNode);
-        canvas.parentNode.removeChild(canvas);
-      }
-      this.mainElement.appendChild(canvas);
-      console.log("VIC20ChipsPlatform: added canvas to main element");
-      console.log("VIC20ChipsPlatform: canvas dimensions:", canvas.width, "x", canvas.height);
-      console.log("VIC20ChipsPlatform: canvas style:", canvas.style.cssText);
-    } else {
-      console.error("VIC20ChipsPlatform: no canvas available!");
-    }
-    
-    // Start the emulator (non-blocking)
-    setTimeout(() => {
-      this.machine.run();
-      this.running = true;
-      console.log("VIC20ChipsPlatform: emulator started");
-    }, 1000);
-    
-    console.log("VIC20ChipsPlatform start() completed");
-    
-    // Start animation timer
-    this.timer = new AnimationTimer(50, this.nextFrame.bind(this));
+    console.log("VIC20ChipsPlatform: emulator disabled, editor ready for use");
   }
 
   private nextFrame(): void {
-    if (this.running) {
-      // The chips-test emulator handles its own frame updates
-      // We just need to keep the timer running
-    }
-  }
-
-  reset(): void {
-    if (this.machine) {
-      this.machine.reset();
-    }
-  }
-
-  isRunning(): boolean {
-    return this.running;
+    if (this.running)
+      this.machine.advanceFrame(() => false);
   }
 
   pause(): void {
-    if (this.machine) {
-      this.machine.stop();
-      this.running = false;
-    }
+    this.running = false;
+    if (this.timer) this.timer.stop();
   }
 
   resume(): void {
-    if (this.machine) {
-      this.machine.run();
-      this.running = true;
-    }
+    this.running = true;
+    if (this.timer) this.timer.start();
   }
 
   loadROM(title: string, rom: Uint8Array): void {
@@ -142,8 +73,78 @@ class VIC20ChipsPlatform implements Platform {
     return VIC20_PRESETS;
   }
 
-  getDefaultExtension(): string {
+  getMemoryMap() {
+    return VIC20_MEMORY_MAP;
+  }
+
+  getDefaultExtension() {
     return ".c";
+  }
+
+  getROMExtension(rom: Uint8Array): string {
+    // VIC-20 PRG files start with load address (little-endian)
+    // Common load addresses: 0x1001 (BASIC), 0x1200, 0x1300, etc.
+    if (rom && rom.length >= 2) {
+      const loadAddress = (rom[1] << 8) | rom[0];
+      // Check if it's a valid VIC-20 load address
+      if (loadAddress >= 0x1000 && loadAddress <= 0xFFFF) {
+        return ".prg";
+      }
+    }
+    return ".bin";
+  }
+
+  readAddress(a: number): number {
+    return this.machine.read(a);
+  }
+
+  writeAddress(a: number, v: number): void {
+    this.machine.write(a, v);
+  }
+
+  getCPUState() {
+    return this.machine.getCPUState();
+  }
+
+  saveState(): any {
+    return this.machine.saveState();
+  }
+
+  loadState(state: any): void {
+    this.machine.loadState(state);
+  }
+
+  reset(): void {
+    this.machine.reset();
+  }
+
+  setKeyInput(key: number, code: number, flags: number): void {
+    this.machine.setKeyInput(key, code, flags);
+  }
+
+  loadControlsState(state: any): void {
+    this.machine.loadControlsState(state);
+  }
+
+  saveControlsState(): any {
+    return this.machine.saveControlsState();
+  }
+
+  getFPS(): number {
+    return this.machine.getFPS();
+  }
+
+  showHelp() {
+    return "https://8bitworkshop.com/docs/platforms/cbm/index.html#vic-20";
+  }
+
+  isStable(): boolean {
+    // Assume stable for chips-test emulator
+    return true;
+  }
+
+  isRunning(): boolean {
+    return this.running;
   }
 
   getToolForFilename(filename: string): string {
@@ -153,63 +154,12 @@ class VIC20ChipsPlatform implements Platform {
     if (filename.endsWith(".wiz")) return "wiz";
     return "cc65";
   }
-
-  readAddress(addr: number): number {
-    if (this.machine) {
-      return this.machine.read(addr);
-    }
-    return 0;
-  }
-
-  getMemoryMap() {
-    return VIC20_MEMORY_MAP;
-  }
-
-  showHelp(): string {
-    return "https://8bitworkshop.com/docs/platforms/vic20/";
-  }
-
-  getROMExtension(rom: Uint8Array): string {
-    if (rom && rom[0] == 0x01 && rom[1] == 0x10) return ".prg";
-    else return ".bin";
-  }
-
-  // Optional methods with default implementations
-  getCPUState() {
-    if (this.machine) {
-      return this.machine.getCPUState();
-    }
-    return { PC: 0, SP: 0 };
-  }
-
-  saveState() {
-    if (this.machine) {
-      return this.machine.saveState();
-    }
-    return { c: { PC: 0, SP: 0 }, b: new Uint8Array(0) };
-  }
-
-  loadState(state: any): void {
-    if (this.machine) {
-      this.machine.loadState(state);
-    }
-  }
-
-  getPC(): number {
-    const cpuState = this.getCPUState();
-    return cpuState.PC;
-  }
-
-  getSP(): number {
-    const cpuState = this.getCPUState();
-    return cpuState.SP;
-  }
-
-  isStable(): boolean {
-    return true; // Assume stable for chips-test emulator
-  }
 }
 
+// DISABLED: VIC-20 platform registration to allow testing editor in one tab and isolated emulator in another
+// PLATFORMS['vic20'] = VIC20ChipsPlatform;
+
+// ENABLED: Platform registration but emulator is disabled in start() method
 PLATFORMS['vic20'] = VIC20ChipsPlatform;
 
 // Export the platform class for dynamic loading

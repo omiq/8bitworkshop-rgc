@@ -257,14 +257,14 @@ void play_game() {
 
 // main routine
 void main() {
+
   clrscr();
   cputs("seige by 8bitworkshop\n\r\n\r");
-  cputs("kind of a light cycle game\n\r");
-  cputs("but without ip infringement\n\r\n\r");
-  cputs("use wasd to control your ... thing\n\r\n\r");
-  cputs("press a key to continue\n\r");
+  cputs("kind of a light cycle game ");
+  cputs("but without ip \r\ninfringement");
+  cputs("\n\r\n\ruse wasd to control\r\nyour ... thing\n\r\n\r");
+  cputs("press a key to start\n\r");
   cgetc();
 
- 
   play_game();
 }

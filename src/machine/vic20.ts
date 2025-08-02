@@ -4,6 +4,7 @@ declare global {
   interface Window {
     vic20_module?: any;
     Module?: any;
+    vic20Instance?: VIC20ChipsMachine;
   }
 }
 
@@ -57,6 +58,7 @@ export class VIC20ChipsMachine implements Machine {
       this.canvas.style.maxWidth = '800px';
       this.canvas.style.maxHeight = '600px';
       this.canvas.style.outline = 'none';
+      this.canvas.style.cursor = 'pointer'; // Add pointer cursor to indicate clickable
       
       // Add canvas to the pre-existing VIC-20 chips div
       const vic20Div = document.getElementById('vic20-chips-div');
@@ -73,6 +75,9 @@ export class VIC20ChipsMachine implements Machine {
 
       // Connect the canvas to the emulator immediately
       this.connectCanvasToEmulator();
+      
+      // Add click-to-focus functionality
+      this.addClickToFocusFunctionality();
       
       // Add simple focus prevention without complex tracking
       this.addSimpleFocusProtection();
@@ -1410,6 +1415,12 @@ export class VIC20ChipsMachine implements Machine {
 
   destroy(): void {
     this.running = false;
+    
+    // Clean up global reference
+    if ((window as any).vic20Instance === this) {
+      (window as any).vic20Instance = null;
+    }
+    
     if (this.canvas && this.canvas.parentNode) {
       this.canvas.parentNode.removeChild(this.canvas);
     }
@@ -1422,8 +1433,6 @@ export class VIC20ChipsMachine implements Machine {
       vic20Div.style.display = 'none';
       console.log("✅ Hidden VIC-20 chips div");
     }
-    
-
   }
   
 
@@ -2308,32 +2317,123 @@ export class VIC20ChipsMachine implements Machine {
 
 
   private addSimpleFocusProtection(): void {
-    return;
     if (!this.canvas) return;
 
-    // Make canvas non-focusable
-    this.canvas.tabIndex = -1;
+    console.log("✅ Simple focus protection added - no global overrides");
+  }
+
+  private addClickToFocusFunctionality(): void {
+    if (!this.canvas) return;
+
+    console.log("🎯 Adding click-to-focus functionality to VIC-20 canvas");
+
+    // Make canvas focusable
+    this.canvas.tabIndex = 0;
     this.canvas.style.outline = 'none';
 
-    // Only override preventDefault for keyboard events on textareas/inputs, always allow CodeMirror
-    const originalPreventDefault = Event.prototype.preventDefault;
-    Event.prototype.preventDefault = function(this: Event) {
-      const target = this.target as HTMLElement;
-      if ((this.type === 'keypress' || this.type === 'keydown' || this.type === 'keyup') &&
-          target && (target.tagName === 'TEXTAREA' || target.tagName === 'INPUT')) {
-        // Always allow preventDefault for CodeMirror or any element inside .CodeMirror
-        if (target.closest('.CodeMirror')) {
-          return originalPreventDefault.call(this);
-        }
-        // Otherwise, block preventDefault so typing works in other textareas/inputs
-        // (This prevents emulator from interfering with normal typing)
-        // Optionally, log for debugging:
-        // console.log(`🛡️ BLOCKED preventDefault on ${this.type} event for ${target.tagName} - key: ${(this as KeyboardEvent).key}`);
-        return;
+    // Add click event listener to focus the canvas
+    this.canvas.addEventListener('click', (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      
+      if (!this.emulatorFocused) {
+        this.emulatorFocused = true;
+        this.canvas?.focus();
+        this.canvas!.style.border = '2px solid #4CAF50'; // Green border when focused
+        this.canvas!.style.cursor = 'default'; // Change cursor to indicate focused state
+        console.log("🎯 VIC-20 emulator focused - keyboard input enabled");
       }
-      // For all other events, call the original preventDefault
-      return originalPreventDefault.call(this);
-    };
-    console.log("✅ Overrode preventDefault to protect CodeMirror/editor keyboard events (no global interception)");
+    });
+
+    // Add click event listener to document to unfocus when clicking elsewhere
+    document.addEventListener('click', (event) => {
+      // Check if the click was outside the canvas
+      if (this.canvas && !this.canvas.contains(event.target as Node)) {
+        if (this.emulatorFocused) {
+          this.emulatorFocused = false;
+          this.canvas!.style.border = '1px solid #333'; // Reset border
+          this.canvas!.style.cursor = 'pointer'; // Reset cursor
+          console.log("🎯 VIC-20 emulator unfocused - keyboard input disabled");
+        }
+      }
+    });
+
+    // Add keyboard event listeners that only work when focused
+    this.canvas.addEventListener('keydown', (event) => {
+      if (!this.emulatorFocused) {
+        return; // Ignore keyboard events when not focused
+      }
+      
+      console.log(`🎯 Key pressed in VIC-20 emulator: ${event.key} (keyCode: ${event.keyCode})`);
+      
+      // Forward the key event to the VIC-20 emulator using direct function calls
+      this.forwardKeyEventToEmulator(event);
+    });
+
+    // Add keyup event listener
+    this.canvas.addEventListener('keyup', (event) => {
+      if (!this.emulatorFocused) {
+        return; // Ignore keyboard events when not focused
+      }
+      
+      console.log(`🎯 Key released in VIC-20 emulator: ${event.key} (keyCode: ${event.keyCode})`);
+      
+      // Forward the keyup event to the VIC-20 emulator using direct function calls
+      this.forwardKeyUpEventToEmulator(event);
+    });
+
+    console.log("✅ Click-to-focus functionality added to VIC-20 canvas");
+  }
+
+  private forwardKeyEventToEmulator(event: KeyboardEvent): void {
+    // Try to forward the key event to the VIC-20 emulator using direct function calls
+    const h = (window as any).h;
+    if (h) {
+      // Try the VIC-20 keyboard input function with correct parameters
+      if (typeof h._ === 'function') {
+        try {
+          h._(this.canvas, event.keyCode, 2, 0);
+          console.log("🎯 Sent keydown to VIC-20 via _ function with keyCode:", event.keyCode);
+        } catch (e) {
+          console.log("❌ Error sending keydown:", e);
+        }
+      }
+      
+      // Also try the alternative keyboard input function
+      if (typeof h.setKeyInput === 'function') {
+        try {
+          h.setKeyInput(event.keyCode, event.keyCode, 1); // 1 for keydown
+          console.log("🎯 Sent keydown to VIC-20 via setKeyInput with keyCode:", event.keyCode);
+        } catch (e) {
+          console.log("❌ Error sending keydown via setKeyInput:", e);
+        }
+      }
+    }
+  }
+
+  private forwardKeyUpEventToEmulator(event: KeyboardEvent): void {
+    // Try to forward the keyup event to the VIC-20 emulator using direct function calls
+    const h = (window as any).h;
+    if (h) {
+      // Try the VIC-20 keyboard input function with correct parameters
+      if (typeof h.Z === 'function') {
+        try {
+          h.Z(this.canvas, event.keyCode, 3, 0);
+          console.log("🎯 Sent keyup to VIC-20 via Z function with keyCode:", event.keyCode);
+        } catch (e) {
+          console.log("❌ Error sending keyup:", e);
+        }
+      }
+      
+      // Also try the alternative keyboard input function
+      if (typeof h.setKeyInput === 'function') {
+        try {
+          h.setKeyInput(event.keyCode, event.keyCode, 2); // 2 for keyup
+          console.log("🎯 Sent keyup to VIC-20 via setKeyInput with keyCode:", event.keyCode);
+        } catch (e) {
+          console.log("❌ Error sending keyup via setKeyInput:", e);
+        }
+      }
+    }
   }
 } 

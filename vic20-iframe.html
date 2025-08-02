@@ -1,0 +1,652 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VIC-20 Emulator (Iframe)</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: #000;
+            font-family: monospace;
+            overflow: hidden;
+        }
+        
+        #canvas {
+            border: 1px solid #333;
+            cursor: pointer;
+            width: 100%;
+            height: 100vh;
+            outline: none;
+            display: block;
+            margin: 0 auto;
+        }
+        
+        #canvas:focus {
+            border: 2px solid #4CAF50;
+        }
+        
+        .status {
+            position: fixed;
+            top: 10px;
+            left: 10px;
+            color: white;
+            background: rgba(0,0,0,0.7);
+            padding: 5px 10px;
+            border-radius: 4px;
+            font-size: 12px;
+            max-width: 300px;
+            word-wrap: break-word;
+        }
+        
+        .controls {
+            position: fixed;
+            top: 10px;
+            right: 10px;
+            color: white;
+            background: rgba(0,0,0,0.7);
+            padding: 5px 10px;
+            border-radius: 4px;
+            font-size: 12px;
+        }
+        
+        .controls button {
+            background: #4CAF50;
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            margin: 2px;
+            border-radius: 3px;
+            cursor: pointer;
+            font-size: 11px;
+        }
+        
+        .controls button:hover {
+            background: #45a049;
+        }
+        
+        .controls button:disabled {
+            background: #666;
+            cursor: not-allowed;
+        }
+    </style>
+</head>
+<body>
+    <div class="status" id="status">Loading VIC-20 emulator...</div>
+    <div class="controls">
+        <button id="loadLatestBtn" onclick="loadLatestCompiledProgram()">Load Latest Program</button>
+        <button id="refreshBtn" onclick="refreshStatus()">Refresh Status</button>
+        <button id="manualLoadBtn" onclick="showManualLoadDialog()">Manual Load</button>
+        <button id="getFromMainBtn" onclick="getFromMainApp()">Get From Main App</button>
+    </div>
+    <canvas id="canvas" width="800" height="501" tabindex="0"></canvas>
+
+    <script>
+        // This iframe has its own isolated window object
+        // No conflicts with the main application's event handling
+        
+        const canvas = document.getElementById('canvas');
+        const status = document.getElementById('status');
+        const loadLatestBtn = document.getElementById('loadLatestBtn');
+        const refreshBtn = document.getElementById('refreshBtn');
+        const manualLoadBtn = document.getElementById('manualLoadBtn');
+        const getFromMainBtn = document.getElementById('getFromMainBtn');
+        
+        let emulatorReady = false;
+        let lastCompiledProgram = null;
+        
+        function updateStatus(message) {
+            status.textContent = message;
+            console.log("VIC-20 iframe:", message);
+        }
+        
+        function showManualLoadDialog() {
+            const hexData = prompt("Enter program hex data (space-separated bytes):");
+            if (hexData) {
+                try {
+                    // Parse hex string to Uint8Array
+                    const hexBytes = hexData.trim().split(/\s+/);
+                    const programData = new Uint8Array(hexBytes.map(byte => parseInt(byte, 16)));
+                    
+                    console.log("Manual load: " + programData.length + " bytes");
+                    
+                    // Use the same drop event approach
+                    if (window.h && typeof window.h.__sapp_emsc_begin_drop === 'function') {
+                        console.log("🎯 Loading manual program via drop function...");
+                        
+                        // Create a File object
+                        const file = new File([programData], "manual.prg", { type: "application/octet-stream" });
+                        
+                        // Create a DataTransfer and add the File
+                        const dt = new DataTransfer();
+                        dt.items.add(file);
+                        
+                        // Create a synthetic drop event
+                        const dropEvent = new DragEvent("drop", {
+                            dataTransfer: dt,
+                            bubbles: true,
+                            cancelable: true
+                        });
+                        
+                        // Dispatch the event to the canvas
+                        canvas.dispatchEvent(dropEvent);
+                        console.log("✅ Manual drop event dispatched to canvas");
+                        
+                        // Wait for program to load
+                        setTimeout(() => {
+                            console.log("🎯 Manual program loaded successfully");
+                            updateStatus("Manual program loaded: " + programData.length + " bytes");
+                        }, 1000);
+                        
+                    } else {
+                        updateStatus("Manual program loaded: " + programData.length + " bytes (fallback method)");
+                    }
+                } catch (e) {
+                    updateStatus("Error parsing hex data: " + e.message);
+                    console.error("Error parsing hex data:", e);
+                }
+            }
+        }
+        
+        function refreshStatus() {
+            if (!emulatorReady) {
+                updateStatus("Emulator not ready yet");
+                return;
+            }
+            
+            console.log("VIC-20 iframe: Checking for compiled programs...");
+            
+            // Try to access the main application's worker
+            let worker = null;
+            let store = null;
+            
+            // Method 1: Direct parent access (works when embedded)
+            if (window.parent && window.parent.worker) {
+                worker = window.parent.worker;
+                console.log("VIC-20 iframe: Found worker via window.parent.worker");
+            }
+            
+            // Method 2: Try to access IDE global object
+            if (!worker && window.parent && window.parent.IDE) {
+                console.log("VIC-20 iframe: Found IDE object, checking for worker access");
+                // Try to access worker through IDE object
+                if (window.parent.IDE.worker) {
+                    worker = window.parent.IDE.worker;
+                    console.log("VIC-20 iframe: Found worker via window.parent.IDE.worker");
+                }
+            }
+            
+            // Method 3: Try to access global worker (if same origin)
+            if (!worker && window.worker) {
+                worker = window.worker;
+                console.log("VIC-20 iframe: Found worker via window.worker");
+            }
+            
+            if (worker && worker.store) {
+                store = worker.store;
+                console.log("VIC-20 iframe: Found store:", store);
+                
+                if (store.workfs) {
+                    const files = Object.keys(store.workfs);
+                    console.log("VIC-20 iframe: Files in virtual FS:", files);
+                    updateStatus("Found " + files.length + " files in virtual FS: " + files.join(', '));
+                    
+                    // Check for main compiled program
+                    if (store.workfs['main']) {
+                        const mainFile = store.workfs['main'];
+                        console.log("VIC-20 iframe: Main file found:", mainFile);
+                        console.log("VIC-20 iframe: Main file size:", mainFile.data.length);
+                        updateStatus("Latest program: " + mainFile.data.length + " bytes");
+                        lastCompiledProgram = mainFile.data;
+                        loadLatestBtn.disabled = false;
+                    } else {
+                        console.log("VIC-20 iframe: No main file found in workfs");
+                        updateStatus("No compiled program found - use Manual Load or check main app");
+                        loadLatestBtn.disabled = true;
+                    }
+                } else {
+                    console.log("VIC-20 iframe: No workfs found in store");
+                    updateStatus("Cannot access virtual file system - use Manual Load");
+                    loadLatestBtn.disabled = true;
+                }
+            } else {
+                console.log("VIC-20 iframe: No worker or store found");
+                console.log("VIC-20 iframe: window.parent:", window.parent);
+                console.log("VIC-20 iframe: window.parent.worker:", window.parent ? window.parent.worker : "no parent");
+                console.log("VIC-20 iframe: window.worker:", window.worker);
+                updateStatus("Cannot access main application worker - use Manual Load button");
+                loadLatestBtn.disabled = true;
+            }
+        }
+        
+        function loadLatestCompiledProgram() {
+            if (!emulatorReady || !lastCompiledProgram) {
+                updateStatus("Emulator not ready or no program available");
+                return;
+            }
+            
+            updateStatus("Loading latest compiled program...");
+            
+            try {
+                // Use the same drop event approach as the main application
+                if (window.h && typeof window.h.__sapp_emsc_begin_drop === 'function') {
+                    console.log("🎯 Loading program via drop function...");
+                    
+                    // Create a File object
+                    const file = new File([lastCompiledProgram], "main.prg", { type: "application/octet-stream" });
+                    
+                    // Create a DataTransfer and add the File
+                    const dt = new DataTransfer();
+                    dt.items.add(file);
+                    
+                    // Create a synthetic drop event
+                    const dropEvent = new DragEvent("drop", {
+                        dataTransfer: dt,
+                        bubbles: true,
+                        cancelable: true
+                    });
+                    
+                    // Dispatch the event to the canvas
+                    canvas.dispatchEvent(dropEvent);
+                    console.log("✅ Drop event dispatched to canvas");
+                    
+                    // Wait for program to load, then check if it's running
+                    setTimeout(() => {
+                        console.log("🎯 Checking if program loaded successfully...");
+                        updateStatus("Program loaded via drop event: " + lastCompiledProgram.length + " bytes");
+                        
+                        // Try to trigger execution if needed
+                        if (typeof window.h.__sapp_emsc_begin_drop === 'function') {
+                            try {
+                                window.h.__sapp_emsc_begin_drop();
+                                console.log("✅ Triggered program execution");
+                            } catch (e) {
+                                console.log("⚠️ Could not trigger execution:", e);
+                            }
+                        }
+                    }, 1000);
+                    
+                } else if (window.h && typeof window.h.loadProgram === 'function') {
+                    window.h.loadProgram(lastCompiledProgram);
+                    updateStatus("Program loaded: " + lastCompiledProgram.length + " bytes");
+                } else if (window.h && typeof window.h.loadROM === 'function') {
+                    window.h.loadROM(lastCompiledProgram);
+                    updateStatus("ROM loaded: " + lastCompiledProgram.length + " bytes");
+                } else {
+                    updateStatus("No program loading method found");
+                    console.log("❌ No drop function or loadProgram/loadROM available");
+                }
+            } catch (e) {
+                updateStatus("Error loading program: " + e.message);
+                console.error("Error loading program:", e);
+            }
+        }
+        
+        function getFromMainApp() {
+            updateStatus("Attempting to get program from main app...");
+            
+            // Try multiple methods to access the main app
+            let success = false;
+            
+            // Method 1: Direct parent access
+            if (window.parent && window.parent.worker && window.parent.worker.store && window.parent.worker.store.workfs) {
+                if (window.parent.worker.store.workfs['main']) {
+                    const mainFile = window.parent.worker.store.workfs['main'];
+                    lastCompiledProgram = mainFile.data;
+                    loadLatestBtn.disabled = false;
+                    updateStatus("Got program from main app: " + mainFile.data.length + " bytes");
+                    success = true;
+                }
+            }
+            
+            // Method 2: Try to access via postMessage
+            if (!success) {
+                updateStatus("Requesting program from main app via postMessage...");
+                window.parent.postMessage({type: 'request_compiled_program'}, '*');
+                
+                // Set up a timeout to show instructions if no response
+                setTimeout(() => {
+                    if (!lastCompiledProgram) {
+                        updateStatus("No response from main app. Please use Manual Load or run this in main app console:");
+                        console.log("=== INSTRUCTIONS ===");
+                        console.log("1. Go to the main application (http://localhost:8000/)");
+                        console.log("2. Compile a VIC-20 program");
+                        console.log("3. Open browser console (F12)");
+                        console.log("4. Run this command:");
+                        console.log("   const output = window.IDE.getCurrentOutput();");
+                        console.log("   const hexString = Array.from(output).map(b => b.toString(16).padStart(2, '0')).join(' ');");
+                        console.log("   console.log('Program hex data:', hexString);");
+                        console.log("5. Copy the hex data and use Manual Load in this iframe");
+                        console.log("");
+                        console.log("Alternative method:");
+                        console.log("   window.IDE.debugCompilation();");
+                        console.log("   // Look for 'First 32 bytes (hex):' in the output");
+                    }
+                }, 2000);
+            }
+            
+            if (success && emulatorReady) {
+                loadLatestCompiledProgram();
+            }
+        }
+        
+        // Initialize VIC-20 emulator in isolated environment
+        function initVIC20Emulator() {
+            updateStatus("Loading VIC-20 script...");
+            
+            // Load the VIC-20 script
+            const script = document.createElement('script');
+            script.src = 'res/vic20.js';
+            script.onload = function() {
+                updateStatus("VIC-20 script loaded");
+                
+                // Wait for the emulator to initialize
+                setTimeout(function() {
+                    if (window.h) {
+                        updateStatus("VIC-20 emulator initialized");
+                        
+                        // Connect canvas to emulator
+                        window.h.canvas = canvas;
+                        window.canvas = canvas;
+                        updateStatus("Canvas connected to VIC-20 emulator");
+                        
+                        // Try to start the emulator
+                        if (typeof window.h.oc === 'function') {
+                            try {
+                                window.h.oc();
+                                emulatorReady = true;
+                                updateStatus("VIC-20 emulator started - Ready to load programs");
+                                
+                                // Check for latest compiled program
+                                setTimeout(refreshStatus, 1000);
+                                
+                            } catch (e) {
+                                updateStatus("Error starting emulator: " + e.message);
+                                console.error("VIC-20 iframe: Error starting emulator:", e);
+                            }
+                        } else {
+                            // List all available functions in window.h for debugging
+                            console.log("VIC-20 iframe: window.h object:", window.h);
+                            console.log("VIC-20 iframe: Available functions in window.h:");
+                            for (let key in window.h) {
+                                if (typeof window.h[key] === 'function') {
+                                    console.log("  - " + key + " (function)");
+                                } else {
+                                    console.log("  - " + key + " (" + typeof window.h[key] + ")");
+                                }
+                            }
+                            
+                            // Check if emulator is already running
+                            if (window.h.calledRun) {
+                                console.log("VIC-20 iframe: Emulator already running (calledRun = true)");
+                                emulatorReady = true;
+                                updateStatus("VIC-20 emulator already running - Ready to load programs");
+                                setTimeout(refreshStatus, 1000);
+                            } else {
+                                // Try alternative start functions
+                                if (typeof window.h._main === 'function') {
+                                    try {
+                                        window.h._main();
+                                        emulatorReady = true;
+                                        updateStatus("VIC-20 emulator started via _main - Ready to load programs");
+                                        setTimeout(refreshStatus, 1000);
+                                    } catch (e) {
+                                        updateStatus("Error starting emulator via _main: " + e.message);
+                                        console.error("VIC-20 iframe: Error starting emulator via _main:", e);
+                                    }
+                                } else if (typeof window.h.resumeMainLoop === 'function') {
+                                    try {
+                                        window.h.resumeMainLoop();
+                                        emulatorReady = true;
+                                        updateStatus("VIC-20 emulator started via resumeMainLoop - Ready to load programs");
+                                        setTimeout(refreshStatus, 1000);
+                                    } catch (e) {
+                                        updateStatus("Error starting emulator via resumeMainLoop: " + e.message);
+                                        console.error("VIC-20 iframe: Error starting emulator via resumeMainLoop:", e);
+                                    }
+                                } else if (typeof window.h.vic20_run === 'function') {
+                                    try {
+                                        window.h.vic20_run();
+                                        emulatorReady = true;
+                                        updateStatus("VIC-20 emulator started via vic20_run - Ready to load programs");
+                                        setTimeout(refreshStatus, 1000);
+                                    } catch (e) {
+                                        updateStatus("Error starting emulator via vic20_run: " + e.message);
+                                        console.error("VIC-20 iframe: Error starting emulator via vic20_run:", e);
+                                    }
+                                } else if (typeof window.h.run === 'function') {
+                                    try {
+                                        window.h.run();
+                                        emulatorReady = true;
+                                        updateStatus("VIC-20 emulator started via run - Ready to load programs");
+                                        setTimeout(refreshStatus, 1000);
+                                    } catch (e) {
+                                        updateStatus("Error starting emulator via run: " + e.message);
+                                        console.error("VIC-20 iframe: Error starting emulator via run:", e);
+                                    }
+                                } else if (typeof window.h.start === 'function') {
+                                    try {
+                                        window.h.start();
+                                        emulatorReady = true;
+                                        updateStatus("VIC-20 emulator started via start - Ready to load programs");
+                                        setTimeout(refreshStatus, 1000);
+                                    } catch (e) {
+                                        updateStatus("Error starting emulator via start: " + e.message);
+                                        console.error("VIC-20 iframe: Error starting emulator via start:", e);
+                                    }
+                                } else {
+                                    // If no start function found, assume emulator is already running
+                                    console.log("VIC-20 iframe: No explicit start function found, assuming emulator is running");
+                                    emulatorReady = true;
+                                    updateStatus("VIC-20 emulator ready (assumed running) - Ready to load programs");
+                                    setTimeout(refreshStatus, 1000);
+                                }
+                            }
+                        }
+                        
+                        // Draw initial test pattern only if emulator didn't start
+                        if (!emulatorReady) {
+                            const ctx = canvas.getContext('2d');
+                            if (ctx) {
+                                ctx.fillStyle = 'black';
+                                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                                ctx.fillStyle = 'white';
+                                ctx.font = '16px monospace';
+                                ctx.fillText('VIC-20 Emulator Ready', 10, 30);
+                                ctx.fillText('Click "Load Latest Program" to load compiled code', 10, 50);
+                                ctx.fillText('Press keys when focused to test input', 10, 70);
+                                ctx.fillText('This is an isolated iframe environment', 10, 90);
+                            }
+                        }
+                        
+                    } else {
+                        updateStatus("VIC-20 emulator not initialized - window.h not found");
+                        console.error("VIC-20 iframe: window.h not found after script load");
+                        
+                        // Draw error message
+                        const ctx = canvas.getContext('2d');
+                        if (ctx) {
+                            ctx.fillStyle = 'black';
+                            ctx.fillRect(0, 0, canvas.width, canvas.height);
+                            ctx.fillStyle = 'red';
+                            ctx.font = '16px monospace';
+                            ctx.fillText('VIC-20 Emulator Failed to Load', 10, 30);
+                            ctx.fillStyle = 'white';
+                            ctx.fillText('Check console for errors', 10, 50);
+                            ctx.fillText('window.h not found', 10, 70);
+                        }
+                    }
+                }, 2000); // Increased timeout to 2 seconds
+            };
+            
+            script.onerror = function() {
+                updateStatus("Failed to load VIC-20 script");
+                console.error("VIC-20 iframe: Failed to load res/vic20.js");
+                
+                // Draw error message
+                const ctx = canvas.getContext('2d');
+                if (ctx) {
+                    ctx.fillStyle = 'black';
+                    ctx.fillRect(0, 0, canvas.width, canvas.height);
+                    ctx.fillStyle = 'red';
+                    ctx.font = '16px monospace';
+                    ctx.fillText('Failed to load VIC-20 script', 10, 30);
+                    ctx.fillStyle = 'white';
+                    ctx.fillText('Check if res/vic20.js exists', 10, 50);
+                }
+            };
+            
+            document.head.appendChild(script);
+        }
+        
+        // Add keyboard event listeners directly to canvas
+        canvas.addEventListener('keydown', function(event) {
+            updateStatus("KeyDown: " + event.key + " (keyCode: " + event.keyCode + ")");
+            console.log("VIC-20 iframe keydown:", event.key, event.keyCode);
+            
+            // Try to send to VIC-20 emulator using the correct Emscripten functions
+            if (window.h && typeof window.h._ === 'function') {
+                try {
+                    window.h._(canvas, event.keyCode, 2, 0);
+                    console.log("VIC-20 iframe: Sent keydown via _ function");
+                } catch (e) {
+                    console.log("VIC-20 iframe: Error sending keydown:", e);
+                }
+            }
+            
+            // Also try the alternative keyboard input function
+            if (window.h && typeof window.h.setKeyInput === 'function') {
+                try {
+                    window.h.setKeyInput(event.keyCode, event.keyCode, 1); // 1 for keydown
+                    console.log("VIC-20 iframe: Sent keydown via setKeyInput");
+                } catch (e) {
+                    console.log("VIC-20 iframe: Error sending keydown via setKeyInput:", e);
+                }
+            }
+        });
+        
+        canvas.addEventListener('keyup', function(event) {
+            updateStatus("KeyUp: " + event.key + " (keyCode: " + event.keyCode + ")");
+            console.log("VIC-20 iframe keyup:", event.key, event.keyCode);
+            
+            // Try to send to VIC-20 emulator using the correct Emscripten functions
+            if (window.h && typeof window.h.Z === 'function') {
+                try {
+                    window.h.Z(canvas, event.keyCode, 3, 0);
+                    console.log("VIC-20 iframe: Sent keyup via Z function");
+                } catch (e) {
+                    console.log("VIC-20 iframe: Error sending keyup:", e);
+                }
+            }
+            
+            // Also try the alternative keyboard input function
+            if (window.h && typeof window.h.setKeyInput === 'function') {
+                try {
+                    window.h.setKeyInput(event.keyCode, event.keyCode, 2); // 2 for keyup
+                    console.log("VIC-20 iframe: Sent keyup via setKeyInput");
+                } catch (e) {
+                    console.log("VIC-20 iframe: Error sending keyup via setKeyInput:", e);
+                }
+            }
+        });
+        
+        // Add click event to focus canvas
+        canvas.addEventListener('click', function(event) {
+            canvas.focus();
+            updateStatus("Canvas focused - keyboard input enabled");
+        });
+        
+        // Add global keyboard event listeners to see if events are reaching the iframe
+        document.addEventListener('keydown', function(event) {
+            console.log("VIC-20 iframe document keydown:", event.key, event.keyCode);
+        });
+        
+        document.addEventListener('keyup', function(event) {
+            console.log("VIC-20 iframe document keyup:", event.key, event.keyCode);
+        });
+        
+        // Add focus/blur events to debug focus state
+        canvas.addEventListener('focus', function(event) {
+            console.log("VIC-20 iframe canvas focused");
+            updateStatus("Canvas focused - ready for keyboard input");
+        });
+        
+        canvas.addEventListener('blur', function(event) {
+            console.log("VIC-20 iframe canvas blurred");
+            updateStatus("Canvas blurred - keyboard input disabled");
+        });
+        
+        // Make sure the document can receive focus
+        document.addEventListener('click', function(event) {
+            if (event.target === document.body) {
+                canvas.focus();
+                console.log("VIC-20 iframe: Clicked on body, focusing canvas");
+            }
+        });
+        
+        // Listen for messages from parent window
+        window.addEventListener('message', function(event) {
+            if (event.data && event.data.type === 'compiled_program') {
+                updateStatus("Received compiled program: " + event.data.program.length + " bytes");
+                lastCompiledProgram = event.data.program;
+                loadLatestBtn.disabled = false;
+                
+                // Auto-load if requested
+                if (event.data.autoLoad && emulatorReady) {
+                    loadLatestCompiledProgram();
+                }
+            } else if (event.data && event.data.type === 'compiled_program_response') {
+                updateStatus("Received program response: " + event.data.program.length + " bytes");
+                lastCompiledProgram = event.data.program;
+                loadLatestBtn.disabled = false;
+                
+                if (emulatorReady) {
+                    loadLatestCompiledProgram();
+                }
+            }
+        });
+        
+        // Global function that can be called from main application
+        window.sendCompiledProgramToIframe = function(programData) {
+            if (programData && programData.length > 0) {
+                lastCompiledProgram = programData;
+                loadLatestBtn.disabled = false;
+                updateStatus("Received program via global function: " + programData.length + " bytes");
+                
+                if (emulatorReady) {
+                    loadLatestCompiledProgram();
+                }
+            } else {
+                updateStatus("Invalid program data received");
+            }
+        };
+        
+        // Global function to get program data from main app
+        window.getCompiledProgramFromMainApp = function() {
+            console.log("VIC-20 iframe: Attempting to get program from main app...");
+            
+            // Try to access the main application's worker
+            if (window.parent && window.parent.worker && window.parent.worker.store && window.parent.worker.store.workfs) {
+                if (window.parent.worker.store.workfs['main']) {
+                    const mainFile = window.parent.worker.store.workfs['main'];
+                    lastCompiledProgram = mainFile.data;
+                    loadLatestBtn.disabled = false;
+                    updateStatus("Got program from main app: " + mainFile.data.length + " bytes");
+                    
+                    if (emulatorReady) {
+                        loadLatestCompiledProgram();
+                    }
+                    return true;
+                }
+            }
+            
+            updateStatus("Could not get program from main app - use Manual Load");
+            return false;
+        };
+        
+        // Initialize when page loads
+        window.addEventListener('load', initVIC20Emulator);
+    </script>
+</body>
+</html> 
