@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>VIC-20 Emulator (Iframe)</title>
+    <title>C64 Emulator (Iframe)</title>
     <style>
         body {
             margin: 0;
@@ -42,7 +42,7 @@
     </style>
 </head>
 <body>
-    <div class="status" id="status">Loading VIC-20 emulator...</div>
+    <div class="status" id="status">Loading C64 emulator...</div>
     <canvas id="canvas" width="800" height="501" tabindex="0"></canvas>
 
     <script>
@@ -57,14 +57,8 @@
         
         function updateStatus(message) {
             status.textContent = message;
-            console.log("VIC-20 iframe:", message);
+            console.log("C64 iframe:", message);
         }
-        
-
-        
-
-        
-
         
         // Core function to load program into emulator
         function loadProgramIntoEmulator(programData) {
@@ -130,44 +124,44 @@
             }
         }
         
-        // Initialize VIC-20 emulator in isolated environment
-        function initVIC20Emulator() {
-            updateStatus("Loading VIC-20 script...");
+        // Initialize C64 emulator in isolated environment
+        function initC64Emulator() {
+            updateStatus("Loading C64 script...");
             
-            // Load the VIC-20 script
+            // Load the C64 script
             const script = document.createElement('script');
-            script.src = 'res/vic20.js';
+            script.src = 'res/c64.js';
             script.onload = function() {
-                updateStatus("VIC-20 script loaded");
+                updateStatus("C64 script loaded");
                 
                 // Wait for the emulator to initialize
                 setTimeout(function() {
                     if (window.h) {
-                        updateStatus("VIC-20 emulator initialized");
+                        updateStatus("C64 emulator initialized");
                         
                         // Connect canvas to emulator
                         window.h.canvas = canvas;
                         window.canvas = canvas;
-                        updateStatus("Canvas connected to VIC-20 emulator");
+                        updateStatus("Canvas connected to C64 emulator");
                         
                         // Try to start the emulator
                         if (typeof window.h.oc === 'function') {
                             try {
                                 window.h.oc();
                                 emulatorReady = true;
-                                updateStatus("VIC-20 emulator started - Ready to load programs");
+                                updateStatus("C64 emulator started - Ready to load programs");
                                 
                                 // Check for latest compiled program
                                 setTimeout(() => window.checkForProgramInURL(), 1000);
                                 
                             } catch (e) {
                                 updateStatus("Error starting emulator: " + e.message);
-                                console.error("VIC-20 iframe: Error starting emulator:", e);
+                                console.error("C64 iframe: Error starting emulator:", e);
                             }
                         } else {
                             // List all available functions in window.h for debugging
-                            console.log("VIC-20 iframe: window.h object:", window.h);
-                            console.log("VIC-20 iframe: Available functions in window.h:");
+                            console.log("C64 iframe: window.h object:", window.h);
+                            console.log("C64 iframe: Available functions in window.h:");
                             for (let key in window.h) {
                                 if (typeof window.h[key] === 'function') {
                                     console.log("  - " + key + " (function)");
@@ -178,9 +172,9 @@
                             
                             // Check if emulator is already running
                             if (window.h.calledRun) {
-                                console.log("VIC-20 iframe: Emulator already running (calledRun = true)");
+                                console.log("C64 iframe: Emulator already running (calledRun = true)");
                                 emulatorReady = true;
-                                updateStatus("VIC-20 emulator already running - Ready to load programs");
+                                updateStatus("C64 emulator already running - Ready to load programs");
                                 setTimeout(() => window.checkForProgramInURL(), 1000);
                             } else {
                                 // Try alternative start functions
@@ -188,57 +182,57 @@
                                     try {
                                         window.h._main();
                                         emulatorReady = true;
-                                        updateStatus("VIC-20 emulator started via _main - Ready to load programs");
+                                        updateStatus("C64 emulator started via _main - Ready to load programs");
                                         setTimeout(() => window.checkForProgramInURL(), 1000);
                                     } catch (e) {
                                         updateStatus("Error starting emulator via _main: " + e.message);
-                                        console.error("VIC-20 iframe: Error starting emulator via _main:", e);
+                                        console.error("C64 iframe: Error starting emulator via _main:", e);
                                     }
                                 } else if (typeof window.h.resumeMainLoop === 'function') {
                                     try {
                                         window.h.resumeMainLoop();
                                         emulatorReady = true;
-                                        updateStatus("VIC-20 emulator started via resumeMainLoop - Ready to load programs");
+                                        updateStatus("C64 emulator started via resumeMainLoop - Ready to load programs");
                                         setTimeout(() => window.checkForProgramInURL(), 1000);
                                     } catch (e) {
                                         updateStatus("Error starting emulator via resumeMainLoop: " + e.message);
-                                        console.error("VIC-20 iframe: Error starting emulator via resumeMainLoop:", e);
+                                        console.error("C64 iframe: Error starting emulator via resumeMainLoop:", e);
                                     }
-                                } else if (typeof window.h.vic20_run === 'function') {
+                                } else if (typeof window.h.c64_run === 'function') {
                                     try {
-                                        window.h.vic20_run();
+                                        window.h.c64_run();
                                         emulatorReady = true;
-                                        updateStatus("VIC-20 emulator started via vic20_run - Ready to load programs");
+                                        updateStatus("C64 emulator started via c64_run - Ready to load programs");
                                         setTimeout(() => window.checkForProgramInURL(), 1000);
                                     } catch (e) {
-                                        updateStatus("Error starting emulator via vic20_run: " + e.message);
-                                        console.error("VIC-20 iframe: Error starting emulator via vic20_run:", e);
+                                        updateStatus("Error starting emulator via c64_run: " + e.message);
+                                        console.error("C64 iframe: Error starting emulator via c64_run:", e);
                                     }
                                 } else if (typeof window.h.run === 'function') {
                                     try {
                                         window.h.run();
                                         emulatorReady = true;
-                                        updateStatus("VIC-20 emulator started via run - Ready to load programs");
+                                        updateStatus("C64 emulator started via run - Ready to load programs");
                                         setTimeout(() => window.checkForProgramInURL(), 1000);
                                     } catch (e) {
                                         updateStatus("Error starting emulator via run: " + e.message);
-                                        console.error("VIC-20 iframe: Error starting emulator via run:", e);
+                                        console.error("C64 iframe: Error starting emulator via run:", e);
                                     }
                                 } else if (typeof window.h.start === 'function') {
                                     try {
                                         window.h.start();
                                         emulatorReady = true;
-                                        updateStatus("VIC-20 emulator started via start - Ready to load programs");
+                                        updateStatus("C64 emulator started via start - Ready to load programs");
                                         setTimeout(() => window.checkForProgramInURL(), 1000);
                                     } catch (e) {
                                         updateStatus("Error starting emulator via start: " + e.message);
-                                        console.error("VIC-20 iframe: Error starting emulator via start:", e);
+                                        console.error("C64 iframe: Error starting emulator via start:", e);
                                     }
                                 } else {
                                     // If no start function found, assume emulator is already running
-                                    console.log("VIC-20 iframe: No explicit start function found, assuming emulator is running");
+                                    console.log("C64 iframe: No explicit start function found, assuming emulator is running");
                                     emulatorReady = true;
-                                    updateStatus("VIC-20 emulator ready (assumed running) - Ready to load programs");
+                                    updateStatus("C64 emulator ready (assumed running) - Ready to load programs");
                                     setTimeout(() => window.checkForProgramInURL(), 1000);
                                 }
                             }
@@ -252,16 +246,15 @@
                                 ctx.fillRect(0, 0, canvas.width, canvas.height);
                                 ctx.fillStyle = 'white';
                                 ctx.font = '16px monospace';
-                                ctx.fillText('VIC-20 Emulator Ready', 10, 30);
-                                ctx.fillText('Click "Load Latest Program" to load compiled code', 10, 50);
-                                ctx.fillText('Press keys when focused to test input', 10, 70);
-                                ctx.fillText('This is an isolated iframe environment', 10, 90);
+                                ctx.fillText('C64 Emulator Ready', 10, 30);
+                                ctx.fillText('Click to focus and test input', 10, 50);
+                                ctx.fillText('This is an isolated iframe environment', 10, 70);
                             }
                         }
                         
                     } else {
-                        updateStatus("VIC-20 emulator not initialized - window.h not found");
-                        console.error("VIC-20 iframe: window.h not found after script load");
+                        updateStatus("C64 emulator not initialized - window.h not found");
+                        console.error("C64 iframe: window.h not found after script load");
                         
                         // Draw error message
                         const ctx = canvas.getContext('2d');
@@ -270,7 +263,7 @@
                             ctx.fillRect(0, 0, canvas.width, canvas.height);
                             ctx.fillStyle = 'red';
                             ctx.font = '16px monospace';
-                            ctx.fillText('VIC-20 Emulator Failed to Load', 10, 30);
+                            ctx.fillText('C64 Emulator Failed to Load', 10, 30);
                             ctx.fillStyle = 'white';
                             ctx.fillText('Check console for errors', 10, 50);
                             ctx.fillText('window.h not found', 10, 70);
@@ -280,8 +273,8 @@
             };
             
             script.onerror = function() {
-                updateStatus("Failed to load VIC-20 script");
-                console.error("VIC-20 iframe: Failed to load res/vic20.js");
+                updateStatus("Failed to load C64 script");
+                console.error("C64 iframe: Failed to load res/c64.js");
                 
                 // Draw error message
                 const ctx = canvas.getContext('2d');
@@ -290,9 +283,9 @@
                     ctx.fillRect(0, 0, canvas.width, canvas.height);
                     ctx.fillStyle = 'red';
                     ctx.font = '16px monospace';
-                    ctx.fillText('Failed to load VIC-20 script', 10, 30);
+                    ctx.fillText('Failed to load C64 script', 10, 30);
                     ctx.fillStyle = 'white';
-                    ctx.fillText('Check if res/vic20.js exists', 10, 50);
+                    ctx.fillText('Check if res/c64.js exists', 10, 50);
                 }
             };
             
@@ -302,7 +295,7 @@
         // Add keyboard event listeners directly to canvas
         canvas.addEventListener('keydown', function(event) {
             updateStatus("KeyDown: " + event.key + " (keyCode: " + event.keyCode + ")");
-            console.log("VIC-20 iframe keydown:", event.key, event.keyCode);
+            console.log("C64 iframe keydown:", event.key, event.keyCode);
             
             // Prevent default browser behavior for special keys that might interfere
             if (event.key === ' ' || event.key === 'Backspace' || event.key === 'Tab' || 
@@ -313,13 +306,13 @@
                 event.stopPropagation();
             }
             
-            // Try to send to VIC-20 emulator using the correct Emscripten functions
+            // Try to send to C64 emulator using the correct Emscripten functions
             if (window.h && typeof window.h._ === 'function') {
                 try {
                     window.h._(canvas, event.keyCode, 2, 0);
-                    console.log("VIC-20 iframe: Sent keydown via _ function");
+                    console.log("C64 iframe: Sent keydown via _ function");
                 } catch (e) {
-                    console.log("VIC-20 iframe: Error sending keydown:", e);
+                    console.log("C64 iframe: Error sending keydown:", e);
                 }
             }
             
@@ -327,16 +320,16 @@
             if (window.h && typeof window.h.setKeyInput === 'function') {
                 try {
                     window.h.setKeyInput(event.keyCode, event.keyCode, 1); // 1 for keydown
-                    console.log("VIC-20 iframe: Sent keydown via setKeyInput");
+                    console.log("C64 iframe: Sent keydown via setKeyInput");
                 } catch (e) {
-                    console.log("VIC-20 iframe: Error sending keydown via setKeyInput:", e);
+                    console.log("C64 iframe: Error sending keydown via setKeyInput:", e);
                 }
             }
         });
         
         canvas.addEventListener('keyup', function(event) {
             updateStatus("KeyUp: " + event.key + " (keyCode: " + event.keyCode + ")");
-            console.log("VIC-20 iframe keyup:", event.key, event.keyCode);
+            console.log("C64 iframe keyup:", event.key, event.keyCode);
             
             // Prevent default browser behavior for special keys that might interfere
             if (event.key === ' ' || event.key === 'Backspace' || event.key === 'Tab' || 
@@ -347,69 +340,24 @@
                 event.stopPropagation();
             }
             
-            // Try multiple methods to send keyup to VIC-20 emulator
-            let keySent = false;
-            
-            // Method 1: Try the Emscripten Z function
+            // Try to send to C64 emulator using the correct Emscripten functions
             if (window.h && typeof window.h.Z === 'function') {
                 try {
                     window.h.Z(canvas, event.keyCode, 3, 0);
-                    console.log("VIC-20 iframe: Sent keyup via Z function");
-                    keySent = true;
+                    console.log("C64 iframe: Sent keyup via Z function");
                 } catch (e) {
-                    console.log("VIC-20 iframe: Error sending keyup via Z function:", e);
+                    console.log("C64 iframe: Error sending keyup:", e);
                 }
             }
             
-            // Method 2: Try setKeyInput function
+            // Also try the alternative keyboard input function
             if (window.h && typeof window.h.setKeyInput === 'function') {
                 try {
                     window.h.setKeyInput(event.keyCode, event.keyCode, 2); // 2 for keyup
-                    console.log("VIC-20 iframe: Sent keyup via setKeyInput");
-                    keySent = true;
+                    console.log("C64 iframe: Sent keyup via setKeyInput");
                 } catch (e) {
-                    console.log("VIC-20 iframe: Error sending keyup via setKeyInput:", e);
+                    console.log("C64 iframe: Error sending keyup via setKeyInput:", e);
                 }
-            }
-            
-            // Method 3: Try direct keyboard matrix access (VIC-20 specific)
-            if (window.h && window.h.keyboard && typeof window.h.keyboard.setKey === 'function') {
-                try {
-                    // Map common keys to VIC-20 keyboard matrix positions
-                    const keyMap = {
-                        ' ': 0x20, // Space
-                        'Backspace': 0x14, // Backspace/Delete
-                        'Escape': 0x03, // Escape/Run Stop
-                        'Enter': 0x0D, // Return
-                        'Tab': 0x09, // Tab
-                        'ArrowUp': 0x91, // Cursor Up
-                        'ArrowDown': 0x11, // Cursor Down
-                        'ArrowLeft': 0x9D, // Cursor Left
-                        'ArrowRight': 0x1D, // Cursor Right
-                    };
-                    
-                    const matrixCode = keyMap[event.key] || event.keyCode;
-                    window.h.keyboard.setKey(matrixCode, false); // false for keyup
-                    console.log("VIC-20 iframe: Sent keyup via keyboard.setKey:", matrixCode);
-                    keySent = true;
-                } catch (e) {
-                    console.log("VIC-20 iframe: Error sending keyup via keyboard.setKey:", e);
-                }
-            }
-            
-            // Method 4: Try generic key release function
-            if (window.h && typeof window.h.keyRelease === 'function') {
-                try {
-                    window.h.keyRelease(event.keyCode);
-                    console.log("VIC-20 iframe: Sent keyup via keyRelease");
-                    keySent = true;
-                } catch (e) {
-                    console.log("VIC-20 iframe: Error sending keyup via keyRelease:", e);
-                }
-            }
-            
-            if (!keySent) {
-                console.log("VIC-20 iframe: No keyboard input method found for keyup");
             }
         });
         
@@ -426,21 +374,21 @@
         
         // Add global keyboard event listeners to see if events are reaching the iframe
         document.addEventListener('keydown', function(event) {
-            console.log("VIC-20 iframe document keydown:", event.key, event.keyCode);
+            console.log("C64 iframe document keydown:", event.key, event.keyCode);
         });
         
         document.addEventListener('keyup', function(event) {
-            console.log("VIC-20 iframe document keyup:", event.key, event.keyCode);
+            console.log("C64 iframe document keyup:", event.key, event.keyCode);
         });
         
         // Add focus/blur events to debug focus state
         canvas.addEventListener('focus', function(event) {
-            console.log("VIC-20 iframe canvas focused");
+            console.log("C64 iframe canvas focused");
             updateStatus("Canvas focused - ready for keyboard input");
         });
         
         canvas.addEventListener('blur', function(event) {
-            console.log("VIC-20 iframe canvas blurred");
+            console.log("C64 iframe canvas blurred");
             updateStatus("Canvas blurred - keyboard input disabled");
         });
         
@@ -448,7 +396,7 @@
         document.addEventListener('click', function(event) {
             if (event.target === document.body) {
                 canvas.focus();
-                console.log("VIC-20 iframe: Clicked on body, focusing canvas");
+                console.log("C64 iframe: Clicked on body, focusing canvas");
             }
         });
         
@@ -488,7 +436,7 @@
         
         // Global function to get program data from main app
         window.getCompiledProgramFromMainApp = function() {
-            console.log("VIC-20 iframe: Attempting to get program from main app...");
+            console.log("C64 iframe: Attempting to get program from main app...");
             
             // Try to access the main application's worker
             if (window.parent && window.parent.worker && window.parent.worker.store && window.parent.worker.store.workfs) {
@@ -504,89 +452,89 @@
                 }
             }
             
-            updateStatus("Could not get program from main app - use Manual Load");
+            updateStatus("Could not get program from main app");
             return false;
         };
         
         // Initialize when page loads
         window.addEventListener('load', function() {
-            initVIC20Emulator();
+            initC64Emulator();
             
             // Check for program data in URL parameters
             checkForProgramInURL();
         });
         
         function checkForProgramInURL() {
-            console.log("VIC-20 iframe: Checking for program in URL parameters...");
-            console.log("VIC-20 iframe: Current URL:", window.location.href);
-            console.log("VIC-20 iframe: Search params:", window.location.search);
+            console.log("C64 iframe: Checking for program in URL parameters...");
+            console.log("C64 iframe: Current URL:", window.location.href);
+            console.log("C64 iframe: Search params:", window.location.search);
             
             const urlParams = new URLSearchParams(window.location.search);
             const programData = urlParams.get('program');
             const programHex = urlParams.get('hex');
             
-            console.log("VIC-20 iframe: program param:", programData ? "found (" + programData.length + " chars)" : "not found");
-            console.log("VIC-20 iframe: hex param:", programHex ? "found (" + programHex.length + " chars)" : "not found");
+            console.log("C64 iframe: program param:", programData ? "found (" + programData.length + " chars)" : "not found");
+            console.log("C64 iframe: hex param:", programHex ? "found (" + programHex.length + " chars)" : "not found");
             
             if (programData) {
                 try {
-                    console.log("VIC-20 iframe: Attempting to decode base64 program data...");
+                    console.log("C64 iframe: Attempting to decode base64 program data...");
                     // Try to decode base64 program data
                     const binaryData = atob(programData);
-                    console.log("VIC-20 iframe: Base64 decoded to binary data:", binaryData.length, "bytes");
+                    console.log("C64 iframe: Base64 decoded to binary data:", binaryData.length, "bytes");
                     
                     const programArray = new Uint8Array(binaryData.length);
                     for (let i = 0; i < binaryData.length; i++) {
                         programArray[i] = binaryData.charCodeAt(i);
                     }
                     
-                    console.log("VIC-20 iframe: Found program in URL (base64): " + programArray.length + " bytes");
-                    console.log("VIC-20 iframe: First 16 bytes:", Array.from(programArray.slice(0, 16)).map(b => b.toString(16).padStart(2, '0')).join(' '));
+                    console.log("C64 iframe: Found program in URL (base64): " + programArray.length + " bytes");
+                    console.log("C64 iframe: First 16 bytes:", Array.from(programArray.slice(0, 16)).map(b => b.toString(16).padStart(2, '0')).join(' '));
                     
                     lastCompiledProgram = programArray;
                     updateStatus("Program loaded from URL: " + programArray.length + " bytes");
                     
                     // Auto-load when emulator is ready
                     if (emulatorReady) {
-                        console.log("VIC-20 iframe: Emulator ready, auto-loading program...");
+                        console.log("C64 iframe: Emulator ready, auto-loading program...");
                         setTimeout(() => loadProgramIntoEmulator(programArray), 500);
                     } else {
-                        console.log("VIC-20 iframe: Emulator not ready yet, will auto-load when ready");
+                        console.log("C64 iframe: Emulator not ready yet, will auto-load when ready");
                     }
                     
                 } catch (e) {
-                    console.error("VIC-20 iframe: Error decoding base64 program data:", e);
+                    console.error("C64 iframe: Error decoding base64 program data:", e);
                     updateStatus("Error decoding program from URL: " + e.message);
                 }
             } else if (programHex) {
                 try {
-                    console.log("VIC-20 iframe: Attempting to parse hex program data...");
+                    console.log("C64 iframe: Attempting to parse hex program data...");
                     // Parse hex string from URL
                     const hexBytes = programHex.trim().split(/\s+/);
-                    console.log("VIC-20 iframe: Hex bytes array:", hexBytes.length, "bytes");
+                    console.log("C64 iframe: Hex bytes array:", hexBytes.length, "bytes");
                     
                     const programArray = new Uint8Array(hexBytes.map(byte => parseInt(byte, 16)));
                     
-                    console.log("VIC-20 iframe: Found program in URL (hex): " + programArray.length + " bytes");
-                    console.log("VIC-20 iframe: First 16 bytes:", Array.from(programArray.slice(0, 16)).map(b => b.toString(16).padStart(2, '0')).join(' '));
+                    console.log("C64 iframe: Found program in URL (hex): " + programArray.length + " bytes");
+                    console.log("C64 iframe: First 16 bytes:", Array.from(programArray.slice(0, 16)).map(b => b.toString(16).padStart(2, '0')).join(' '));
                     
                     lastCompiledProgram = programArray;
                     updateStatus("Program loaded from URL (hex): " + programArray.length + " bytes");
                     
                     // Auto-load when emulator is ready
                     if (emulatorReady) {
-                        console.log("VIC-20 iframe: Emulator ready, auto-loading program...");
+                        console.log("C64 iframe: Emulator ready, auto-loading program...");
                         setTimeout(() => loadProgramIntoEmulator(programArray), 500);
                     } else {
-                        console.log("VIC-20 iframe: Emulator not ready yet, will auto-load when ready");
+                        console.log("C64 iframe: Emulator not ready yet, will auto-load when ready");
                     }
                     
                 } catch (e) {
-                    console.error("VIC-20 iframe: Error parsing hex program data:", e);
+                    console.error("C64 iframe: Error parsing hex program data:", e);
                     updateStatus("Error parsing hex program from URL: " + e.message);
                 }
             } else {
-                console.log("VIC-20 iframe: No program parameters found in URL");
+                console.log("C64 iframe: No program parameters found in URL");
             }
         }
     </script>

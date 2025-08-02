@@ -1,3 +1,80 @@
+// Add global C64 debug functions that are available even when machine isn't initialized
+(function() {
+  // Add global functions for C64 iframe URL generation
+  (window as any).c64_debug = {
+    // Generate iframe URL with program data
+    generateIframeURL: (programData: Uint8Array, useBase64: boolean = true) => {
+      const baseURL = 'c64-iframe.html';
+      
+      if (useBase64) {
+        // Convert to base64 for shorter URLs
+        const binaryString = String.fromCharCode.apply(null, Array.from(programData));
+        const base64Data = btoa(binaryString);
+        return `${baseURL}?program=${encodeURIComponent(base64Data)}`;
+      } else {
+        // Convert to hex string
+        const hexString = Array.from(programData).map(b => b.toString(16).padStart(2, '0')).join(' ');
+        return `${baseURL}?hex=${encodeURIComponent(hexString)}`;
+      }
+    },
+    
+    // Open iframe with current compiled program
+    openIframeWithCurrentProgram: () => {
+      const output = (window as any).IDE?.getCurrentOutput();
+      if (output && output instanceof Uint8Array) {
+        const url = (window as any).c64_debug.generateIframeURL(output);
+        console.log('Opened C64 iframe with current program:', url);
+        return url;
+      } else {
+        console.error('No compiled program available. Compile first.');
+        return null;
+      }
+    },
+    
+    // Get current program as hex string for manual loading
+    getCurrentProgramHex: () => {
+      const output = (window as any).IDE?.getCurrentOutput();
+      if (output && output instanceof Uint8Array) {
+        const hexString = Array.from(output).map(b => b.toString(16).padStart(2, '0')).join(' ');
+        console.log('Current program hex:', hexString);
+        return hexString;
+      } else {
+        console.error('No compiled program available. Compile first.');
+        return null;
+      }
+    },
+    
+    // Get current program info
+    getCurrentProgramInfo: () => {
+      const output = (window as any).IDE?.getCurrentOutput();
+      if (output && output instanceof Uint8Array) {
+        console.log('Current program info:');
+        console.log('  Size:', output.length, 'bytes');
+        console.log('  First 16 bytes:', Array.from(output.slice(0, 16)).map(b => b.toString(16).padStart(2, '0')).join(' '));
+        if (output.length >= 2) {
+          const loadAddress = (output[1] << 8) | output[0];
+          console.log('  Load address: 0x' + loadAddress.toString(16));
+        }
+        return {
+          size: output.length,
+          loadAddress: output.length >= 2 ? (output[1] << 8) | output[0] : null,
+          firstBytes: Array.from(output.slice(0, 16))
+        };
+      } else {
+        console.error('No compiled program available. Compile first.');
+        return null;
+      }
+    }
+  };
+  
+  console.log("✅ C64 debug functions added to window.c64_debug");
+  console.log("Available functions:");
+  console.log("  - c64_debug.generateIframeURL(programData, useBase64)");
+  console.log("  - c64_debug.openIframeWithCurrentProgram()");
+  console.log("  - c64_debug.getCurrentProgramHex()");
+  console.log("  - c64_debug.getCurrentProgramInfo()");
+})();
+
 import { CpuState, EmuState } from "../common/baseplatform";
 import { hex } from "../common/util";
 
