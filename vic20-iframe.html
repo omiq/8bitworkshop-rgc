@@ -347,69 +347,24 @@
                 event.stopPropagation();
             }
             
-            // Try multiple methods to send keyup to VIC-20 emulator
-            let keySent = false;
-            
-            // Method 1: Try the Emscripten Z function
+            // Try to send to VIC-20 emulator using the correct Emscripten functions
             if (window.h && typeof window.h.Z === 'function') {
                 try {
                     window.h.Z(canvas, event.keyCode, 3, 0);
                     console.log("VIC-20 iframe: Sent keyup via Z function");
-                    keySent = true;
                 } catch (e) {
-                    console.log("VIC-20 iframe: Error sending keyup via Z function:", e);
+                    console.log("VIC-20 iframe: Error sending keyup:", e);
                 }
             }
             
-            // Method 2: Try setKeyInput function
+            // Also try the alternative keyboard input function
             if (window.h && typeof window.h.setKeyInput === 'function') {
                 try {
                     window.h.setKeyInput(event.keyCode, event.keyCode, 2); // 2 for keyup
                     console.log("VIC-20 iframe: Sent keyup via setKeyInput");
-                    keySent = true;
                 } catch (e) {
                     console.log("VIC-20 iframe: Error sending keyup via setKeyInput:", e);
                 }
-            }
-            
-            // Method 3: Try direct keyboard matrix access (VIC-20 specific)
-            if (window.h && window.h.keyboard && typeof window.h.keyboard.setKey === 'function') {
-                try {
-                    // Map common keys to VIC-20 keyboard matrix positions
-                    const keyMap = {
-                        ' ': 0x20, // Space
-                        'Backspace': 0x14, // Backspace/Delete
-                        'Escape': 0x03, // Escape/Run Stop
-                        'Enter': 0x0D, // Return
-                        'Tab': 0x09, // Tab
-                        'ArrowUp': 0x91, // Cursor Up
-                        'ArrowDown': 0x11, // Cursor Down
-                        'ArrowLeft': 0x9D, // Cursor Left
-                        'ArrowRight': 0x1D, // Cursor Right
-                    };
-                    
-                    const matrixCode = keyMap[event.key] || event.keyCode;
-                    window.h.keyboard.setKey(matrixCode, false); // false for keyup
-                    console.log("VIC-20 iframe: Sent keyup via keyboard.setKey:", matrixCode);
-                    keySent = true;
-                } catch (e) {
-                    console.log("VIC-20 iframe: Error sending keyup via keyboard.setKey:", e);
-                }
-            }
-            
-            // Method 4: Try generic key release function
-            if (window.h && typeof window.h.keyRelease === 'function') {
-                try {
-                    window.h.keyRelease(event.keyCode);
-                    console.log("VIC-20 iframe: Sent keyup via keyRelease");
-                    keySent = true;
-                } catch (e) {
-                    console.log("VIC-20 iframe: Error sending keyup via keyRelease:", e);
-                }
-            }
-            
-            if (!keySent) {
-                console.log("VIC-20 iframe: No keyboard input method found for keyup");
             }
         });
         
