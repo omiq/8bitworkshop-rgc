@@ -42,7 +42,12 @@ class VIC20ChipsPlatform implements Platform {
     // Clear the main element but don't add any emulator
  //   this.mainElement.innerHTML = '<div style="padding: 20px; text-align: center; color: #666;">VIC-20 Emulator disabled for testing.<br>Use the isolated emulator in another tab.</div>';
    this.mainElement.innerHTML = '<iframe id="vic20-iframe" src="vic20-iframe.html" style="width: 100%; height: 500px; border: none;"></iframe>'; 
-    console.log("VIC20ChipsPlatform: , editor ready for use");
+    console.log("VIC20ChipsPlatform: iframe created, setting up with auto-compilation");
+    
+    // Wait for the iframe to load, then set it up with auto-compilation
+    setTimeout(() => {
+      this.setupIframeWithAutoCompilation();
+    }, 1000);
   }
 
   private nextFrame(): void {
@@ -98,6 +103,105 @@ class VIC20ChipsPlatform implements Platform {
       this.machine.loadProgram(rom);
     } else {
       console.error("VIC20ChipsPlatform: machine is null!");
+    }
+  }
+
+  // New method to handle initial iframe setup with auto-compilation
+  private setupIframeWithAutoCompilation(): void {
+    console.log("VIC20ChipsPlatform: Setting up iframe with auto-compilation");
+    
+    var frame = document.getElementById("vic20-iframe") as HTMLIFrameElement;
+    if (!frame || !frame.contentWindow) {
+      console.error("VIC20ChipsPlatform: iframe not found or contentWindow not available");
+      return;
+    }
+
+    const vic20_debug = (window as any).vic20_debug;
+    if (!vic20_debug || !vic20_debug.openIframeWithCurrentProgram) {
+      console.error("VIC20ChipsPlatform: vic20_debug not available");
+      return;
+    }
+
+    // Check if we have a compiled program
+    const iframeURL = vic20_debug.openIframeWithCurrentProgram();
+    console.log("VIC20ChipsPlatform: Initial iframe URL check:", iframeURL);
+    
+    if (iframeURL) {
+      // We have a compiled program, load it
+      console.log("VIC20ChipsPlatform: Found compiled program, loading iframe");
+      this.loadIframeWithProgram(iframeURL);
+    } else {
+      // No compiled program, trigger compilation
+      console.log("VIC20ChipsPlatform: No compiled program found, triggering compilation");
+      this.triggerCompilationAndReload();
+    }
+  }
+
+  private loadIframeWithProgram(iframeURL: string): void {
+    var frame = document.getElementById("vic20-iframe") as HTMLIFrameElement;
+    if (!frame || !frame.contentWindow) return;
+
+    // Set up a one-time load event listener
+    const onLoad = () => {
+      console.log("VIC20ChipsPlatform: iframe loaded, calling checkForProgramInURL");
+      if ((frame.contentWindow as any).checkForProgramInURL) {
+        (frame.contentWindow as any).checkForProgramInURL();
+      }
+      frame.removeEventListener('load', onLoad);
+    };
+    frame.addEventListener('load', onLoad);
+    
+    // Set the location (this triggers the load event)
+    frame.contentWindow.location = iframeURL;
+  }
+
+  private triggerCompilationAndReload(): void {
+    console.log("VIC20ChipsPlatform: Triggering compilation...");
+    
+    // Access the global worker to trigger compilation
+    const worker = (window as any).worker;
+    if (!worker) {
+      console.error("VIC20ChipsPlatform: Global worker not found");
+      return;
+    }
+
+    // Set up a listener for compilation completion
+    const originalOnMessage = worker.onmessage;
+    worker.onmessage = (event: MessageEvent) => {
+      // Call the original handler
+      if (originalOnMessage) {
+        originalOnMessage.call(worker, event);
+      }
+      
+      // Check if compilation completed successfully
+      if (event.data && event.data.output) {
+        console.log("VIC20ChipsPlatform: Compilation completed, reloading iframe");
+        
+        // Wait a bit for the compilation output to be processed
+        setTimeout(() => {
+          const vic20_debug = (window as any).vic20_debug;
+          if (vic20_debug && vic20_debug.openIframeWithCurrentProgram) {
+            const newIframeURL = vic20_debug.openIframeWithCurrentProgram();
+            if (newIframeURL) {
+              this.loadIframeWithProgram(newIframeURL);
+            }
+          }
+          
+          // Restore original message handler
+          worker.onmessage = originalOnMessage;
+        }, 1000);
+      }
+    };
+
+    // Trigger compilation by sending a build message
+    if (worker.postMessage) {
+      worker.postMessage({
+        type: 'build',
+        files: (window as any).IDE?.getCurrentProject()?.getFiles() || {}
+      });
+    } else {
+      console.error("VIC20ChipsPlatform: Worker postMessage not available");
+      worker.onmessage = originalOnMessage;
     }
   }
 
