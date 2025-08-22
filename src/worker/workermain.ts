@@ -1,9 +1,15 @@
 
 import type { WorkerResult, WorkerMessage, WorkerError, SourceLine } from "../common/workertypes";
 import { getBasePlatform, getRootBasePlatform } from "../common/util";
-import { TOOL_PRELOADFS } from "./workertools";
+import { TOOL_PRELOADFS, TOOLS } from "./workertools";
 import { store, builder, errorResult, getWorkFileAsString } from "./builder";
 import { emglobal, fsMeta, loadFilesystem } from "./wasmutils";
+import { compileC64Basic } from "./tools/c64basic";
+import { C64BasicTokenizer } from "../common/basic/c64tokenizer";
+
+// Force inclusion of c64basic tool to prevent tree-shaking
+const c64basicTool = TOOLS['c64basic'];
+const tokenizer = new C64BasicTokenizer();
 
 declare function importScripts(path: string);
 declare function postMessage(msg);

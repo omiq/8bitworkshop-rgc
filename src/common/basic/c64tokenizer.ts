@@ -295,7 +295,7 @@ export class C64BasicTokenizer {
             prg.push((line.lineNumber >> 8) & 0xFF);
 
             // Write line code
-            prg.push(...line.code);
+            prg.push(...Array.from(line.code));
 
             // Write null terminator
             prg.push(0x00);
