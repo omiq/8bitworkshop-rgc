@@ -128,6 +128,7 @@ const TOOL_TO_SOURCE_STYLE = {
   'inform6': 'inform6',
   'fastbasic': 'fastbasic',
   'basic': 'basic',
+  'c64basic': 'c64basic',
   'silice': 'verilog',
   'wiz': 'text/x-wiz',
   'vasmarm': 'vasm',

@@ -421,3 +421,27 @@ span.CodeMirror-selectedtext { background: none; }
 /*** FIXES FOR BOOTSTRAP ***/
 
 .CodeMirror-dialog > button { background-color: #333 !important; }
+
+/* C64 BASIC specific styling */
+.cm-s-default .cm-keyword { color: #00ff00; font-weight: bold; } /* C64 green for keywords */
+.cm-s-default .cm-number { color: #ffff00; } /* C64 yellow for numbers */
+.cm-s-default .cm-string { color: #ff0000; } /* C64 red for strings */
+.cm-s-default .cm-comment { color: #00ffff; font-style: italic; } /* C64 cyan for comments */
+.cm-s-default .cm-variable { color: #ffffff; } /* C64 white for variables */
+.cm-s-default .cm-operator { color: #ff00ff; } /* C64 magenta for operators */
+
+/* C64 BASIC mode specific styling */
+.cm-s-default .cm-c64basic-keyword { color: #00ff00; font-weight: bold; }
+.cm-s-default .cm-c64basic-number { color: #ffff00; }
+.cm-s-default .cm-c64basic-string { color: #ff0000; }
+.cm-s-default .cm-c64basic-comment { color: #00ffff; font-style: italic; }
+.cm-s-default .cm-c64basic-variable { color: #ffffff; }
+.cm-s-default .cm-c64basic-operator { color: #ff00ff; }
+
+/* Dark theme adjustments for C64 BASIC */
+.cm-s-default.CodeMirror { background-color: #000080; color: #ffffff; } /* C64 blue background */
+.cm-s-default .CodeMirror-gutters { background-color: #000060; border-right: 1px solid #4040ff; }
+.cm-s-default .CodeMirror-linenumber { color: #4040ff; }
+
+/* C64 BASIC specific line number styling */
+.cm-s-default .CodeMirror-linenumber { color: #4040ff; font-weight: bold; }
