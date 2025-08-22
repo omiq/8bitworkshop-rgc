@@ -4,9 +4,15 @@ import { PLATFORMS } from "../common/emu";
 import { RasterVideo, AnimationTimer } from "../common/emu";
 
 const C64_PRESETS : Preset[] = [
-  {id:'helloc.c', name:'Hello World', category:'C'},
-  {id:'demo.c', name:'Scrolling Text and Music Demo', category:'C'},
-  {id:'screen_ram.c', name:'Screen RAM'},
+  {id:'helloc.c', name:'Hello World', category:'C Tutorial'},
+  {id:'demo.c', name:'Scrolling Text and Music Demo'},
+  {id:'wordy.c', name:'Word Game'},
+  {id:'adventure.c', name:'Text Adventure'},
+  {id:'hello.bas', name:'Hello World (BASIC)', category:'BASIC Tutorial'},
+  {id:'colors.bas', name:'Color Demo (BASIC)'},
+  {id:'game.bas', name:'Number Game (BASIC)'},
+  {id:'labels.bas', name:'Label Demo (BASIC)'},
+  {id:'screen_ram.c', name:'Screen RAM', category:'8-bit Workshop Demos'},
   {id:'siegegame.c', name:'Siege Game'},
   {id:'joymove.c', name:'Sprite Movement'},
   {id:'sprite_collision.c', name:'Sprite Collision'},
@@ -39,9 +45,7 @@ const C64_PRESETS : Preset[] = [
   {id:'23matches.c', name:'23 Matches'},
   {id:'tgidemo.c', name:'TGI Graphics Demo'},
   {id:'upandaway.c', name:'Up, Up and Away'},
-  {id:'hello.dasm', name:'Hello World (DASM)', category:'Assembly Language'},
-  {id:'hello.acme', name:'Hello World (ACME)'},
-  {id:'hello.wiz', name:'Hello Wiz (Wiz)'},
+
 ];
 
 const C64_MEMORY_MAP = { main:[
@@ -78,20 +82,23 @@ class C64ChipsPlatform implements Platform {
   async start(): Promise<void> {
     console.log("C64ChipsPlatform start() called - EMULATOR DISABLED FOR TESTING");
     
-    // DISABLED: Emulator loading for testing editor in one tab and isolated emulator in another
-    // The platform is available but no emulator is loaded or displayed
+    // Create iframe for C64 emulator
+    const iframe = document.createElement('iframe');
+    iframe.id = 'c64-iframe';
+    iframe.style.width = '100%';
+    iframe.style.height = '600px';
+    iframe.style.border = '1px solid #ccc';
+    iframe.style.backgroundColor = '#000';
     
-    // Clear the main element but don't add any emulator
-    this.mainElement.innerHTML = '<iframe id="c64-iframe" src="c64-iframe.html" style="width: 100%; height: 500px; border: none;"></iframe>'; 
+    // Add iframe to the main element
+    this.mainElement.innerHTML = '';
+    this.mainElement.appendChild(iframe);
     console.log("C64ChipsPlatform: iframe created, setting up with auto-compilation");
     
-    // Wait for the iframe to load, then set it up with auto-compilation
-    setTimeout(() => {
-      this.setupIframeWithAutoCompilation();
-    }, 1000);
-    
-    // Set up a listener for compilation events to reload the iframe
-    this.setupCompilationListener();
+    // Set up iframe with auto-compilation (async)
+    this.setupIframeWithAutoCompilation().catch(error => {
+      console.error("C64ChipsPlatform: Error in setupIframeWithAutoCompilation:", error);
+    });
   }
 
   private nextFrame(): void {
@@ -130,35 +137,60 @@ class C64ChipsPlatform implements Platform {
     
     var frame = document.getElementById("c64-iframe") as HTMLIFrameElement;
     if (frame && frame.contentWindow) {
-      const c64_debug = (window as any).c64_debug;
-      if (c64_debug && c64_debug.openIframeWithCurrentProgram) {
-        // Add cache busting to ensure we get the latest version
-        const iframeURL = c64_debug.openIframeWithCurrentProgram();
-        console.log("C64ChipsPlatform: Generated iframe URL:", iframeURL);
+      // Instead of using URL parameters for large programs, use postMessage
+      if (rom.length > 1000) { // If program is larger than 1KB, use postMessage
+        console.log("C64ChipsPlatform: Large program detected, using postMessage instead of URL");
         
-        if (iframeURL) {
-          // Add cache busting to ensure we get the latest version
-          const cacheBuster = '&t=' + Date.now();
-          const freshURL = iframeURL + cacheBuster;
-          console.log("C64ChipsPlatform: Loading fresh URL with cache buster:", freshURL);
-          
-          // Set up a one-time load event listener
-          const onLoad = () => {
-            console.log("C64ChipsPlatform: iframe loaded, calling checkForProgramInURL");
-            if ((frame.contentWindow as any).checkForProgramInURL) {
-              (frame.contentWindow as any).checkForProgramInURL();
-            }
-            frame.removeEventListener('load', onLoad);
-          };
-          frame.addEventListener('load', onLoad);
-          
-          // Set the location (this triggers the load event)
-          frame.contentWindow.location = freshURL;
-        } else {
-          console.error("C64ChipsPlatform: openIframeWithCurrentProgram returned null");
-        }
+        // Load the iframe with just the base URL
+        const baseURL = 'c64-iframe.html?t=' + Date.now();
+        frame.src = baseURL;
+        
+        // Set up a one-time load event listener
+        const onLoad = () => {
+          console.log("C64ChipsPlatform: iframe loaded, sending program via postMessage");
+          // Send the program data via postMessage
+          frame.contentWindow!.postMessage({
+            type: 'compiled_program',
+            program: rom,
+            autoLoad: true
+          }, '*');
+          frame.removeEventListener('load', onLoad);
+        };
+        frame.addEventListener('load', onLoad);
       } else {
-        console.error("C64ChipsPlatform: c64_debug not available");
+        // For small programs, still use URL parameters
+        const c64_debug = (window as any).c64_debug;
+        if (c64_debug && c64_debug.openIframeWithCurrentProgram) {
+          // Handle async generateIframeURL
+          c64_debug.generateIframeURL(rom).then((iframeURL: string) => {
+            console.log("C64ChipsPlatform: Generated iframe URL:", iframeURL);
+            
+            if (iframeURL) {
+              const cacheBuster = '&t=' + Date.now();
+              const freshURL = iframeURL + cacheBuster;
+              console.log("C64ChipsPlatform: Loading fresh URL with cache buster:", freshURL);
+              
+              // Set up a one-time load event listener
+              const onLoad = () => {
+                console.log("C64ChipsPlatform: iframe loaded, calling checkForProgramInURL");
+                if ((frame.contentWindow as any).checkForProgramInURL) {
+                  (frame.contentWindow as any).checkForProgramInURL();
+                }
+                frame.removeEventListener('load', onLoad);
+              };
+              frame.addEventListener('load', onLoad);
+              
+              // Set the location (this triggers the load event)
+              frame.contentWindow.location = freshURL;
+            } else {
+              console.error("C64ChipsPlatform: generateIframeURL returned null");
+            }
+          }).catch((error: any) => {
+            console.error("C64ChipsPlatform: Error generating iframe URL:", error);
+          });
+        } else {
+          console.error("C64ChipsPlatform: c64_debug not available");
+        }
       }
     } else {
       console.error("C64ChipsPlatform: iframe not found or contentWindow not available");
@@ -172,128 +204,111 @@ class C64ChipsPlatform implements Platform {
   }
 
   // New method to handle initial iframe setup with auto-compilation
-  private setupIframeWithAutoCompilation(): void {
+  private async setupIframeWithAutoCompilation() {
     console.log("C64ChipsPlatform: Setting up iframe with auto-compilation");
     
-    var frame = document.getElementById("c64-iframe") as HTMLIFrameElement;
-    if (!frame || !frame.contentWindow) {
-      console.error("C64ChipsPlatform: iframe not found or contentWindow not available");
-      return;
-    }
-
-    const c64_debug = (window as any).c64_debug;
-    if (!c64_debug || !c64_debug.openIframeWithCurrentProgram) {
-      console.error("C64ChipsPlatform: c64_debug not available");
-      return;
-    }
-
     // Check if we have a compiled program
-    const iframeURL = c64_debug.openIframeWithCurrentProgram();
-    console.log("C64ChipsPlatform: Initial iframe URL check:", iframeURL);
-    
-    if (iframeURL) {
-      // We have a compiled program, load it with cache busting
+    const output = (window as any).IDE?.getCurrentOutput();
+    if (output && output instanceof Uint8Array) {
       console.log("C64ChipsPlatform: Found compiled program, loading iframe");
+      
+      const c64_debug = (window as any).c64_debug;
+      if (c64_debug && c64_debug.generateIframeURL) {
+        try {
+          // Await the async generateIframeURL function
+          const iframeURL = await c64_debug.generateIframeURL(output);
+          console.log("C64ChipsPlatform: Generated iframe URL:", iframeURL);
+          
+          if (iframeURL) {
+            await this.loadIframeWithProgram(iframeURL);
+          } else {
+            console.error("C64ChipsPlatform: generateIframeURL returned null");
+          }
+        } catch (error) {
+          console.error("C64ChipsPlatform: Error generating iframe URL:", error);
+        }
+      } else {
+        console.error("C64ChipsPlatform: c64_debug not available");
+      }
+    } else {
+      console.log("C64ChipsPlatform: No compiled program found, triggering compilation");
+      await this.triggerCompilationAndReload();
+    }
+  }
+
+  private async loadIframeWithProgram(iframeURL: string) {
+    console.log("C64ChipsPlatform: Loading iframe with program URL:", iframeURL);
+    
+    var frame = document.getElementById("c64-iframe") as HTMLIFrameElement;
+    if (frame && frame.contentWindow) {
       const cacheBuster = '&t=' + Date.now();
       const freshURL = iframeURL + cacheBuster;
       console.log("C64ChipsPlatform: Loading fresh URL with cache buster:", freshURL);
-      this.loadIframeWithProgram(freshURL);
+      
+      // Set up a one-time load event listener
+      const onLoad = () => {
+        console.log("C64ChipsPlatform: iframe loaded, calling checkForProgramInURL");
+        if ((frame.contentWindow as any).checkForProgramInURL) {
+          (frame.contentWindow as any).checkForProgramInURL();
+        }
+        frame.removeEventListener('load', onLoad);
+      };
+      frame.addEventListener('load', onLoad);
+      
+      // Set the location (this triggers the load event)
+      frame.contentWindow.location = freshURL;
     } else {
-      // No compiled program, trigger compilation
-      console.log("C64ChipsPlatform: No compiled program found, triggering compilation");
-      this.triggerCompilationAndReload();
+      console.error("C64ChipsPlatform: iframe not found or contentWindow not available");
     }
   }
 
-  private loadIframeWithProgram(iframeURL: string): void {
-    var frame = document.getElementById("c64-iframe") as HTMLIFrameElement;
-    if (!frame || !frame.contentWindow) return;
-
-    // Set up a one-time load event listener
-    const onLoad = () => {
-      console.log("C64ChipsPlatform: iframe loaded, calling checkForProgramInURL");
-      if ((frame.contentWindow as any).checkForProgramInURL) {
-        (frame.contentWindow as any).checkForProgramInURL();
-      }
-      frame.removeEventListener('load', onLoad);
-    };
-    frame.addEventListener('load', onLoad);
+  private async triggerCompilationAndReload() {
+    console.log("C64ChipsPlatform: Triggering compilation and reload");
     
-    // Set the location (this triggers the load event)
-    frame.contentWindow.location = iframeURL;
-  }
-
-  private triggerCompilationAndReload(): void {
-    console.log("C64ChipsPlatform: Triggering compilation...");
+    // Set up a one-time compilation listener
+    this.setupCompilationListener();
     
-    // Access the global worker to trigger compilation
+    // Trigger compilation
     const worker = (window as any).worker;
-    if (!worker) {
-      console.error("C64ChipsPlatform: Global worker not found");
-      return;
+    if (worker && worker.postMessage) {
+      console.log("C64ChipsPlatform: Triggering compilation via worker");
+      worker.postMessage({ type: 'compile' });
+    } else {
+      console.error("C64ChipsPlatform: Worker not available for compilation");
     }
+  }
 
-    // Set up a listener for compilation completion
-    const originalOnMessage = worker.onmessage;
-    worker.onmessage = (event: MessageEvent) => {
-      // Call the original handler
-      if (originalOnMessage) {
-        originalOnMessage.call(worker, event);
+  private setupCompilationListener() {
+    console.log("C64ChipsPlatform: Setting up compilation listener");
+    
+    // Hook into the global setCompileOutput function to detect successful compilations
+    const originalSetCompileOutput = (window as any).setCompileOutput;
+    (window as any).setCompileOutput = (output: any) => {
+      // Call the original function
+      if (originalSetCompileOutput) {
+        originalSetCompileOutput(output);
       }
       
-      // Check if compilation completed successfully
-      if (event.data && event.data.output) {
-        console.log("C64ChipsPlatform: Compilation completed, reloading iframe");
+      // If we have output, reload the iframe with the new program
+      if (output && output instanceof Uint8Array) {
+        console.log("C64ChipsPlatform: Compilation completed, reloading iframe with new program");
         
         // Wait a bit for the compilation output to be processed
-        setTimeout(() => {
+        setTimeout(async () => {
           const c64_debug = (window as any).c64_debug;
-          if (c64_debug && c64_debug.openIframeWithCurrentProgram) {
-            const newIframeURL = c64_debug.openIframeWithCurrentProgram();
-            if (newIframeURL) {
-              // Add a cache-busting parameter to ensure we get the latest version
-              const cacheBuster = '&t=' + Date.now();
-              const freshURL = newIframeURL + cacheBuster;
-              console.log("C64ChipsPlatform: Loading fresh URL with cache buster:", freshURL);
-              this.loadIframeWithProgram(freshURL);
+          if (c64_debug && c64_debug.generateIframeURL) {
+            try {
+              const newIframeURL = await c64_debug.generateIframeURL(output);
+              if (newIframeURL) {
+                await this.loadIframeWithProgram(newIframeURL);
+              }
+            } catch (error) {
+              console.error("C64ChipsPlatform: Error generating iframe URL after compilation:", error);
             }
           }
-          
-          // Restore original message handler
-          worker.onmessage = originalOnMessage;
         }, 1000);
       }
     };
-
-    // Trigger compilation by sending a build message
-    if (worker.postMessage) {
-      worker.postMessage({
-        type: 'build',
-        files: (window as any).IDE?.getCurrentProject()?.getFiles() || {}
-      });
-    } else {
-      console.error("C64ChipsPlatform: Worker postMessage not available");
-      worker.onmessage = originalOnMessage;
-    }
-  }
-
-  private setupCompilationListener(): void {
-    // Listen for compilation events from the IDE
-    const originalSetCompileOutput = (window as any).setCompileOutput;
-    if (originalSetCompileOutput) {
-      (window as any).setCompileOutput = (data: any) => {
-        // Call the original function
-        originalSetCompileOutput(data);
-        
-        // If compilation was successful, reload the iframe with the new program
-        if (data && data.output && !data.errors) {
-          console.log("C64ChipsPlatform: Compilation detected, reloading iframe");
-          setTimeout(() => {
-            this.setupIframeWithAutoCompilation();
-          }, 500);
-        }
-      };
-    }
   }
 
   getPresets(): Preset[] {
@@ -305,6 +320,7 @@ class C64ChipsPlatform implements Platform {
   }
 
   getToolForFilename(filename: string): string {
+    if (filename.endsWith(".bas")) return "c64basic";
     if (filename.endsWith(".c")) return "cc65";
     if (filename.endsWith(".dasm")) return "dasm";
     if (filename.endsWith(".acme")) return "acme";

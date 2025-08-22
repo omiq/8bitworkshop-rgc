@@ -285,6 +285,14 @@ export var PLATFORM_PARAMS = {
       acmeargs: ['-f', 'cbm'],
       //extra_link_files: ['c64-cart.cfg'],
     },
+    'bbc': {
+      arch: '6502',
+      define: ['__BBC__', '__BBC_MICRO__'],
+      cfgfile: 'bbc.cfg',
+      libargs: [],
+      acmeargs: ['-f', 'bbc'],
+      extra_compile_files: ['common.h', 'bbc.cfg'],
+    },
     'kim1': {
       arch: '6502',
     },

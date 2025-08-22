@@ -2,19 +2,44 @@
 (function() {
   // Add global functions for C64 iframe URL generation
   (window as any).c64_debug = {
-    // Generate iframe URL with program data
-    generateIframeURL: (programData: Uint8Array, useBase64: boolean = true) => {
+    // Generate iframe URL with program data (with gzip compression for large programs)
+    generateIframeURL: async (programData: Uint8Array, useBase64: boolean = true) => {
       const baseURL = 'c64-iframe.html';
       
-      if (useBase64) {
-        // Convert to base64 for shorter URLs
-        const binaryString = String.fromCharCode.apply(null, Array.from(programData));
-        const base64Data = btoa(binaryString);
-        return `${baseURL}?program=${encodeURIComponent(base64Data)}`;
+      // For large programs, use gzip compression
+      if (programData.length > 1000) {
+        try {
+          // Dynamically import pako for gzip compression
+          const pako = await import('pako');
+          
+          // Compress the data with gzip
+          const compressed = pako.gzip(programData);
+          
+          // Convert to hex string (more compact than base64)
+          const hexString = Array.from(compressed).map(b => b.toString(16).padStart(2, '0')).join('');
+          
+          console.log(`C64 debug: Original size: ${programData.length} bytes, Compressed: ${compressed.length} bytes (${Math.round((1 - compressed.length / programData.length) * 100)}% reduction)`);
+          
+          return `${baseURL}?gzip=${encodeURIComponent(hexString)}`;
+        } catch (e) {
+          console.error('C64 debug: Gzip compression failed, falling back to base64:', e);
+          // Fall back to base64 if compression fails
+          const binaryString = String.fromCharCode.apply(null, Array.from(programData));
+          const base64Data = btoa(binaryString);
+          return `${baseURL}?program=${encodeURIComponent(base64Data)}`;
+        }
       } else {
-        // Convert to hex string
-        const hexString = Array.from(programData).map(b => b.toString(16).padStart(2, '0')).join(' ');
-        return `${baseURL}?hex=${encodeURIComponent(hexString)}`;
+        // For small programs, use original method
+        if (useBase64) {
+          // Convert to base64 for shorter URLs
+          const binaryString = String.fromCharCode.apply(null, Array.from(programData));
+          const base64Data = btoa(binaryString);
+          return `${baseURL}?program=${encodeURIComponent(base64Data)}`;
+        } else {
+          // Convert to hex string
+          const hexString = Array.from(programData).map(b => b.toString(16).padStart(2, '0')).join(' ');
+          return `${baseURL}?hex=${encodeURIComponent(hexString)}`;
+        }
       }
     },
     
@@ -55,6 +80,31 @@
           const loadAddress = (output[1] << 8) | output[0];
           console.log('  Load address: 0x' + loadAddress.toString(16));
         }
+        
+        // Test compression ratio
+        if (output.length > 1000) {
+          try {
+            // Dynamically import pako for compression test
+            import('pako').then(pako => {
+              const compressed = pako.gzip(output);
+              const hexString = Array.from(compressed).map(b => b.toString(16).padStart(2, '0')).join('');
+              const compressionRatio = Math.round((1 - compressed.length / output.length) * 100);
+              const urlLength = `c64-iframe.html?gzip=${encodeURIComponent(hexString)}`.length;
+              
+              console.log('  Compression test:');
+              console.log('    Original size:', output.length, 'bytes');
+              console.log('    Compressed size:', compressed.length, 'bytes');
+              console.log('    Compression ratio:', compressionRatio + '%');
+              console.log('    URL length:', urlLength, 'characters');
+              console.log('    URL limit safe:', urlLength < 8000 ? 'YES' : 'NO');
+            }).catch(e => {
+              console.log('  Compression test failed:', e);
+            });
+          } catch (e) {
+            console.log('  Compression test failed:', e);
+          }
+        }
+        
         return {
           size: output.length,
           loadAddress: output.length >= 2 ? (output[1] << 8) | output[0] : null,

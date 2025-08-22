@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>C64 Emulator (Iframe)</title>
+    <script src="https://cdn.jsdelivr.net/npm/pako@2.1.0/dist/pako.min.js"></script>
     <style>
         body {
             margin: 0;
@@ -124,6 +125,14 @@
             }
         }
         
+        // Function to load any queued program when emulator becomes ready
+        function loadQueuedProgram() {
+            if (lastCompiledProgram && emulatorReady) {
+                console.log("C64 iframe: Loading queued program now that emulator is ready");
+                setTimeout(() => loadProgramIntoEmulator(lastCompiledProgram), 500);
+            }
+        }
+
         // Initialize C64 emulator in isolated environment
         function initC64Emulator() {
             updateStatus("Loading C64 script...");
@@ -151,8 +160,11 @@
                                 emulatorReady = true;
                                 updateStatus("C64 emulator started - Ready to load programs");
                                 
-                                // Check for latest compiled program
-                                setTimeout(() => window.checkForProgramInURL(), 1000);
+                                // Check for latest compiled program and load any queued program
+                                setTimeout(() => {
+                                    window.checkForProgramInURL();
+                                    loadQueuedProgram();
+                                }, 1000);
                                 
                             } catch (e) {
                                 updateStatus("Error starting emulator: " + e.message);
@@ -175,7 +187,10 @@
                                 console.log("C64 iframe: Emulator already running (calledRun = true)");
                                 emulatorReady = true;
                                 updateStatus("C64 emulator already running - Ready to load programs");
-                                setTimeout(() => window.checkForProgramInURL(), 1000);
+                                setTimeout(() => {
+                                    window.checkForProgramInURL();
+                                    loadQueuedProgram();
+                                }, 1000);
                             } else {
                                 // Try alternative start functions
                                 if (typeof window.h._main === 'function') {
@@ -183,7 +198,10 @@
                                         window.h._main();
                                         emulatorReady = true;
                                         updateStatus("C64 emulator started via _main - Ready to load programs");
-                                        setTimeout(() => window.checkForProgramInURL(), 1000);
+                                        setTimeout(() => {
+                                            window.checkForProgramInURL();
+                                            loadQueuedProgram();
+                                        }, 1000);
                                     } catch (e) {
                                         updateStatus("Error starting emulator via _main: " + e.message);
                                         console.error("C64 iframe: Error starting emulator via _main:", e);
@@ -233,7 +251,10 @@
                                     console.log("C64 iframe: No explicit start function found, assuming emulator is running");
                                     emulatorReady = true;
                                     updateStatus("C64 emulator ready (assumed running) - Ready to load programs");
-                                    setTimeout(() => window.checkForProgramInURL(), 1000);
+                                    setTimeout(() => {
+                                        window.checkForProgramInURL();
+                                        loadQueuedProgram();
+                                    }, 1000);
                                 }
                             }
                         }
@@ -400,22 +421,26 @@
             }
         });
         
-        // Listen for messages from parent window
+        // Listen for postMessage from parent window
         window.addEventListener('message', function(event) {
-            if (event.data && event.data.type === 'compiled_program') {
-                updateStatus("Received compiled program: " + event.data.program.length + " bytes");
+            console.log("C64 iframe: Received message from parent:", event.data);
+            
+            if (event.data && event.data.type === 'compiled_program' && event.data.program) {
+                console.log("C64 iframe: Received compiled program via postMessage:", event.data.program.length, "bytes");
+                
+                // Store the program
                 lastCompiledProgram = event.data.program;
+                updateStatus("Program received via postMessage: " + event.data.program.length + " bytes");
                 
                 // Auto-load if requested
-                if (event.data.autoLoad && emulatorReady) {
-                    loadProgramIntoEmulator(event.data.program);
-                }
-            } else if (event.data && event.data.type === 'compiled_program_response') {
-                updateStatus("Received program response: " + event.data.program.length + " bytes");
-                lastCompiledProgram = event.data.program;
-                
-                if (emulatorReady) {
-                    loadProgramIntoEmulator(event.data.program);
+                if (event.data.autoLoad) {
+                    if (emulatorReady) {
+                        console.log("C64 iframe: Emulator ready, auto-loading program from postMessage...");
+                        setTimeout(() => loadProgramIntoEmulator(event.data.program), 500);
+                    } else {
+                        console.log("C64 iframe: Emulator not ready yet, will auto-load when ready");
+                        // The program will be loaded when emulatorReady becomes true
+                    }
                 }
             }
         });
@@ -472,11 +497,55 @@
             const urlParams = new URLSearchParams(window.location.search);
             const programData = urlParams.get('program');
             const programHex = urlParams.get('hex');
+            const gzipData = urlParams.get('gzip');
             
             console.log("C64 iframe: program param:", programData ? "found (" + programData.length + " chars)" : "not found");
             console.log("C64 iframe: hex param:", programHex ? "found (" + programHex.length + " chars)" : "not found");
+            console.log("C64 iframe: gzip param:", gzipData ? "found (" + gzipData.length + " chars)" : "not found");
             
-            if (programData) {
+            if (gzipData) {
+                try {
+                    console.log("C64 iframe: Attempting to decompress gzip program data...");
+                    
+                    // Convert hex string back to Uint8Array
+                    const compressedBytes = new Uint8Array(gzipData.length / 2);
+                    for (let i = 0; i < gzipData.length; i += 2) {
+                        compressedBytes[i / 2] = parseInt(gzipData.substr(i, 2), 16);
+                    }
+                    
+                    console.log("C64 iframe: Compressed data size:", compressedBytes.length, "bytes");
+                    
+                    // Decompress using pako (if available) or fallback
+                    let programArray;
+                    if (typeof pako !== 'undefined') {
+                        programArray = pako.inflate(compressedBytes);
+                        console.log("C64 iframe: Decompressed to:", programArray.length, "bytes");
+                    } else {
+                        // Fallback: try to use browser's built-in decompression
+                        console.log("C64 iframe: pako not available, trying browser decompression...");
+                        // For now, just use the compressed data as-is
+                        programArray = compressedBytes;
+                    }
+                    
+                    console.log("C64 iframe: Found program in URL (gzip): " + programArray.length + " bytes");
+                    console.log("C64 iframe: First 16 bytes:", Array.from(programArray.slice(0, 16)).map(b => b.toString(16).padStart(2, '0')).join(' '));
+                    
+                    lastCompiledProgram = programArray;
+                    updateStatus("Program loaded from URL (gzip): " + programArray.length + " bytes");
+                    
+                    // Auto-load when emulator is ready
+                    if (emulatorReady) {
+                        console.log("C64 iframe: Emulator ready, auto-loading program...");
+                        setTimeout(() => loadProgramIntoEmulator(programArray), 500);
+                    } else {
+                        console.log("C64 iframe: Emulator not ready yet, will auto-load when ready");
+                    }
+                    
+                } catch (e) {
+                    console.error("C64 iframe: Error decompressing gzip program data:", e);
+                    updateStatus("Error decompressing program from URL: " + e.message);
+                }
+            } else if (programData) {
                 try {
                     console.log("C64 iframe: Attempting to decode base64 program data...");
                     // Try to decode base64 program data

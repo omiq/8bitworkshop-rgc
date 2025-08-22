@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BBC Micro Emulator (Iframe)</title>
+    <script src="https://cdn.jsdelivr.net/npm/pako@2.1.0/dist/pako.min.js"></script>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: #000;
+            font-family: 'Courier New', monospace;
+            color: #fff;
+            overflow: hidden;
+        }
+        
+        #status {
+            position: fixed;
+            top: 10px;
+            left: 10px;
+            background-color: rgba(0, 0, 0, 0.8);
+            padding: 5px 10px;
+            border-radius: 5px;
+            font-size: 12px;
+            z-index: 1000;
+        }
+        
+        #canvas-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            width: 100vw;
+        }
+        
+        canvas {
+            border: 2px solid #333;
+            background-color: #000;
+        }
+        
+        .loading {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            font-size: 18px;
+        }
+    </style>
+</head>
+<body>
+    <div id="status">Loading BBC Micro emulator...</div>
+    <div id="canvas-container">
+        <div class="loading">Loading jsbeeb emulator...</div>
+    </div>
+
+    <script>
+        // Global variables
+        let emulatorReady = false;
+        let lastCompiledProgram = null;
+        let canvas = null;
+        
+        // Status update function
+        function updateStatus(message) {
+            const status = document.getElementById('status');
+            if (status) {
+                status.textContent = message;
+                console.log("BBC iframe:", message);
+            }
+        }
+        
+        // Function to load any queued program when emulator becomes ready
+        function loadQueuedProgram() {
+            if (lastCompiledProgram && emulatorReady) {
+                console.log("BBC iframe: Loading queued program now that emulator is ready");
+                setTimeout(() => loadProgramIntoEmulator(lastCompiledProgram), 500);
+            }
+        }
+        
+        // Core function to load program into emulator
+        function loadProgramIntoEmulator(programData) {
+            if (!emulatorReady || !programData) {
+                updateStatus("Emulator not ready or no program available");
+                return;
+            }
+            
+            updateStatus("Loading program into BBC Micro...");
+            
+            try {
+                // Create a File object for the program
+                const file = new File([programData], "program.prg", { type: "application/octet-stream" });
+                
+                // Create a DataTransfer and add the File
+                const dt = new DataTransfer();
+                dt.items.add(file);
+                
+                // Create a synthetic drop event
+                const dropEvent = new DragEvent("drop", {
+                    dataTransfer: dt,
+                    bubbles: true,
+                    cancelable: true
+                });
+                
+                // Dispatch the event to the canvas
+                if (canvas) {
+                    canvas.dispatchEvent(dropEvent);
+                    console.log("✅ Drop event dispatched to BBC Micro canvas");
+                    
+                    // Wait for program to load
+                    setTimeout(() => {
+                        console.log("🎯 Checking if program loaded successfully...");
+                        updateStatus("Program loaded via drop event: " + programData.length + " bytes");
+                    }, 1000);
+                } else {
+                    updateStatus("Canvas not available for program loading");
+                }
+            } catch (e) {
+                updateStatus("Error loading program: " + e.message);
+                console.error("Error loading program:", e);
+            }
+        }
+        
+        // Initialize BBC Micro emulator
+        function initBBCEmulator() {
+            updateStatus("Loading jsbeeb emulator...");
+            
+            // Create iframe to embed jsbeeb
+            const iframe = document.createElement('iframe');
+            iframe.src = 'https://bbc.retrogamecoders.com/?embed';
+            iframe.style.width = '100%';
+            iframe.style.height = '100%';
+            iframe.style.border = 'none';
+            iframe.style.backgroundColor = '#000';
+            
+            // Replace loading message with iframe
+            const container = document.getElementById('canvas-container');
+            container.innerHTML = '';
+            container.appendChild(iframe);
+            
+            // Listen for iframe load
+            iframe.onload = function() {
+                updateStatus("jsbeeb emulator loaded");
+                emulatorReady = true;
+                
+                // Check for any queued programs
+                setTimeout(() => {
+                    loadQueuedProgram();
+                    window.checkForProgramInURL();
+                }, 1000);
+            };
+        }
+        
+        // Listen for postMessage from parent window
+        window.addEventListener('message', function(event) {
+            console.log("BBC iframe: Received message from parent:", event.data);
+            
+            if (event.data && event.data.type === 'compiled_program' && event.data.program) {
+                console.log("BBC iframe: Received compiled program via postMessage:", event.data.program.length, "bytes");
+                
+                // Store the program
+                lastCompiledProgram = event.data.program;
+                updateStatus("Program received via postMessage: " + event.data.program.length + " bytes");
+                
+                // Auto-load if requested
+                if (event.data.autoLoad) {
+                    if (emulatorReady) {
+                        console.log("BBC iframe: Emulator ready, auto-loading program from postMessage...");
+                        setTimeout(() => loadProgramIntoEmulator(event.data.program), 500);
+                    } else {
+                        console.log("BBC iframe: Emulator not ready yet, will auto-load when ready");
+                        // The program will be loaded when emulatorReady becomes true
+                    }
+                }
+            }
+        });
+        
+        function checkForProgramInURL() {
+            console.log("BBC iframe: Checking for program in URL parameters...");
+            console.log("BBC iframe: Current URL:", window.location.href);
+            console.log("BBC iframe: Search params:", window.location.search);
+            
+            const urlParams = new URLSearchParams(window.location.search);
+            const programData = urlParams.get('program');
+            const programHex = urlParams.get('hex');
+            const gzipData = urlParams.get('gzip');
+            
+            console.log("BBC iframe: program param:", programData ? "found (" + programData.length + " chars)" : "not found");
+            console.log("BBC iframe: hex param:", programHex ? "found (" + programHex.length + " chars)" : "not found");
+            console.log("BBC iframe: gzip param:", gzipData ? "found (" + gzipData.length + " chars)" : "not found");
+            
+            if (gzipData) {
+                try {
+                    console.log("BBC iframe: Attempting to decompress gzip program data...");
+                    
+                    // Convert hex string back to Uint8Array
+                    const compressedBytes = new Uint8Array(gzipData.length / 2);
+                    for (let i = 0; i < gzipData.length; i += 2) {
+                        compressedBytes[i / 2] = parseInt(gzipData.substr(i, 2), 16);
+                    }
+                    
+                    console.log("BBC iframe: Compressed data size:", compressedBytes.length, "bytes");
+                    
+                    // Decompress using pako (if available) or fallback
+                    let programArray;
+                    if (typeof pako !== 'undefined') {
+                        programArray = pako.inflate(compressedBytes);
+                        console.log("BBC iframe: Decompressed to:", programArray.length, "bytes");
+                    } else {
+                        // Fallback: try to use browser's built-in decompression
+                        console.log("BBC iframe: pako not available, trying browser decompression...");
+                        // For now, just use the compressed data as-is
+                        programArray = compressedBytes;
+                    }
+                    
+                    console.log("BBC iframe: Found program in URL (gzip): " + programArray.length + " bytes");
+                    console.log("BBC iframe: First 16 bytes:", Array.from(programArray.slice(0, 16)).map(b => b.toString(16).padStart(2, '0')).join(' '));
+                    
+                    lastCompiledProgram = programArray;
+                    updateStatus("Program loaded from URL (gzip): " + programArray.length + " bytes");
+                    
+                    // Auto-load when emulator is ready
+                    if (emulatorReady) {
+                        console.log("BBC iframe: Emulator ready, auto-loading program...");
+                        setTimeout(() => loadProgramIntoEmulator(programArray), 500);
+                    } else {
+                        console.log("BBC iframe: Emulator not ready yet, will auto-load when ready");
+                    }
+                    
+                } catch (e) {
+                    console.error("BBC iframe: Error decompressing gzip program data:", e);
+                    updateStatus("Error decompressing program from URL: " + e.message);
+                }
+            } else if (programData) {
+                try {
+                    console.log("BBC iframe: Attempting to decode base64 program data...");
+                    
+                    // Decode base64 data
+                    const binaryString = atob(programData);
+                    const programArray = new Uint8Array(binaryString.length);
+                    for (let i = 0; i < binaryString.length; i++) {
+                        programArray[i] = binaryString.charCodeAt(i);
+                    }
+                    
+                    console.log("BBC iframe: Found program in URL (base64): " + programArray.length + " bytes");
+                    console.log("BBC iframe: First 16 bytes:", Array.from(programArray.slice(0, 16)).map(b => b.toString(16).padStart(2, '0')).join(' '));
+                    
+                    lastCompiledProgram = programArray;
+                    updateStatus("Program loaded from URL (base64): " + programArray.length + " bytes");
+                    
+                    // Auto-load when emulator is ready
+                    if (emulatorReady) {
+                        console.log("BBC iframe: Emulator ready, auto-loading program...");
+                        setTimeout(() => loadProgramIntoEmulator(programArray), 500);
+                    } else {
+                        console.log("BBC iframe: Emulator not ready yet, will auto-load when ready");
+                    }
+                    
+                } catch (e) {
+                    console.error("BBC iframe: Error decoding base64 program data:", e);
+                    updateStatus("Error decoding program from URL: " + e.message);
+                }
+            } else if (programHex) {
+                try {
+                    console.log("BBC iframe: Attempting to decode hex program data...");
+                    
+                    // Decode hex string
+                    const hexString = decodeURIComponent(programHex);
+                    const hexValues = hexString.split(' ');
+                    const programArray = new Uint8Array(hexValues.length);
+                    
+                    for (let i = 0; i < hexValues.length; i++) {
+                        programArray[i] = parseInt(hexValues[i], 16);
+                    }
+                    
+                    console.log("BBC iframe: Found program in URL (hex): " + programArray.length + " bytes");
+                    console.log("BBC iframe: First 16 bytes:", Array.from(programArray.slice(0, 16)).map(b => b.toString(16).padStart(2, '0')).join(' '));
+                    
+                    lastCompiledProgram = programArray;
+                    updateStatus("Program loaded from URL (hex): " + programArray.length + " bytes");
+                    
+                    // Auto-load when emulator is ready
+                    if (emulatorReady) {
+                        console.log("BBC iframe: Emulator ready, auto-loading program...");
+                        setTimeout(() => loadProgramIntoEmulator(programArray), 500);
+                    } else {
+                        console.log("BBC iframe: Emulator not ready yet, will auto-load when ready");
+                    }
+                    
+                } catch (e) {
+                    console.error("BBC iframe: Error decoding hex program data:", e);
+                    updateStatus("Error decoding program from URL: " + e.message);
+                }
+            } else {
+                console.log("BBC iframe: No program parameters found in URL");
+                updateStatus("No program found in URL - ready for compilation");
+            }
+        }
+        
+        // Initialize when page loads
+        window.addEventListener('load', function() {
+            console.log("BBC iframe: Page loaded, initializing emulator");
+            initBBCEmulator();
+        });
+        
+        // Make checkForProgramInURL available globally
+        window.checkForProgramInURL = checkForProgramInURL;
+        
+        console.log("BBC iframe: Script loaded and ready");
+    </script>
+</body>
+</html> 

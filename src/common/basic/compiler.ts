@@ -2027,3 +2027,138 @@ export const DIALECTS = {
     "BASIC80":      BASIC80,
     "MODERN":       MODERN_BASIC,
 };
+
+// C64 BASIC V2 dialect
+const C64_BASIC : BASICOptions = {
+    dialectName: "C64",
+    // SYNTAX AND PARSING
+    asciiOnly: false,                    // C64 supports PETSCII
+    uppercaseOnly: false,                // C64 supports both cases
+    optionalLabels: true,                // C64 supports labels
+    optionalWhitespace: true,            // C64 can crunch keywords
+    multipleStmtsPerLine: true,          // C64 supports multiple statements with ":"
+    varNaming: 'AA',                     // C64 allows A-Z, A0-Z9, A$-Z$
+    squareBrackets: false,               // C64 uses parentheses only
+    tickComments: false,                 // C64 uses REM for comments
+    hexOctalConsts: false,               // C64 doesn't support &H/&O
+    optionalLet: true,                   // LET is optional in C64
+    chainAssignments: false,             // C64 doesn't support A = B = C
+    validKeywords: null,                 // Accept all C64 keywords
+    validFunctions: null,                // Accept all C64 functions
+    validOperators: null,                // Accept all C64 operators
+    // VALUES AND OPERATORS
+    defaultValues: true,                 // Variables default to 0 or ""
+    stringConcat: false,                 // C64 doesn't use + for string concat
+    checkOverflow: false,                // C64 doesn't check overflow
+    bitwiseLogic: true,                  // C64 uses -1 for TRUE, 0 for FALSE
+    maxStringLength: 255,                // C64 string length limit
+    maxDefArgs: 0,                       // C64 doesn't support user-defined functions
+    // ARRAYS
+    staticArrays: false,                 // C64 arrays can be redimensioned
+    sharedArrayNamespace: false,         // Arrays and variables have separate namespaces
+    defaultArrayBase: 0,                 // C64 arrays start at 0
+    defaultArraySize: 11,                // Default array size (0-10)
+    maxDimensions: 255,                  // C64 supports up to 255 dimensions
+    arraysContainChars: false,           // C64 arrays don't contain chars
+    // PRINTING
+    printZoneLength: 16,                 // C64 print zone length
+    numericPadding: false,               // C64 doesn't pad numbers
+    // CONTROL FLOW
+    compiledBlocks: false,               // C64 is interpreted
+    testInitialFor: false,               // C64 doesn't skip NEXT
+    optionalNextVar: false,              // C64 requires variable in NEXT
+    multipleNextVars: false,             // C64 doesn't support NEXT J,I
+    checkOnGotoIndex: true,              // C64 checks ON..GOTO bounds
+    computedGoto: false,                 // C64 doesn't support computed GOTO
+    restoreWithLabel: false,             // C64 RESTORE doesn't take labels
+    endStmtRequired: false,              // C64 doesn't require END
+    // MISC
+    multilineIfThen: false,              // C64 doesn't support multi-line IF
+    commandsPerSec: 1000,                // Approximate C64 BASIC speed
+    maxLinesPerFile: 65535,              // C64 line number limit
+    maxArrayElements: 65535,             // C64 array element limit
+};
+
+// C64 BASIC token constants
+export const C64_TOKENS = {
+    "END": 0x80,
+    "FOR": 0x81,
+    "NEXT": 0x82,
+    "DATA": 0x83,
+    "INPUT#": 0x84,
+    "INPUT": 0x85,
+    "DIM": 0x86,
+    "READ": 0x87,
+    "LET": 0x88,
+    "GOTO": 0x89,
+    "RUN": 0x8A,
+    "IF": 0x8B,
+    "RESTORE": 0x8C,
+    "GOSUB": 0x8D,
+    "RETURN": 0x8E,
+    "REM": 0x8F,
+    "STOP": 0x90,
+    "ON": 0x91,
+    "WAIT": 0x92,
+    "LOAD": 0x93,
+    "SAVE": 0x94,
+    "VERIFY": 0x95,
+    "DEF": 0x96,
+    "POKE": 0x97,
+    "PRINT#": 0x98,
+    "PRINT": 0x99,
+    "CONT": 0x9A,
+    "LIST": 0x9B,
+    "CLR": 0x9C,
+    "CMD": 0x9D,
+    "SYS": 0x9E,
+    "OPEN": 0x9F,
+    "CLOSE": 0xA0,
+    "GET": 0xA1,
+    "NEW": 0xA2,
+    "TAB(": 0xA3,
+    "TO": 0xA4,
+    "FN": 0xA5,
+    "SPC(": 0xA6,
+    "THEN": 0xA7,
+    "NOT": 0xA8,
+    "STEP": 0xA9,
+    "+": 0xAA,
+    "-": 0xAB,
+    "*": 0xAC,
+    "/": 0xAD,
+    "^": 0xAE,
+    "AND": 0xAF,
+    "OR": 0xB0,
+    ">": 0xB1,
+    "=": 0xB2,
+    "<": 0xB3,
+    "SGN": 0xB4,
+    "INT": 0xB5,
+    "ABS": 0xB6,
+    "USR": 0xB7,
+    "FRE": 0xB8,
+    "POS": 0xB9,
+    "SQR": 0xBA,
+    "RND": 0xBB,
+    "LOG": 0xBC,
+    "EXP": 0xBD,
+    "COS": 0xBE,
+    "SIN": 0xBF,
+    "TAN": 0xC0,
+    "ATN": 0xC1,
+    "PEEK": 0xC2,
+    "LEN": 0xC3,
+    "STR$": 0xC4,
+    "VAL": 0xC5,
+    "ASC": 0xC6,
+    "CHR$": 0xC7,
+    "LEFT$": 0xC8,
+    "RIGHT$": 0xC9,
+    "MID$": 0xCA,
+    "GO": 0xCB,
+    "PI": 0xFF
+};
+
+// C64 BASIC start address
+export const C64_BASIC_START_ADDR = 0x0801;

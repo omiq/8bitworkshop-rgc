@@ -15,6 +15,7 @@ import * as acme from './tools/acme'
 import * as cc7800 from './tools/cc7800'
 import * as bataribasic from './tools/bataribasic'
 import * as oscar64 from './tools/oscar64'
+import * as c64basic from './tools/c64basic'
 import { PLATFORM_PARAMS } from "./platforms";
 
 export const TOOLS = {
@@ -56,6 +57,7 @@ export const TOOLS = {
   'armtcc': arm.compileARMTCC,
   'armtcclink': arm.linkARMTCC,
   'oscar64': oscar64.compileOscar64,
+  'c64basic': c64basic.compileC64Basic,
 }
 
 export const TOOL_PRELOADFS = {
@@ -69,6 +71,9 @@ export const TOOL_PRELOADFS = {
   'ca65-nes': '65-nes',
   'cc65-atari8': '65-atari8',
   'ca65-atari8': '65-atari8',
+  'cc65-bbc': '65-none',
+  'ca65-bbc': '65-none',
+  '65-bbc': '65-none',
   'cc65-vector': '65-none',
   'ca65-vector': '65-none',
   'cc65-atari7800': '65-none',
