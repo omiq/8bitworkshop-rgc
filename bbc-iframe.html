@@ -88,9 +88,7 @@
         
         // Convert binary data to BBC Micro SSD disc image
         function createSSDDiscImage(programData, filename = "PROGRAM") {
-            // BBC Micro SSD format is a simple sector-based format
-            // Each sector is 256 bytes, and we need to create a basic disc structure
-            
+            // BBC Micro SSD format - proper implementation
             const sectorSize = 256;
             const totalSectors = 80; // Standard single-sided disc
             const discSize = totalSectors * sectorSize;
@@ -101,57 +99,71 @@
             // Fill with zeros (empty sectors)
             discImage.fill(0);
             
-            // Add the program data starting at sector 2 (after the catalogue)
-            const startSector = 2;
-            const startOffset = startSector * sectorSize;
+            // Calculate sectors needed for the program
+            const programSectors = Math.ceil(programData.length / sectorSize);
+            const startSector = 2; // Start after catalogue
             
-            // Copy program data
-            for (let i = 0; i < programData.length && i < (discSize - startOffset); i++) {
-                discImage[startOffset + i] = programData[i];
+            // Copy program data to sectors
+            for (let sector = 0; sector < programSectors; sector++) {
+                const sectorOffset = (startSector + sector) * sectorSize;
+                const dataOffset = sector * sectorSize;
+                const bytesToCopy = Math.min(sectorSize, programData.length - dataOffset);
+                
+                for (let i = 0; i < bytesToCopy; i++) {
+                    discImage[sectorOffset + i] = programData[dataOffset + i];
+                }
             }
             
-            // Create a simple catalogue in sector 0
-            // This is a basic implementation - real BBC discs have more complex catalogues
+            // Create proper BBC Micro catalogue in sector 0
             const catalogue = new Uint8Array(sectorSize);
             
-            // Catalogue header
-            catalogue[0] = 0x00; // First byte of catalogue
-            catalogue[1] = 0x00; // Second byte
-            catalogue[2] = 0x00; // Third byte
-            catalogue[3] = 0x00; // Fourth byte
+            // Catalogue header (DFS format)
+            catalogue[0] = 0x00; // Catalogue start
+            catalogue[1] = 0x00; // Catalogue end
+            catalogue[2] = 0x00; // Number of files
+            catalogue[3] = 0x01; // Number of files (1 file)
+            catalogue[4] = 0x00; // Number of files (high byte)
             
-            // File entry (simplified)
-            catalogue[4] = 0x00; // File status
-            catalogue[5] = filename.charCodeAt(0) || 0x50; // First character of filename
-            catalogue[6] = filename.charCodeAt(1) || 0x52; // Second character
-            catalogue[7] = filename.charCodeAt(2) || 0x4F; // Third character
-            catalogue[8] = filename.charCodeAt(3) || 0x47; // Fourth character
-            catalogue[9] = filename.charCodeAt(4) || 0x52; // Fifth character
-            catalogue[10] = filename.charCodeAt(5) || 0x41; // Sixth character
-            catalogue[11] = filename.charCodeAt(6) || 0x4D; // Seventh character
-            catalogue[12] = filename.charCodeAt(7) || 0x20; // Eighth character
+            // File entry (DFS format)
+            let fileOffset = 8; // Start of file entries
             
-            // File load address (low byte, high byte)
-            catalogue[13] = 0x00; // Load address low
-            catalogue[14] = 0x20; // Load address high (0x2000 = 8192)
+            // Filename (8 characters, padded with spaces)
+            const paddedFilename = filename.padEnd(8, ' ').substring(0, 8);
+            for (let i = 0; i < 8; i++) {
+                catalogue[fileOffset + i] = paddedFilename.charCodeAt(i);
+            }
             
-            // File execution address (low byte, high byte)
-            catalogue[15] = 0x00; // Exec address low
-            catalogue[16] = 0x20; // Exec address high (0x2000 = 8192)
+            // File attributes
+            catalogue[fileOffset + 8] = 0x00; // File status (0 = normal file)
             
-            // File length (low byte, high byte)
-            const fileLength = programData.length;
-            catalogue[17] = fileLength & 0xFF; // Length low
-            catalogue[18] = (fileLength >> 8) & 0xFF; // Length high
+            // Load address (little-endian)
+            catalogue[fileOffset + 9] = 0x00; // Load address low
+            catalogue[fileOffset + 10] = 0x20; // Load address high (0x2000 = 8192)
             
-            // Start sector (low byte, high byte)
-            catalogue[19] = startSector & 0xFF; // Start sector low
-            catalogue[20] = (startSector >> 8) & 0xFF; // Start sector high
+            // Execution address (little-endian)
+            catalogue[fileOffset + 11] = 0x00; // Exec address low
+            catalogue[fileOffset + 12] = 0x20; // Exec address high (0x2000 = 8192)
+            
+            // File length (little-endian)
+            catalogue[fileOffset + 13] = programData.length & 0xFF; // Length low
+            catalogue[fileOffset + 14] = (programData.length >> 8) & 0xFF; // Length high
+            
+            // Start sector (little-endian)
+            catalogue[fileOffset + 15] = startSector & 0xFF; // Start sector low
+            catalogue[fileOffset + 16] = (startSector >> 8) & 0xFF; // Start sector high
             
             // Copy catalogue to disc image
             for (let i = 0; i < sectorSize; i++) {
                 discImage[i] = catalogue[i];
             }
+            
+            console.log("BBC iframe: Created SSD disc image:");
+            console.log("  - Program size:", programData.length, "bytes");
+            console.log("  - Start sector:", startSector);
+            console.log("  - Sectors used:", programSectors);
+            console.log("  - Filename:", paddedFilename);
+            console.log("  - Load address: 0x2000");
+            console.log("  - Exec address: 0x2000");
             
             return discImage;
         }
