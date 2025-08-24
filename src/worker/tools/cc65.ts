@@ -169,7 +169,23 @@ export function assembleCA65(step: BuildStep): BuildStepResult {
             noInitialRun: true,
             //logReadFiles:true,
             print: print_fn,
-            printErr: makeErrorMatcher(errors, /(.+?):(\d+): (.+)/, 2, 3, step.path, 1),
+            printErr: function(s) {
+                // Filter out warnings about deprecated symbols
+                if (s.includes("Warning:") && s.includes("deprecated")) {
+                    return; // Ignore deprecation warnings
+                }
+                // Use the normal error matcher for everything else
+                var matches = /(.+?):(\d+): (.+)/.exec(s);
+                if (matches) {
+                    errors.push({
+                        line: parseInt(matches[2]) || 1,
+                        msg: matches[3],
+                        path: matches[1]
+                    });
+                } else {
+                    console.log("??? " + s);
+                }
+            },
         });
         var FS = CA65.FS;
         // Use TOOL_PRELOADFS mapping to determine filesystem
@@ -238,7 +254,13 @@ export function linkLD65(step: BuildStep): BuildStepResult {
             noInitialRun: true,
             //logReadFiles:true,
             print: print_fn,
-            printErr: function (s) { errors.push({ msg: s, line: 0 }); }
+            printErr: function (s) { 
+                // Filter out warnings about deprecated symbols
+                if (s.includes("Warning:") && s.includes("deprecated")) {
+                    return; // Ignore deprecation warnings
+                }
+                errors.push({ msg: s, line: 0 }); 
+            }
         });
         var FS = LD65.FS;
         // Use TOOL_PRELOADFS mapping to determine filesystem
