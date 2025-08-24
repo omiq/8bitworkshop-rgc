@@ -292,6 +292,7 @@ export var PLATFORM_PARAMS = {
       libargs: ['bbc.lib'], // Use the working bbc.lib from your cc65 installation
       acmeargs: ['-f', 'bbc'],
       extra_compile_files: ['common.h'],
+      extra_link_args: ['--start-addr', '0x1900'], // Restored to match your working command
     },
 
     'kim1': {
