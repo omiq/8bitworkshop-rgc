@@ -32,6 +32,51 @@
             align-items: center;
             height: 100vh;
             width: 100vw;
+            position: relative;
+        }
+        
+        /* Drag and drop styling */
+        #canvas-container.drag-over {
+            background-color: rgba(0, 123, 255, 0.2);
+            border: 3px dashed #007bff;
+        }
+        
+        .drag-drop-overlay {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background-color: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+            z-index: 1000;
+            display: none;
+            pointer-events: none;
+        }
+        
+        #canvas-container.drag-over .drag-drop-overlay {
+            display: block;
+        }
+        
+        /* Add a full-screen drag drop area that sits on top */
+        .drag-drop-fullscreen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background-color: rgba(0, 123, 255, 0.3);
+            border: 3px dashed #007bff;
+            z-index: 9999;
+            display: none;
+            pointer-events: none;
+        }
+        
+        .drag-drop-fullscreen.active {
+            display: block;
+            pointer-events: auto;
         }
         
         canvas {
@@ -82,6 +127,24 @@
     </div>
     <div id="canvas-container">
         <div class="loading">Loading jsbeeb emulator...</div>
+        <div class="drag-drop-overlay">
+            <h3>Drop SSD File Here</h3>
+            <p>Drag and drop a BBC Micro SSD file to load it into the emulator</p>
+        </div>
+    </div>
+    
+    <!-- Full-screen drag drop area -->
+    <div id="drag-drop-fullscreen" class="drag-drop-fullscreen">
+        <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); text-align: center; color: white; background-color: rgba(0, 0, 0, 0.8); padding: 30px; border-radius: 15px;">
+            <h2>Drop SSD File Here</h2>
+            <p>Drag and drop a BBC Micro SSD file to load it into the emulator</p>
+        </div>
+    </div>
+    
+    <!-- File upload button -->
+    <div style="position: fixed; top: 10px; right: 10px; z-index: 10000;">
+        <input type="file" id="ssd-file-input" accept=".ssd" style="display: none;">
+        <button id="load-ssd-button" style="background: #007bff; color: white; padding: 10px; border: none; border-radius: 5px; cursor: pointer;">Load SSD File</button>
     </div>
 
     <script>
@@ -92,6 +155,205 @@
         let discLoaded = false; // Flag to prevent infinite reload loop
         let currentIframe = null; // Track the current iframe for reloading
         let isReloading = false; // Flag to prevent infinite reload loops
+        
+        // Drag and drop functionality
+        function setupDragAndDrop() {
+            console.log('BBC iframe: Setting up drag and drop...');
+            
+            const canvasContainer = document.getElementById('canvas-container');
+            const fullscreenOverlay = document.getElementById('drag-drop-fullscreen');
+            
+            console.log('BBC iframe: Canvas container found:', !!canvasContainer);
+            console.log('BBC iframe: Fullscreen overlay found:', !!fullscreenOverlay);
+            
+            // Prevent default drag behaviors on the entire document
+            ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+                document.addEventListener(eventName, preventDefaults, false);
+                document.body.addEventListener(eventName, preventDefaults, false);
+                console.log('BBC iframe: Added', eventName, 'listener to document and body');
+            });
+            
+            // Set up drag and drop on the container
+            ['dragenter', 'dragover'].forEach(eventName => {
+                canvasContainer.addEventListener(eventName, highlight, false);
+                console.log('BBC iframe: Added', eventName, 'listener to container');
+            });
+            
+            ['dragleave', 'drop'].forEach(eventName => {
+                canvasContainer.addEventListener(eventName, unhighlight, false);
+                console.log('BBC iframe: Added', eventName, 'listener to container');
+            });
+            
+            // Handle dropped files
+            canvasContainer.addEventListener('drop', handleDrop, false);
+            console.log('BBC iframe: Added drop handler to container');
+            
+            // Also set up drag and drop on the full-screen overlay
+            ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+                fullscreenOverlay.addEventListener(eventName, preventDefaults, false);
+                console.log('BBC iframe: Added', eventName, 'listener to fullscreen overlay');
+            });
+            
+            ['dragenter', 'dragover'].forEach(eventName => {
+                fullscreenOverlay.addEventListener(eventName, highlight, false);
+                console.log('BBC iframe: Added', eventName, 'listener to fullscreen overlay');
+            });
+            
+            ['dragleave', 'drop'].forEach(eventName => {
+                fullscreenOverlay.addEventListener(eventName, unhighlight, false);
+                console.log('BBC iframe: Added', eventName, 'listener to fullscreen overlay');
+            });
+            
+            fullscreenOverlay.addEventListener('drop', handleDrop, false);
+            console.log('BBC iframe: Added drop handler to fullscreen overlay');
+            
+            // Also set up drag and drop on the iframe when it's added
+            const observer = new MutationObserver(function(mutations) {
+                mutations.forEach(function(mutation) {
+                    mutation.addedNodes.forEach(function(node) {
+                        if (node.tagName === 'IFRAME') {
+                            console.log('BBC iframe: IFRAME detected, setting up drag and drop on iframe');
+                            
+                            // Set up drag and drop directly on the iframe
+                            ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+                                node.addEventListener(eventName, preventDefaults, false);
+                                console.log('BBC iframe: Added', eventName, 'listener to iframe');
+                            });
+                            
+                            ['dragenter', 'dragover'].forEach(eventName => {
+                                node.addEventListener(eventName, highlight, false);
+                                console.log('BBC iframe: Added', eventName, 'listener to iframe');
+                            });
+                            
+                            ['dragleave', 'drop'].forEach(eventName => {
+                                node.addEventListener(eventName, unhighlight, false);
+                                console.log('BBC iframe: Added', eventName, 'listener to iframe');
+                            });
+                            
+                            node.addEventListener('drop', handleDrop, false);
+                            console.log('BBC iframe: Added drop handler to iframe');
+                        }
+                    });
+                });
+            });
+            
+            observer.observe(canvasContainer, {
+                childList: true,
+                subtree: true
+            });
+            
+            console.log('BBC iframe: Drag and drop setup complete');
+        
+        // Add file upload functionality
+        const fileInput = document.getElementById('ssd-file-input');
+        const loadButton = document.getElementById('load-ssd-button');
+        
+        if (loadButton && fileInput) {
+            loadButton.addEventListener('click', function() {
+                console.log('BBC iframe: Load SSD button clicked');
+                fileInput.click();
+            });
+            
+            fileInput.addEventListener('change', function(e) {
+                const file = e.target.files[0];
+                if (file) {
+                    console.log('BBC iframe: File selected:', file.name);
+                    loadSSDFile(file);
+                }
+            });
+        }
+        
+        // Simple drag and drop test - this should definitely work
+        document.addEventListener('dragover', function(e) {
+            console.log('BBC iframe: Document dragover event');
+            e.preventDefault();
+        });
+        
+        document.addEventListener('drop', function(e) {
+            console.log('BBC iframe: Document drop event');
+            e.preventDefault();
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                console.log('BBC iframe: File dropped on document:', files[0].name);
+                if (files[0].name.toLowerCase().endsWith('.ssd')) {
+                    loadSSDFile(files[0]);
+                } else {
+                    alert('Please select an SSD file (.ssd)');
+                }
+            }
+        });
+        }
+        
+        function preventDefaults(e) {
+            console.log('BBC iframe: preventDefaults called for', e.type);
+            e.preventDefault();
+            e.stopPropagation();
+        }
+        
+        function highlight(e) {
+            console.log('BBC iframe: highlight called for', e.type);
+            document.getElementById('canvas-container').classList.add('drag-over');
+            document.getElementById('drag-drop-fullscreen').classList.add('active');
+        }
+        
+        function unhighlight(e) {
+            console.log('BBC iframe: unhighlight called for', e.type);
+            document.getElementById('canvas-container').classList.remove('drag-over');
+            document.getElementById('drag-drop-fullscreen').classList.remove('active');
+        }
+        
+        function handleDrop(e) {
+            const dt = e.dataTransfer;
+            const files = dt.files;
+            
+            if (files.length > 0) {
+                const file = files[0];
+                console.log('BBC iframe: File dropped:', file.name, file.type, file.size);
+                
+                // Check if it's an SSD file
+                if (file.name.toLowerCase().endsWith('.ssd') || file.type === 'application/octet-stream') {
+                    loadSSDFile(file);
+                } else {
+                    updateStatus('Please drop an SSD file (.ssd)');
+                }
+            }
+            
+            // Always unhighlight after drop
+            unhighlight(e);
+        }
+        
+        async function loadSSDFile(file) {
+            try {
+                updateStatus('Loading SSD file...');
+                
+                // Read the file as ArrayBuffer
+                const arrayBuffer = await file.arrayBuffer();
+                const uint8Array = new Uint8Array(arrayBuffer);
+                
+                console.log('BBC iframe: Loaded SSD file, size:', uint8Array.length, 'bytes');
+                
+                // Convert to string format for localStorage (same as our generated files)
+                const discString = Array.from(uint8Array).map(byte => String.fromCharCode(byte)).join('');
+                
+                // Save to localStorage with the name jsbeeb expects
+                const discName = "disc_PROGRAM.ssd";
+                window.localStorage.setItem(discName, discString);
+                
+                console.log('✅ SSD file loaded to localStorage:', discName);
+                updateStatus('SSD file loaded successfully!');
+                
+                // Force emulator to reload the disc
+                const iframe = document.querySelector('iframe');
+                if (iframe && iframe.contentWindow) {
+                    // Try to trigger a reload or refresh of the emulator
+                    iframe.contentWindow.location.reload();
+                }
+                
+            } catch (error) {
+                console.error('BBC iframe: Error loading SSD file:', error);
+                updateStatus('Error loading SSD file: ' + error.message);
+            }
+        }
         
         // Status update function
         function updateStatus(message) {
@@ -155,7 +417,7 @@
             catalog.push(mainFile);
             
             // Create !BOOT file for auto-boot
-            const bootContent = "*RUN " + filename + "\r\n";
+            const bootContent = "*RUN " + filename + "\r";
             const bootFile = {
                 spec: {
                     directory: String.fromCharCode(ord("$") | 0x80), // Auto-boot flag
@@ -610,6 +872,11 @@
                     }, 1000);
                 }
             });
+            
+            // Setup drag and drop functionality AFTER page loads
+            setTimeout(() => {
+                setupDragAndDrop();
+            }, 100);
             
             // Replace loading message with iframe
             const container = document.getElementById('canvas-container');

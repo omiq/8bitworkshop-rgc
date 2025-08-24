@@ -36,6 +36,14 @@ def create_bbc_filesystem():
         ("asminc/bbc.inc", "asminc/bbc.inc"),
     ]
     
+    # Copy startup code from our local directory
+    startup_files = [
+        ("src/worker/lib/bbc/crt0.s", "crt0.s"),
+    ]
+    
+    for local_path, fs_path in startup_files:
+        files_to_copy.append((local_path, fs_path))
+    
     # Copy common include files (essential ones)
     common_includes = [
         "stdio.h", "stdlib.h", "string.h", "ctype.h", "stddef.h",
@@ -63,7 +71,12 @@ def create_bbc_filesystem():
     current_offset = 0
     
     for src_rel, dst_rel in files_to_copy:
-        src_path = Path(CC65_PATH) / src_rel
+        # Handle both cc65 installation files and local files
+        if src_rel.startswith("src/worker/"):
+            src_path = Path(src_rel)
+        else:
+            src_path = Path(CC65_PATH) / src_rel
+            
         dst_path = temp_dir / dst_rel
         
         if src_path.exists():
@@ -94,7 +107,12 @@ def create_bbc_filesystem():
     
     with open(data_file, 'wb') as f:
         for src_rel, dst_rel in files_to_copy:
-            src_path = Path(CC65_PATH) / src_rel
+            # Handle both cc65 installation files and local files
+            if src_rel.startswith("src/worker/"):
+                src_path = Path(src_rel)
+            else:
+                src_path = Path(CC65_PATH) / src_rel
+                
             if src_path.exists():
                 with open(src_path, 'rb') as src_f:
                     f.write(src_f.read())
