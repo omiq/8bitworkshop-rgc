@@ -3,6 +3,20 @@
 <img width="1461" height="577" alt="image" src="https://github.com/user-attachments/assets/f32ce499-b951-42f4-a501-cfbef9c53029" />
 </a>
 
+## About this IDE
+Hope you enjoy my version of the 8bitworkshop IDE!
+
+The main changes I have made are to attempt to add more target platforms, and to add more features. Most notable currently are the addition of the Commodore Vic20, the BBC Micro, and C64 BASIC.
+
+Some elements are removed such as the Github integration, and the open source C64 ROMs were replaced with the original ones.
+
+--- 
+
+Retro Game Coders is a community of developers who create games for vintage computers and consoles.
+
+--- 
+
+
 ### Use the original if you want stable and working code! 
 
 WARNING: This version of the repo contains small amounts of `AI SLOP` because my coding abilities were not good enough to get Vic 20 working unaided.
