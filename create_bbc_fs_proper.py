@@ -40,13 +40,23 @@ def create_bbc_filesystem():
     common_includes = [
         "stdio.h", "stdlib.h", "string.h", "ctype.h", "stddef.h",
         "stdarg.h", "stdbool.h", "stdint.h", "limits.h", "errno.h",
-        "assert.h", "time.h", "setjmp.h", "signal.h", "unistd.h"
+        "assert.h", "time.h", "setjmp.h", "signal.h", "unistd.h", "conio.h", "target.h"
     ]
     
     for include_file in common_includes:
         src_path = Path(CC65_PATH) / "include" / include_file
         if src_path.exists():
             files_to_copy.append((f"include/{include_file}", f"include/{include_file}"))
+    
+    # Copy all macro files (essential for assembly)
+    macro_files = [
+        "longbranch.mac", "generic.mac", "module.mac", "cpu.mac"
+    ]
+    
+    for macro_file in macro_files:
+        src_path = Path(CC65_PATH) / "asminc" / macro_file
+        if src_path.exists():
+            files_to_copy.append((f"asminc/{macro_file}", f"asminc/{macro_file}"))
     
     # Copy files
     file_data = {}

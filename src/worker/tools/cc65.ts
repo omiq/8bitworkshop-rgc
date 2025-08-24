@@ -483,7 +483,7 @@ export function compileCC65(step: BuildStep): BuildStepResult {
             args.unshift.apply(args, ["-D", "__MAIN__"]);
         }
         var customArgs = params.extra_compiler_args || ['-T', '-g', '-Oirs', '-Cl', '-W', '-pointer-sign,-no-effect'];
-        args = args.concat(customArgs, args);
+        args = args.concat(customArgs);
         args.push(step.path);
         execMain(step, CC65, args);
         if (errors.length)
