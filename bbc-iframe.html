@@ -55,6 +55,24 @@
         iframe:focus {
             outline: none;
         }
+        
+        /* Suppress jsbeeb audio messages and other distracting elements */
+        iframe[src*="jsbeeb"] {
+            /* This helps suppress audio-related messages */
+        }
+        
+        /* Hide any yellow warning messages that might appear */
+        .warning, .alert, .notice {
+            display: none !important;
+        }
+        
+        /* Target specific jsbeeb audio messages */
+        [style*="background-color: yellow"], 
+        [style*="background-color: #ffff00"],
+        [style*="color: yellow"],
+        [style*="color: #ffff00"] {
+            display: none !important;
+        }
     </style>
 </head>
 <body>
@@ -72,6 +90,8 @@
         let lastCompiledProgram = null;
         let canvas = null;
         let discLoaded = false; // Flag to prevent infinite reload loop
+        let currentIframe = null; // Track the current iframe for reloading
+        let isReloading = false; // Flag to prevent infinite reload loops
         
         // Status update function
         function updateStatus(message) {
@@ -361,12 +381,27 @@
                 return;
             }
             
-            // Check if disc is already loaded to prevent infinite reload loop
-            if (discLoaded) {
-                console.log("BBC iframe: Disc already loaded, skipping reload");
-                updateStatus("Disc already loaded, program ready");
+            // Prevent infinite reload loops
+            if (isReloading) {
+                console.log("BBC iframe: Already reloading, skipping...");
                 return;
             }
+            
+            // Always allow loading new programs - reset the flag to allow reloading
+            discLoaded = false;
+            console.log("BBC iframe: Loading new program into emulator...");
+            
+            // Clear any existing disc from localStorage to force fresh load
+            try {
+                window.localStorage.removeItem("disc_PROGRAM.ssd");
+                console.log("BBC iframe: Cleared existing disc from localStorage");
+            } catch (e) {
+                console.log("BBC iframe: Could not clear localStorage:", e);
+            }
+            
+            // Instead of reloading the iframe, just force the emulator to reload the disc
+            // This avoids infinite loops while still ensuring fresh program loading
+            console.log("BBC iframe: Loading program directly into emulator...");
             
             updateStatus("Converting program to BBC disc image...");
             
@@ -408,7 +443,7 @@
                             window.localStorage.setItem(discName, discString);
                             
                             console.log("✅ Disc saved to localStorage:", discName);
-                            updateStatus("Program saved to local disc: " + programData.length + " bytes");
+                            updateStatus("Program ready to run");
                             
                             // Create download link for the SSD file
                             console.log("BBC iframe: Creating download link for SSD file...");
@@ -427,7 +462,7 @@
                             downloadLink.href = url;
                             downloadLink.download = 'PROGRAM.ssd';
                             downloadLink.textContent = 'Download SSD file for testing';
-                            downloadLink.style.display = 'block';
+                            downloadLink.style.display = 'none';
                             downloadLink.style.margin = '10px';
                             downloadLink.style.padding = '5px';
                             downloadLink.style.backgroundColor = '#007bff';
@@ -446,21 +481,37 @@
                                 console.error("BBC iframe: Status div not found!");
                             }
                             
-                            // Also update the fallback download area
+                            // Also update the fallback download area (hidden since we have menu download)
                             const downloadArea = document.getElementById('download-area');
                             const downloadLinkElement = document.getElementById('download-link');
                             if (downloadArea && downloadLinkElement) {
                                 downloadLinkElement.href = url;
-                                downloadArea.style.display = 'block';
-                                console.log("BBC iframe: Fallback download area activated");
+                                downloadArea.style.display = 'none'; // Hidden since we have menu download
+                                console.log("BBC iframe: Fallback download area updated (hidden)");
                             }
                             
-                            // Set flag to prevent infinite reload loop
+                            // Set flag to indicate disc is loaded
                             discLoaded = true;
                             
-                            // Don't reload iframe - jsbeeb should pick up the disc automatically
-                            console.log("BBC iframe: Disc saved to localStorage, jsbeeb should load it automatically");
-                            updateStatus("Disc saved, program ready to run. Download link available for testing in other emulators.");
+                            // Force jsbeeb to reload the disc by triggering a disc change event
+                            console.log("BBC iframe: Disc saved to localStorage, forcing jsbeeb to reload...");
+                            
+                            // Try to trigger a disc reload in jsbeeb
+                            if (jsbeebWindow.processor && jsbeebWindow.processor.fdc) {
+                                // Force reload by clearing any cached disc and triggering reload
+                                try {
+                                    // Send a custom event to jsbeeb to force disc reload
+                                    jsbeebWindow.postMessage({
+                                        type: 'force_disc_reload',
+                                        discName: 'PROGRAM.ssd'
+                                    }, '*');
+                                    console.log("BBC iframe: Sent force_disc_reload message to jsbeeb");
+                                } catch (e) {
+                                    console.log("BBC iframe: Could not send force_disc_reload message:", e);
+                                }
+                            }
+                            
+                            updateStatus("Program ready to run");
                             
                         } catch (localStorageError) {
                             console.error("Error saving to localStorage:", localStorageError);
@@ -483,7 +534,7 @@
                         console.log("✅ Drop event dispatched to jsbeeb iframe (fallback)");
                         
                         setTimeout(() => {
-                            updateStatus("Program loaded via drop event: " + programData.length + " bytes");
+                            updateStatus("Program ready to run");
                         }, 1000);
                     }
                 } else {
@@ -506,6 +557,9 @@
             iframe.style.height = '100%';
             iframe.style.border = 'none';
             iframe.style.backgroundColor = '#000';
+            
+            // Store reference to current iframe
+            currentIframe = iframe;
             
             // Ensure keyboard focus goes to the emulator when clicked
             iframe.addEventListener('load', function() {
@@ -566,6 +620,45 @@
             iframe.onload = function() {
                 updateStatus("jsbeeb emulator loaded");
                 emulatorReady = true;
+                isReloading = false; // Reset reload flag
+                
+                // Suppress audio messages from jsbeeb
+                try {
+                    const jsbeebWindow = iframe.contentWindow;
+                    if (jsbeebWindow && jsbeebWindow.document) {
+                        // Hide any existing yellow messages
+                        const yellowElements = jsbeebWindow.document.querySelectorAll('[style*="yellow"], [style*="#ffff00"], .warning, .alert, .notice');
+                        yellowElements.forEach(el => {
+                            el.style.display = 'none';
+                            el.style.visibility = 'hidden';
+                        });
+                        
+                        // Monitor for new messages and hide them
+                        const observer = new MutationObserver(function(mutations) {
+                            mutations.forEach(function(mutation) {
+                                mutation.addedNodes.forEach(function(node) {
+                                    if (node.nodeType === 1) { // Element node
+                                        if (node.style && (node.style.backgroundColor === 'yellow' || node.style.color === 'yellow')) {
+                                            node.style.display = 'none';
+                                        }
+                                        // Also check child elements
+                                        const yellowChildren = node.querySelectorAll('[style*="yellow"], [style*="#ffff00"]');
+                                        yellowChildren.forEach(el => el.style.display = 'none');
+                                    }
+                                });
+                            });
+                        });
+                        
+                        observer.observe(jsbeebWindow.document.body, {
+                            childList: true,
+                            subtree: true
+                        });
+                        
+                        console.log("BBC iframe: Audio message suppression enabled");
+                    }
+                } catch (e) {
+                    console.log("BBC iframe: Could not suppress audio messages:", e);
+                }
                 
                 // Check for any queued programs
                 setTimeout(() => {
