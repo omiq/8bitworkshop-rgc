@@ -77,6 +77,76 @@
             }
         }
         
+        // Convert binary data to BBC Micro SSD disc image
+        function createSSDDiscImage(programData, filename = "PROGRAM") {
+            // BBC Micro SSD format is a simple sector-based format
+            // Each sector is 256 bytes, and we need to create a basic disc structure
+            
+            const sectorSize = 256;
+            const totalSectors = 80; // Standard single-sided disc
+            const discSize = totalSectors * sectorSize;
+            
+            // Create the disc image buffer
+            const discImage = new Uint8Array(discSize);
+            
+            // Fill with zeros (empty sectors)
+            discImage.fill(0);
+            
+            // Add the program data starting at sector 2 (after the catalogue)
+            const startSector = 2;
+            const startOffset = startSector * sectorSize;
+            
+            // Copy program data
+            for (let i = 0; i < programData.length && i < (discSize - startOffset); i++) {
+                discImage[startOffset + i] = programData[i];
+            }
+            
+            // Create a simple catalogue in sector 0
+            // This is a basic implementation - real BBC discs have more complex catalogues
+            const catalogue = new Uint8Array(sectorSize);
+            
+            // Catalogue header
+            catalogue[0] = 0x00; // First byte of catalogue
+            catalogue[1] = 0x00; // Second byte
+            catalogue[2] = 0x00; // Third byte
+            catalogue[3] = 0x00; // Fourth byte
+            
+            // File entry (simplified)
+            catalogue[4] = 0x00; // File status
+            catalogue[5] = filename.charCodeAt(0) || 0x50; // First character of filename
+            catalogue[6] = filename.charCodeAt(1) || 0x52; // Second character
+            catalogue[7] = filename.charCodeAt(2) || 0x4F; // Third character
+            catalogue[8] = filename.charCodeAt(3) || 0x47; // Fourth character
+            catalogue[9] = filename.charCodeAt(4) || 0x52; // Fifth character
+            catalogue[10] = filename.charCodeAt(5) || 0x41; // Sixth character
+            catalogue[11] = filename.charCodeAt(6) || 0x4D; // Seventh character
+            catalogue[12] = filename.charCodeAt(7) || 0x20; // Eighth character
+            
+            // File load address (low byte, high byte)
+            catalogue[13] = 0x00; // Load address low
+            catalogue[14] = 0x20; // Load address high (0x2000 = 8192)
+            
+            // File execution address (low byte, high byte)
+            catalogue[15] = 0x00; // Exec address low
+            catalogue[16] = 0x20; // Exec address high (0x2000 = 8192)
+            
+            // File length (low byte, high byte)
+            const fileLength = programData.length;
+            catalogue[17] = fileLength & 0xFF; // Length low
+            catalogue[18] = (fileLength >> 8) & 0xFF; // Length high
+            
+            // Start sector (low byte, high byte)
+            catalogue[19] = startSector & 0xFF; // Start sector low
+            catalogue[20] = (startSector >> 8) & 0xFF; // Start sector high
+            
+            // Copy catalogue to disc image
+            for (let i = 0; i < sectorSize; i++) {
+                discImage[i] = catalogue[i];
+            }
+            
+            return discImage;
+        }
+        
         // Core function to load program into emulator
         function loadProgramIntoEmulator(programData) {
             if (!emulatorReady || !programData) {
@@ -84,35 +154,51 @@
                 return;
             }
             
-            updateStatus("Loading program into BBC Micro...");
+            updateStatus("Converting program to BBC disc image...");
             
             try {
-                // Create a File object for the program
-                const file = new File([programData], "program.prg", { type: "application/octet-stream" });
+                // Convert the binary program to a BBC Micro SSD disc image
+                const discImage = createSSDDiscImage(programData, "PROGRAM");
                 
-                // Create a DataTransfer and add the File
-                const dt = new DataTransfer();
-                dt.items.add(file);
-                
-                // Create a synthetic drop event
-                const dropEvent = new DragEvent("drop", {
-                    dataTransfer: dt,
-                    bubbles: true,
-                    cancelable: true
-                });
-                
-                // Dispatch the event to the canvas
-                if (canvas) {
-                    canvas.dispatchEvent(dropEvent);
-                    console.log("✅ Drop event dispatched to BBC Micro canvas");
+                // Get the iframe element
+                const iframe = document.querySelector('iframe');
+                if (iframe && iframe.contentWindow) {
+                    // Access jsbeeb's processor and load the disc
+                    const jsbeebWindow = iframe.contentWindow;
                     
-                    // Wait for program to load
-                    setTimeout(() => {
-                        console.log("🎯 Checking if program loaded successfully...");
-                        updateStatus("Program loaded via drop event: " + programData.length + " bytes");
-                    }, 1000);
+                    if (jsbeebWindow.processor && jsbeebWindow.processor.fdc) {
+                        // Create a File object for the disc image
+                        const file = new File([discImage], "program.ssd", { type: "application/octet-stream" });
+                        
+                        // Use jsbeeb's loadHTMLFile function
+                        jsbeebWindow.loadHTMLFile(file);
+                        console.log("✅ Program loaded via jsbeeb API");
+                        
+                        // Wait for program to load
+                        setTimeout(() => {
+                            console.log("🎯 Checking if program loaded successfully...");
+                            updateStatus("Program loaded as disc image: " + programData.length + " bytes");
+                        }, 1000);
+                    } else {
+                        // Fallback: try to dispatch a drop event
+                        const dt = new DataTransfer();
+                        dt.items.add(file);
+                        
+                        const dropEvent = new DragEvent("drop", {
+                            dataTransfer: dt,
+                            bubbles: true,
+                            cancelable: true
+                        });
+                        
+                        jsbeebWindow.document.dispatchEvent(dropEvent);
+                        console.log("✅ Drop event dispatched to jsbeeb iframe (fallback)");
+                        
+                        setTimeout(() => {
+                            updateStatus("Program loaded via drop event: " + programData.length + " bytes");
+                        }, 1000);
+                    }
                 } else {
-                    updateStatus("Canvas not available for program loading");
+                    updateStatus("jsbeeb iframe not available for program loading");
                 }
             } catch (e) {
                 updateStatus("Error loading program: " + e.message);
@@ -124,9 +210,9 @@
         function initBBCEmulator() {
             updateStatus("Loading jsbeeb emulator...");
             
-            // Create iframe to embed jsbeeb
+            // Create iframe to embed jsbeeb locally
             const iframe = document.createElement('iframe');
-            iframe.src = 'https://bbc.retrogamecoders.com/?embed';
+            iframe.src = 'res/jsbeeb/dist/index.html?embed';
             iframe.style.width = '100%';
             iframe.style.height = '100%';
             iframe.style.border = 'none';
@@ -147,6 +233,11 @@
                     loadQueuedProgram();
                     window.checkForProgramInURL();
                 }, 1000);
+            };
+            
+            iframe.onerror = function() {
+                updateStatus("Failed to load jsbeeb emulator");
+                console.error("BBC iframe: Failed to load jsbeeb iframe");
             };
         }
         

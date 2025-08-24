@@ -77,8 +77,10 @@ export class BBCMicroPlatform implements Platform {
 
   getPresets(): any[] {
     return [
-      { id: 'hello.c', name: 'Hello World', category: 'C' },
-      { id: 'demo.c', name: 'BBC Micro Demo', category: 'C' }
+              { id: 'bbc_minimal.c', name: 'Minimal Program', category: 'C' },
+        { id: 'bbc_hello.c', name: 'Hello World', category: 'C' },
+        { id: 'bbc_hello_asm.c', name: 'Hello World (Assembly)', category: 'C' },
+        { id: 'simple_test.c', name: 'Simple Test', category: 'C' }
     ];
   }
 

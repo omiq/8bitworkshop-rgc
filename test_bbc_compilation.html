@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>BBC Compilation Test</title>
+    <style>
+        body { font-family: monospace; margin: 20px; }
+        .output { background: #f0f0f0; padding: 10px; border: 1px solid #ccc; white-space: pre-wrap; }
+        .error { color: red; }
+        .success { color: green; }
+    </style>
+</head>
+<body>
+    <h1>BBC Compilation Test</h1>
+    <p>This test will open the 8bitworkshop IDE and test BBC compilation.</p>
+    
+    <h2>Test Steps:</h2>
+    <ol>
+        <li>Open the IDE: <a href="http://localhost:8080/" target="_blank">http://localhost:8080/</a></li>
+        <li>Select "BBC Micro" from the platform dropdown</li>
+        <li>Try to compile this code:</li>
+    </ol>
+    
+    <pre style="background: #f8f8f8; padding: 10px; border: 1px solid #ddd;">
+#include &lt;stdio.h&gt;
+
+int main(void) {
+    puts("Hello World!");
+    return 0;
+}</pre>
+    
+    <h2>Expected Result:</h2>
+    <p>If the compilation works, you should see:</p>
+    <ul>
+        <li>✅ No compilation errors</li>
+        <li>✅ A compiled binary (around 1796 bytes)</li>
+        <li>✅ The program should run in the BBC emulator</li>
+    </ul>
+    
+    <h2>If it fails:</h2>
+    <p>Please share the exact error message you see in the compilation output.</p>
+    
+    <h2>Current Configuration:</h2>
+    <ul>
+        <li><strong>Platform:</strong> BBC Micro</li>
+        <li><strong>Architecture:</strong> 6502</li>
+        <li><strong>Configuration:</strong> none.cfg (generic 6502)</li>
+        <li><strong>Library:</strong> none.lib</li>
+        <li><strong>Target:</strong> bbc (-t bbc flag)</li>
+    </ul>
+    
+    <script>
+        // Auto-open the IDE
+        window.addEventListener('load', () => {
+            setTimeout(() => {
+                window.open('http://localhost:8080/', '_blank');
+            }, 1000);
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>BBC WASM Compilation Test</title>
+</head>
+<body>
+    <h1>BBC WASM Compilation Test</h1>
+    <div id="output"></div>
+    
+    <script>
+        // Test the actual WASM-based cc65 compilation for BBC
+        async function testBBCWASMCompilation() {
+            const output = document.getElementById('output');
+            
+            output.innerHTML = '<p>Loading WASM modules...</p>';
+            
+            try {
+                // Load the worker bundle to test the actual compilation
+                const response = await fetch('./gen/worker/bundle.js');
+                if (!response.ok) {
+                    throw new Error('Could not load worker bundle');
+                }
+                
+                output.innerHTML += '<p>Worker bundle loaded successfully</p>';
+                
+                // Create a mock worker environment
+                const mockWorker = {
+                    postMessage: (msg) => {
+                        output.innerHTML += `<p>Worker message: ${JSON.stringify(msg)}</p>`;
+                    }
+                };
+                
+                // Create a mock compilation request
+                const compilationRequest = {
+                    type: 'compile',
+                    platform: 'bbc',
+                    files: [{
+                        name: 'main.c',
+                        content: `int main() { return 0; }`
+                    }],
+                    params: {
+                        arch: '6502',
+                        define: ['__BBC__', '__BBC_MICRO__'],
+                        cfgfile: 'bbc.cfg',
+                        libargs: [],
+                        acmeargs: ['-f', 'bbc'],
+                        extra_compile_files: ['common.h', 'bbc.cfg']
+                    }
+                };
+                
+                output.innerHTML += '<p>Testing compilation with request:</p>';
+                output.innerHTML += `<pre>${JSON.stringify(compilationRequest, null, 2)}</pre>`;
+                
+                // Try to load the actual WASM files
+                output.innerHTML += '<p>Attempting to load WASM files...</p>';
+                
+                // Test loading the cc65 WASM module
+                try {
+                    const cc65Response = await fetch('./src/worker/wasm/cc65.wasm');
+                    if (cc65Response.ok) {
+                        output.innerHTML += '<p>✅ cc65.wasm loaded successfully</p>';
+                    } else {
+                        output.innerHTML += '<p>❌ cc65.wasm not found</p>';
+                    }
+                } catch (e) {
+                    output.innerHTML += `<p>❌ Error loading cc65.wasm: ${e.message}</p>`;
+                }
+                
+                // Test loading the ld65 WASM module
+                try {
+                    const ld65Response = await fetch('./src/worker/wasm/ld65.wasm');
+                    if (ld65Response.ok) {
+                        output.innerHTML += '<p>✅ ld65.wasm loaded successfully</p>';
+                    } else {
+                        output.innerHTML += '<p>❌ ld65.wasm not found</p>';
+                    }
+                } catch (e) {
+                    output.innerHTML += `<p>❌ Error loading ld65.wasm: ${e.message}</p>`;
+                }
+                
+                // Test loading the filesystem
+                try {
+                    const fsResponse = await fetch('./src/worker/fs/fs65-none.data');
+                    if (fsResponse.ok) {
+                        output.innerHTML += '<p>✅ fs65-none.data loaded successfully</p>';
+                    } else {
+                        output.innerHTML += '<p>❌ fs65-none.data not found</p>';
+                    }
+                } catch (e) {
+                    output.innerHTML += `<p>❌ Error loading fs65-none.data: ${e.message}</p>`;
+                }
+                
+                // Test loading the filesystem metadata
+                try {
+                    const fsMetaResponse = await fetch('./src/worker/fs/fs65-none.js.metadata');
+                    if (fsMetaResponse.ok) {
+                        const metadata = await fsMetaResponse.json();
+                        output.innerHTML += `<p>✅ fs65-none.js.metadata loaded successfully (${metadata.files.length} files)</p>`;
+                        
+                        // Show what files are available
+                        output.innerHTML += '<p>Available files in filesystem:</p><ul>';
+                        metadata.files.slice(0, 10).forEach(file => {
+                            output.innerHTML += `<li>${file.filename}</li>`;
+                        });
+                        if (metadata.files.length > 10) {
+                            output.innerHTML += `<li>... and ${metadata.files.length - 10} more</li>`;
+                        }
+                        output.innerHTML += '</ul>';
+                    } else {
+                        output.innerHTML += '<p>❌ fs65-none.js.metadata not found</p>';
+                    }
+                } catch (e) {
+                    output.innerHTML += `<p>❌ Error loading fs65-none.js.metadata: ${e.message}</p>`;
+                }
+                
+            } catch (error) {
+                output.innerHTML += `<p>❌ Test failed: ${error.message}</p>`;
+            }
+        }
+        
+        // Run the test when page loads
+        window.addEventListener('load', testBBCWASMCompilation);
+    </script>
+</body>
+</html>

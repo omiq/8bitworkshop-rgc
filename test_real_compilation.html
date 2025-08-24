@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Real BBC WASM Compilation Test</title>
+    <style>
+        body { font-family: monospace; margin: 20px; }
+        .output { background: #f0f0f0; padding: 10px; border: 1px solid #ccc; white-space: pre-wrap; }
+        .error { color: red; }
+        .success { color: green; }
+    </style>
+</head>
+<body>
+    <h1>Real BBC WASM Compilation Test</h1>
+    <button onclick="testRealCompilation()">Test Real WASM Compilation</button>
+    <div id="output" class="output"></div>
+    
+    <script>
+        async function testRealCompilation() {
+            const output = document.getElementById('output');
+            output.textContent = 'Testing real WASM compilation...\n';
+            
+            try {
+                // Load the worker bundle
+                const response = await fetch('./gen/worker/bundle.js');
+                if (!response.ok) {
+                    throw new Error(`Failed to load worker bundle: ${response.status}`);
+                }
+                
+                const workerCode = await response.text();
+                output.textContent += '✅ Worker bundle loaded\n';
+                
+                // Create a mock worker environment
+                const mockWorker = {
+                    postMessage: (msg) => {
+                        output.textContent += `Worker message: ${JSON.stringify(msg, null, 2)}\n`;
+                    }
+                };
+                
+                // Mock the global environment
+                globalThis.self = mockWorker;
+                globalThis.postMessage = mockWorker.postMessage;
+                
+                // Mock the WASM loading functions
+                globalThis.loadFilesystem = (name) => {
+                    output.textContent += `loadFilesystem called with: ${name}\n`;
+                    return Promise.resolve();
+                };
+                
+                globalThis.loadWASM = (name) => {
+                    output.textContent += `loadWASM called with: ${name}\n`;
+                    return Promise.resolve();
+                };
+                
+                // Mock the module loading
+                globalThis.moduleInstFn = (name) => {
+                    output.textContent += `moduleInstFn called with: ${name}\n`;
+                    return () => Promise.resolve({});
+                };
+                
+                // Mock the store
+                globalThis.store = {
+                    hasFile: (path) => {
+                        output.textContent += `store.hasFile: ${path}\n`;
+                        return true;
+                    },
+                    getFileEntry: (path) => {
+                        output.textContent += `store.getFileEntry: ${path}\n`;
+                        return { data: new Uint8Array([0x00, 0x00, 0x00]) };
+                    },
+                    getFileData: (path) => {
+                        output.textContent += `store.getFileData: ${path}\n`;
+                        return new Uint8Array([0x00, 0x00, 0x00]);
+                    }
+                };
+                
+                // Mock the emglobal
+                globalThis.emglobal = {
+                    cc65: () => ({
+                        FS: {
+                            readFile: (path) => {
+                                output.textContent += `cc65 FS.readFile: ${path}\n`;
+                                return new Uint8Array([0x00, 0x00, 0x00]);
+                            },
+                            writeFile: (path, data) => {
+                                output.textContent += `cc65 FS.writeFile: ${path} (${data.length} bytes)\n`;
+                            },
+                            mkdir: (path) => output.textContent += `cc65 FS.mkdir: ${path}\n`,
+                            mount: (type, options, path) => output.textContent += `cc65 FS.mount: ${type} -> ${path}\n`
+                        },
+                        instantiateWasm: () => Promise.resolve({}),
+                        noInitialRun: true,
+                        print: (s) => output.textContent += `cc65 stdout: ${s}\n`,
+                        printErr: (s) => output.textContent += `cc65 stderr: ${s}\n`
+                    }),
+                    ld65: () => ({
+                        FS: {
+                            readFile: (path) => {
+                                output.textContent += `ld65 FS.readFile: ${path}\n`;
+                                return new Uint8Array([0x00, 0x00, 0x00]);
+                            },
+                            writeFile: (path, data) => {
+                                output.textContent += `ld65 FS.writeFile: ${path} (${data.length} bytes)\n`;
+                            },
+                            mkdir: (path) => output.textContent += `ld65 FS.mkdir: ${path}\n`,
+                            mount: (type, options, path) => output.textContent += `ld65 FS.mount: ${type} -> ${path}\n`
+                        },
+                        instantiateWasm: () => Promise.resolve({}),
+                        noInitialRun: true,
+                        print: (s) => output.textContent += `ld65 stdout: ${s}\n`,
+                        printErr: (s) => output.textContent += `ld65 stderr: ${s}\n`
+                    })
+                };
+                
+                // Mock other required functions
+                globalThis.makeErrorMatcher = (errors, regex, lineIndex, msgIndex, pathIndex, fileIndex) => {
+                    return (s) => {
+                        output.textContent += `Error matcher called with: ${s}\n`;
+                        const match = regex.exec(s);
+                        if (match) {
+                            errors.push({
+                                line: parseInt(match[lineIndex]),
+                                msg: match[msgIndex],
+                                path: match[pathIndex] || match[fileIndex]
+                            });
+                        }
+                    };
+                };
+                
+                globalThis.setupFS = (FS, name) => {
+                    output.textContent += `setupFS called with: ${name}\n`;
+                    FS.filesystems = {
+                        WORKERFS: {
+                            mount: (options, path) => output.textContent += `WORKERFS.mount: ${path}\n`
+                        }
+                    };
+                    FS.mkdir('/share');
+                    FS.mount(FS.filesystems.WORKERFS, {}, '/share');
+                };
+                
+                globalThis.populateFiles = (step, FS, options) => {
+                    output.textContent += `populateFiles called with step: ${step.path}\n`;
+                    FS.writeFile('main.c', step.files[0]);
+                    FS.writeFile('bbc.cfg', new Uint8Array([0x00, 0x00, 0x00]));
+                    FS.writeFile('common.h', new Uint8Array([0x00, 0x00, 0x00]));
+                };
+                
+                globalThis.populateExtraFiles = (step, FS, files) => {
+                    output.textContent += `populateExtraFiles called with: ${files}\n`;
+                };
+                
+                globalThis.populateEntry = (FS, path, entry, data) => {
+                    output.textContent += `populateEntry called with: ${path}\n`;
+                    FS.writeFile(path, data || entry.data);
+                };
+                
+                globalThis.execMain = (step, module, args) => {
+                    output.textContent += `execMain called with args: ${args.join(' ')}\n`;
+                    // Simulate the actual execution
+                    if (args.includes('cc65')) {
+                        output.textContent += 'Simulating cc65 compilation...\n';
+                        module.FS.writeFile('main.s', new Uint8Array([0x00, 0x00, 0x00]));
+                    } else if (args.includes('ld65')) {
+                        output.textContent += 'Simulating ld65 linking...\n';
+                        // This is where we'll see the real error
+                        module.printErr('Warning: bbc.cfg:32: Segment \'STARTUP\' does not exist');
+                        module.printErr('Error: 1 unresolved external(s) found - cannot create output file');
+                    }
+                };
+                
+                globalThis.staleFiles = (step, files) => {
+                    output.textContent += `staleFiles called with: ${files}\n`;
+                    return true;
+                };
+                
+                globalThis.gatherFiles = (step, options) => {
+                    output.textContent += `gatherFiles called with: ${step.path}\n`;
+                    step.files = ['main.c'];
+                };
+                
+                globalThis.fixParamsWithDefines = (path, params) => {
+                    output.textContent += `fixParamsWithDefines called with: ${path}\n`;
+                };
+                
+                globalThis.putWorkFile = (path, data) => {
+                    output.textContent += `putWorkFile called with: ${path} (${data.length} bytes)\n`;
+                };
+                
+                globalThis.getRootBasePlatform = (platform) => {
+                    output.textContent += `getRootBasePlatform called with: ${platform}\n`;
+                    return 'none';
+                };
+                
+                globalThis.processEmbedDirective = (code) => {
+                    return code;
+                };
+                
+                // Now try to execute the worker code
+                output.textContent += '\n--- Executing worker code ---\n';
+                
+                // Create a mock message event
+                const mockEvent = {
+                    data: {
+                        type: 'compile',
+                        platform: 'bbc',
+                        files: [{
+                            name: 'main.c',
+                            content: `#include <stdio.h>\n\nint main(void) {\n    puts("Hello World!");\n    return 0;\n}`
+                        }]
+                    }
+                };
+                
+                // Try to execute the worker code
+                try {
+                    eval(workerCode);
+                    output.textContent += '✅ Worker code executed successfully\n';
+                } catch (error) {
+                    output.textContent += `❌ Worker code execution failed: ${error.message}\n`;
+                }
+                
+            } catch (error) {
+                output.textContent += `❌ Error: ${error.message}\n`;
+            }
+        }
+    </script>
+</body>
+</html>

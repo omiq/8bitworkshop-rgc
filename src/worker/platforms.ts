@@ -289,9 +289,9 @@ export var PLATFORM_PARAMS = {
       arch: '6502',
       define: ['__BBC__', '__BBC_MICRO__'],
       cfgfile: 'bbc.cfg',
-      libargs: [],
+      libargs: ['bbc.lib'],
       acmeargs: ['-f', 'bbc'],
-      extra_compile_files: ['common.h', 'bbc.cfg'],
+      extra_compile_files: ['common.h'],
     },
     'kim1': {
       arch: '6502',
