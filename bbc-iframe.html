@@ -170,17 +170,30 @@
                         // Create a File object for the disc image
                         const file = new File([discImage], "program.ssd", { type: "application/octet-stream" });
                         
-                        // Use jsbeeb's loadHTMLFile function
-                        jsbeebWindow.loadHTMLFile(file);
-                        console.log("✅ Program loaded via jsbeeb API");
+                        // Use jsbeeb's disc loading API directly
+                        const readFileAsBinaryString = async (file) => {
+                            return new Promise((resolve, reject) => {
+                                const reader = new FileReader();
+                                reader.onload = () => resolve(reader.result);
+                                reader.onerror = reject;
+                                reader.readAsBinaryString(file);
+                            });
+                        };
                         
-                        // Wait for program to load
-                        setTimeout(() => {
-                            console.log("🎯 Checking if program loaded successfully...");
+                        // Load the disc using jsbeeb's internal API
+                        readFileAsBinaryString(file).then(binaryData => {
+                            // Use the disc module that's now exposed globally
+                            jsbeebWindow.processor.fdc.loadDisc(0, jsbeebWindow.disc.discFor(jsbeebWindow.processor.fdc, file.name, binaryData));
+                            console.log("✅ Program loaded via jsbeeb API");
                             updateStatus("Program loaded as disc image: " + programData.length + " bytes");
-                        }, 1000);
+                        }).catch(e => {
+                            console.error("Error reading file:", e);
+                            updateStatus("Error reading disc image: " + e.message);
+                        });
+                        
                     } else {
                         // Fallback: try to dispatch a drop event
+                        const file = new File([discImage], "program.ssd", { type: "application/octet-stream" });
                         const dt = new DataTransfer();
                         dt.items.add(file);
                         
