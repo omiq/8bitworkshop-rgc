@@ -4,6 +4,7 @@ import { CodeListingMap, WorkerError } from "../../common/workertypes";
 import { BuildStep, BuildStepResult, gatherFiles, staleFiles, populateFiles, fixParamsWithDefines, putWorkFile, populateExtraFiles, store, populateEntry, anyTargetChanged, processEmbedDirective } from "../builder";
 import { re_crlf, makeErrorMatcher } from "../listingutils";
 import { loadNative, moduleInstFn, print_fn, setupFS, execMain, emglobal, EmscriptenModule } from "../wasmutils";
+import { TOOL_PRELOADFS } from "../workertools";
 
 
 /*
@@ -109,6 +110,37 @@ function parseCA65Listing(asmfn: string, code: string, symbols, segments, params
 export function assembleCA65(step: BuildStep): BuildStepResult {
     loadNative("ca65");
     var errors = [];
+    
+    // Check ca65 version first
+    console.log("=== CA65 VERSION CHECK ===");
+    var CA65_VERSION: EmscriptenModule = emglobal.ca65({
+        instantiateWasm: moduleInstFn('ca65'),
+        noInitialRun: true,
+        print: (s) => console.log("ca65 version:", s),
+        printErr: (s) => console.log("ca65 version error:", s),
+    });
+    var FS_VERSION = CA65_VERSION.FS;
+    setupFS(FS_VERSION, '65-' + getRootBasePlatform(step.platform));
+    
+    // Create a simple version check step
+    var versionStep = {
+        path: 'version_check',
+        mainfile: false,
+        platform: step.platform,
+        tool: 'ca65',
+        args: [],
+        input: '',
+        output: '',
+        defines: [],
+        includes: [],
+        extraFiles: [],
+        params: {},
+        prefix: 'version_check'
+    };
+    
+    execMain(versionStep, CA65_VERSION, ['--version']);
+    console.log("=== END CA65 VERSION CHECK ===");
+    
     gatherFiles(step, { mainFilePath: "main.s" });
     var objpath = step.prefix + ".o";
     var lstpath = step.prefix + ".lst";
@@ -122,7 +154,15 @@ export function assembleCA65(step: BuildStep): BuildStepResult {
             printErr: makeErrorMatcher(errors, /(.+?):(\d+): (.+)/, 2, 3, step.path, 1),
         });
         var FS = CA65.FS;
-        setupFS(FS, '65-' + getRootBasePlatform(step.platform));
+        // Use TOOL_PRELOADFS mapping to determine filesystem
+        var fsName = TOOL_PRELOADFS['ca65-' + getRootBasePlatform(step.platform)];
+        if (!fsName) {
+            fsName = TOOL_PRELOADFS['65-' + getRootBasePlatform(step.platform)];
+        }
+        if (!fsName) {
+            fsName = '65-' + getRootBasePlatform(step.platform); // fallback
+        }
+        setupFS(FS, fsName);
         populateFiles(step, FS);
         populateExtraFiles(step, FS, step.params.extra_compile_files);
         fixParamsWithDefines(step.path, step.params);
@@ -165,7 +205,15 @@ export function linkLD65(step: BuildStep): BuildStepResult {
             printErr: function (s) { errors.push({ msg: s, line: 0 }); }
         });
         var FS = LD65.FS;
-        setupFS(FS, '65-' + getRootBasePlatform(step.platform));
+        // Use TOOL_PRELOADFS mapping to determine filesystem
+        var fsName = TOOL_PRELOADFS['ld65-' + getRootBasePlatform(step.platform)];
+        if (!fsName) {
+            fsName = TOOL_PRELOADFS['65-' + getRootBasePlatform(step.platform)];
+        }
+        if (!fsName) {
+            fsName = '65-' + getRootBasePlatform(step.platform); // fallback
+        }
+        setupFS(FS, fsName);
         populateFiles(step, FS);
         populateExtraFiles(step, FS, params.extra_link_files);
         // populate .cfg file, if it is a custom one
@@ -289,6 +337,36 @@ export function compileCC65(step: BuildStep): BuildStepResult {
             });
         }
     }
+    
+    // Check cc65 version first
+    console.log("=== CC65 VERSION CHECK ===");
+    var CC65_VERSION: EmscriptenModule = emglobal.cc65({
+        instantiateWasm: moduleInstFn('cc65'),
+        noInitialRun: true,
+        print: (s) => console.log("cc65 version:", s),
+        printErr: (s) => console.log("cc65 version error:", s),
+    });
+    var FS_VERSION = CC65_VERSION.FS;
+    setupFS(FS_VERSION, '65-' + getRootBasePlatform(step.platform));
+    
+    // Create a simple version check step
+    var versionStep = {
+        path: 'version_check',
+        mainfile: false,
+        platform: step.platform,
+        tool: 'cc65',
+        args: [],
+        input: '',
+        output: '',
+        defines: [],
+        includes: [],
+        extraFiles: [],
+        params: {},
+        prefix: 'version_check'
+    };
+    
+    execMain(versionStep, CC65_VERSION, ['--version']);
+    console.log("=== END CC65 VERSION CHECK ===");
     gatherFiles(step, { mainFilePath: "main.c" });
     var destpath = step.prefix + '.s';
     if (staleFiles(step, [destpath])) {
@@ -300,7 +378,15 @@ export function compileCC65(step: BuildStep): BuildStepResult {
             printErr: match_fn,
         });
         var FS = CC65.FS;
-        setupFS(FS, '65-' + getRootBasePlatform(step.platform));
+        // Use TOOL_PRELOADFS mapping to determine filesystem
+        var fsName = TOOL_PRELOADFS['cc65-' + getRootBasePlatform(step.platform)];
+        if (!fsName) {
+            fsName = TOOL_PRELOADFS['65-' + getRootBasePlatform(step.platform)];
+        }
+        if (!fsName) {
+            fsName = '65-' + getRootBasePlatform(step.platform); // fallback
+        }
+        setupFS(FS, fsName);
         populateFiles(step, FS, {
             mainFilePath: step.path,
             processFn: (path, code) => {

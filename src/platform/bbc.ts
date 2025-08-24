@@ -75,15 +75,18 @@ export class BBCMicroPlatform implements Platform {
     return '.c';
   }
 
-  getPresets(): any[] {
-            return [
+      getPresets(): any[] {
+        return [
             { id: 'bbc_minimal.c', name: 'Minimal Program', category: 'C' },
             { id: 'bbc_hello.c', name: 'Hello World', category: 'C' },
             { id: 'bbc_hello_asm.c', name: 'Hello World (Assembly)', category: 'C' },
+            { id: 'bbc_os_test.c', name: 'OS Call Test', category: 'C' },
+            { id: 'bbc_asm_test.s', name: 'Assembly Test', category: 'Assembly' },
+            { id: 'bbc_simple_test.c', name: 'Simple Test (New)', category: 'C' },
             { id: 'bbc_test.c', name: 'Simple Test', category: 'C' },
             { id: 'simple_test.c', name: 'Simple Test (Old)', category: 'C' }
         ];
-  }
+    }
 
   pause(): void {
     console.log("BBCMicroPlatform pause() called");
@@ -105,7 +108,7 @@ export class BBCMicroPlatform implements Platform {
     var frame = document.getElementById("bbc-iframe") as HTMLIFrameElement;
     if (frame && frame.contentWindow) {
       // Instead of using URL parameters for large programs, use postMessage
-      if (rom.length > 1000) { // If program is larger than 1KB, use postMessage
+      if (rom.length > 0) { // Always use postMessage for all programs
         console.log("BBCMicroPlatform: Large program detected, using postMessage instead of URL");
         
         // Load the iframe with just the base URL
@@ -163,11 +166,7 @@ export class BBCMicroPlatform implements Platform {
       console.error("BBCMicroPlatform: iframe not found or contentWindow not available");
     }
     
-    if (this.machine) {
-      this.machine.loadProgram(rom);
-    } else {
-      console.error("BBCMicroPlatform: machine is null!");
-    }
+    // BBC platform uses iframe approach, no machine object needed
   }
 
   private async setupIframeWithAutoCompilation() {

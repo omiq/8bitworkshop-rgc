@@ -59,6 +59,9 @@
 </head>
 <body>
     <div id="status">Loading BBC Micro emulator...</div>
+    <div id="download-area" style="position: fixed; top: 50px; left: 10px; z-index: 1001; display: none;">
+        <a id="download-link" href="#" download="PROGRAM.ssd" style="display: block; background-color: #007bff; color: white; padding: 10px; text-decoration: none; border-radius: 5px; margin: 5px 0;">Download SSD file for testing</a>
+    </div>
     <div id="canvas-container">
         <div class="loading">Loading jsbeeb emulator...</div>
     </div>
@@ -68,6 +71,7 @@
         let emulatorReady = false;
         let lastCompiledProgram = null;
         let canvas = null;
+        let discLoaded = false; // Flag to prevent infinite reload loop
         
         // Status update function
         function updateStatus(message) {
@@ -86,24 +90,237 @@
             }
         }
         
-        // Convert binary data to BBC Micro SSD disc image
+        // Constants from the working makedisk.py (available to all functions)
+        const BYTES_PER_SECTOR = 256;
+        const SECTORS_PER_TRACK = 10;
+        const TRACK_COUNT = 80;
+        const START_SECTOR = 2;
+        
+        // Convert binary data to BBC Micro SSD disc image using exact logic from working Python script
         function createSSDDiscImage(programData, filename = "PROGRAM") {
-            // BBC Micro SSD format - proper implementation
-            const sectorSize = 256;
-            const totalSectors = 80; // Standard single-sided disc
-            const discSize = totalSectors * sectorSize;
+            console.log("BBC iframe: Creating SSD disc using exact Python script logic...");
             
-            // Create the disc image buffer
+            // Create disc image buffer
+            const discSize = TRACK_COUNT * SECTORS_PER_TRACK * BYTES_PER_SECTOR;
             const discImage = new Uint8Array(discSize);
-            
-            // Fill with zeros (empty sectors)
             discImage.fill(0);
             
-            // Calculate sectors needed for the program
-            const programSectors = Math.ceil(programData.length / sectorSize);
-            const startSector = 2; // Start after catalogue
+            // Create file specification (matching Python script)
+            const fileSpec = {
+                directory: "$",
+                file: "program.bin",
+                name: filename,
+                            load_addr: 0x1900,  // Standard BBC load address
+            exec_addr: 0x1900,  // Standard BBC exec address
+                length: programData.length
+            };
             
-            // Copy program data to sectors
+            // Create catalog entries
+            const catalog = [];
+            
+            // Use program data directly without header (let BBC handle it)
+            const programWithHeader = programData;
+            
+            // Update file spec
+            fileSpec.length = programWithHeader.length;
+            
+            // Add main program file
+            const mainFile = {
+                spec: fileSpec,
+                start_sector: START_SECTOR,
+                content: programWithHeader,
+                length: programWithHeader.length,
+                sectors: Math.floor((programWithHeader.length + BYTES_PER_SECTOR - 1) / BYTES_PER_SECTOR)
+            };
+            catalog.push(mainFile);
+            
+            // Create !BOOT file for auto-boot
+            const bootContent = "*RUN " + filename + "\r\n*FX 0\r\n";
+            const bootFile = {
+                spec: {
+                    directory: String.fromCharCode(ord("$") | 0x80), // Auto-boot flag
+                    file: "!BOOT",
+                    name: "!BOOT",
+                    load_addr: 0x1900,
+                    exec_addr: 0x1900,
+                    length: bootContent.length
+                },
+                start_sector: START_SECTOR,
+                content: new TextEncoder().encode(bootContent),
+                length: bootContent.length,
+                sectors: Math.floor((bootContent.length + BYTES_PER_SECTOR - 1) / BYTES_PER_SECTOR)
+            };
+            
+            // Insert boot file at beginning and adjust sectors
+            catalog.unshift(bootFile);
+            for (let i = 1; i < catalog.length; i++) {
+                catalog[i].start_sector = bootFile.start_sector + bootFile.sectors;
+            }
+            
+            console.log("BBC iframe: Catalog created:");
+            for (const f of catalog) {
+                console.log("  -", f.spec.name, "sectors:", f.sectors, "start:", f.start_sector, "length:", f.length);
+            }
+            
+            // Write catalog (sectors 0 and 1)
+            writeCatalog(discImage, catalog, "8BITWORKSHOP", "run");
+            
+            // Write files (starting from sector 2)
+            writeFiles(discImage, catalog);
+            
+            console.log("BBC iframe: Successfully created SSD disc image:", discImage.length, "bytes");
+            console.log("  - Files:", catalog.map(f => f.spec.name).join(", "));
+            console.log("  - Boot file:", bootFile.spec.name);
+            console.log("  - Boot content:", JSON.stringify(bootContent));
+            console.log("  - Program with header length:", programWithHeader.length);
+            console.log("  - Program header bytes:", Array.from(programWithHeader.slice(0, 4)).map(b => '0x' + b.toString(16).padStart(2, '0')).join(' '));
+            
+            // Debug: Check first few bytes of the disc image
+            console.log("  - Disc image first 32 bytes:", Array.from(discImage.slice(0, 32)).map(b => '0x' + b.toString(16).padStart(2, '0')).join(' '));
+            console.log("  - Catalogue sector 0:", Array.from(discImage.slice(0, 256)).map(b => '0x' + b.toString(16).padStart(2, '0')).join(' '));
+            console.log("  - Catalogue sector 1:", Array.from(discImage.slice(256, 512)).map(b => '0x' + b.toString(16).padStart(2, '0')).join(' '));
+            
+            return discImage;
+        }
+        
+        // Helper function to get char code (like ord() in Python)
+        function ord(char) {
+            return char.charCodeAt(0);
+        }
+        
+        // Write catalog sectors (exact logic from Python script)
+        function writeCatalog(discImage, catalog, title, opt) {
+            // Sector 00
+            const s00 = new SSDSector(discImage, 0);
+            s00.string(8, title);
+            
+            for (const entry of catalog) {
+                s00.string(7, entry.spec.name, " ");
+                s00.write(1, [ord(entry.spec.directory)]);
+            }
+            s00.close();
+            
+            // Sector 01
+            const s01 = new SSDSector(discImage, 1);
+            s01.string(4, title.substring(8));
+            s01.byte(0);
+            s01.byte(catalog.length * 8);
+            
+            const sectorCount = TRACK_COUNT * SECTORS_PER_TRACK;
+            const bootOpts = {null: 0, "load": 1, "run": 2, "exec": 3};
+            
+            // Set boot option (matching Python logic)
+            let bootOption;
+            if (opt === "run" || opt === "exec") {
+                bootOption = 3; // Use exec mode for auto-boot
+            } else {
+                bootOption = bootOpts[opt] || 0;
+            }
+            
+            s01.bitpairs(0, bootOption, 0, sectorCount >> 8);
+            s01.byte(sectorCount & 0xff);
+            
+            for (const entry of catalog) {
+                s01.word(entry.spec.load_addr);
+                s01.word(entry.spec.exec_addr);
+                s01.word(entry.length);
+                s01.bitpairs(
+                    entry.spec.exec_addr >> 16,
+                    entry.length >> 16,
+                    entry.spec.load_addr >> 16,
+                    entry.start_sector >> 8
+                );
+                s01.byte(entry.start_sector & 0xff);
+            }
+            s01.close();
+        }
+        
+        // Write files to disc (exact logic from Python script)
+        function writeFiles(discImage, catalog) {
+            console.log("BBC iframe: Writing files to disc...");
+            
+            for (const f of catalog) {
+                console.log("  - Writing file:", f.spec.name, "at sector", f.start_sector, "length:", f.content.length);
+                
+                let remainingContent = f.content;
+                let currentSector = f.start_sector;
+                
+                while (remainingContent.length > 0) {
+                    const chunkSize = Math.min(remainingContent.length, 256);
+                    const sector = new SSDSector(discImage, currentSector);
+                    sector.write(chunkSize, remainingContent);
+                    sector.close();
+                    
+                    remainingContent = remainingContent.slice(chunkSize);
+                    currentSector++;
+                }
+            }
+        }
+        
+        // SSD Sector class (exact replica of Python SSDSector)
+        class SSDSector {
+            constructor(discImage, sectorNumber) {
+                this.written = 0;
+                this.discImage = discImage;
+                this.sectorOffset = sectorNumber * 256;
+                console.log("    - Creating sector", sectorNumber, "at offset", this.sectorOffset);
+            }
+            
+            write(num, data) {
+                for (let i = 0; i < num; i++) {
+                    this.discImage[this.sectorOffset + this.written + i] = data[i];
+                }
+                this.written += num;
+                if (this.written > 256) {
+                    throw new Error("Too many bytes in sector");
+                }
+            }
+            
+            byte(byte) {
+                this.write(1, [byte]);
+            }
+            
+            bitpairs(p3, p2, p1, p0) {
+                this.byte((((((p3 << 2) | p2) << 2) | p1) << 2) | p0);
+            }
+            
+            word(word) { // 16 bits
+                this.byte(word & 0xff);
+                this.byte((word >> 8) & 0xff);
+            }
+            
+            string(num, data, pad = "\0") {
+                const chars = data.length;
+                let payload;
+                if (chars > num) {
+                    // Truncate if data is too long
+                    payload = data.substring(0, num);
+                } else {
+                    // Pad if data is too short
+                    const repeatCount = num - chars;
+                    payload = data + (pad.repeat(repeatCount));
+                }
+                this.write(num, new TextEncoder().encode(payload));
+            }
+            
+            close() {
+                const remaining = 256 - this.written;
+                this.write(remaining, new Array(remaining).fill(0));
+            }
+        }
+        
+        // Fallback simple SSD disc creation
+        function createSimpleSSDDisc(programData, filename = "PROGRAM") {
+            const sectorSize = 256;
+            const totalSectors = 80;
+            const discSize = totalSectors * sectorSize;
+            const discImage = new Uint8Array(discSize);
+            discImage.fill(0);
+            
+            // Simple sector-based storage
+            const startSector = 2;
+            const programSectors = Math.ceil(programData.length / sectorSize);
+            
             for (let sector = 0; sector < programSectors; sector++) {
                 const sectorOffset = (startSector + sector) * sectorSize;
                 const dataOffset = sector * sectorSize;
@@ -114,64 +331,40 @@
                 }
             }
             
-            // Create proper BBC Micro catalogue in sector 0
+            // Simple catalogue
             const catalogue = new Uint8Array(sectorSize);
+            catalogue[0] = 0x00; catalogue[1] = 0x00; catalogue[2] = 0x00; catalogue[3] = 0x01;
             
-            // Catalogue header (DFS format)
-            catalogue[0] = 0x00; // Catalogue start
-            catalogue[1] = 0x00; // Catalogue end
-            catalogue[2] = 0x00; // Number of files
-            catalogue[3] = 0x01; // Number of files (1 file)
-            catalogue[4] = 0x00; // Number of files (high byte)
-            
-            // File entry (DFS format)
-            let fileOffset = 8; // Start of file entries
-            
-            // Filename (8 characters, padded with spaces)
             const paddedFilename = filename.padEnd(8, ' ').substring(0, 8);
             for (let i = 0; i < 8; i++) {
-                catalogue[fileOffset + i] = paddedFilename.charCodeAt(i);
+                catalogue[8 + i] = paddedFilename.charCodeAt(i);
             }
             
-            // File attributes
-            catalogue[fileOffset + 8] = 0x00; // File status (0 = normal file)
+            catalogue[16] = 0x00; // File status
+            catalogue[17] = 0x00; catalogue[18] = 0x20; // Load address
+            catalogue[19] = 0x00; catalogue[20] = 0x20; // Exec address
+            catalogue[21] = programData.length & 0xFF; catalogue[22] = (programData.length >> 8) & 0xFF; // Length
+            catalogue[23] = startSector & 0xFF; catalogue[24] = (startSector >> 8) & 0xFF; // Start sector
             
-            // Load address (little-endian)
-            catalogue[fileOffset + 9] = 0x00; // Load address low
-            catalogue[fileOffset + 10] = 0x20; // Load address high (0x2000 = 8192)
-            
-            // Execution address (little-endian)
-            catalogue[fileOffset + 11] = 0x00; // Exec address low
-            catalogue[fileOffset + 12] = 0x20; // Exec address high (0x2000 = 8192)
-            
-            // File length (little-endian)
-            catalogue[fileOffset + 13] = programData.length & 0xFF; // Length low
-            catalogue[fileOffset + 14] = (programData.length >> 8) & 0xFF; // Length high
-            
-            // Start sector (little-endian)
-            catalogue[fileOffset + 15] = startSector & 0xFF; // Start sector low
-            catalogue[fileOffset + 16] = (startSector >> 8) & 0xFF; // Start sector high
-            
-            // Copy catalogue to disc image
             for (let i = 0; i < sectorSize; i++) {
                 discImage[i] = catalogue[i];
             }
             
-            console.log("BBC iframe: Created SSD disc image:");
-            console.log("  - Program size:", programData.length, "bytes");
-            console.log("  - Start sector:", startSector);
-            console.log("  - Sectors used:", programSectors);
-            console.log("  - Filename:", paddedFilename);
-            console.log("  - Load address: 0x2000");
-            console.log("  - Exec address: 0x2000");
-            
+            console.log("BBC iframe: Created simple SSD disc image:", discImage.length, "bytes");
             return discImage;
         }
         
         // Core function to load program into emulator
-        function loadProgramIntoEmulator(programData) {
+        async function loadProgramIntoEmulator(programData) {
             if (!emulatorReady || !programData) {
                 updateStatus("Emulator not ready or no program available");
+                return;
+            }
+            
+            // Check if disc is already loaded to prevent infinite reload loop
+            if (discLoaded) {
+                console.log("BBC iframe: Disc already loaded, skipping reload");
+                updateStatus("Disc already loaded, program ready");
                 return;
             }
             
@@ -201,16 +394,69 @@
                             });
                         };
                         
-                        // Load the disc using jsbeeb's internal API
-                        readFileAsBinaryString(file).then(binaryData => {
-                            // Use the disc module that's now exposed globally
-                            jsbeebWindow.processor.fdc.loadDisc(0, jsbeebWindow.disc.discFor(jsbeebWindow.processor.fdc, file.name, binaryData));
-                            console.log("✅ Program loaded via jsbeeb API");
-                            updateStatus("Program loaded as disc image: " + programData.length + " bytes");
-                        }).catch(e => {
-                            console.error("Error reading file:", e);
-                            updateStatus("Error reading disc image: " + e.message);
-                        });
+                        // Save the disc to localStorage and let jsbeeb load it automatically
+                        console.log("BBC iframe: Saving disc to localStorage...");
+                        console.log("BBC iframe: Disc image size:", discImage.length, "bytes");
+                        
+                        try {
+                            // Convert disc image to string for localStorage
+                            const discString = Array.from(discImage).map(byte => String.fromCharCode(byte)).join('');
+                            console.log("BBC iframe: Converted disc to string, length:", discString.length);
+                            
+                            // Save to localStorage with the name jsbeeb expects
+                            const discName = "disc_PROGRAM.ssd"; // Add .ssd extension for proper type detection
+                            window.localStorage.setItem(discName, discString);
+                            
+                            console.log("✅ Disc saved to localStorage:", discName);
+                            updateStatus("Program saved to local disc: " + programData.length + " bytes");
+                            
+                            // Create download link for the SSD file
+                            console.log("BBC iframe: Creating download link for SSD file...");
+                            const blob = new Blob([discImage], { type: 'application/octet-stream' });
+                            const url = URL.createObjectURL(blob);
+                            const downloadLink = document.createElement('a');
+                            downloadLink.href = url;
+                            downloadLink.download = 'PROGRAM.ssd';
+                            downloadLink.textContent = 'Download SSD file for testing';
+                            downloadLink.style.display = 'block';
+                            downloadLink.style.margin = '10px';
+                            downloadLink.style.padding = '5px';
+                            downloadLink.style.backgroundColor = '#007bff';
+                            downloadLink.style.color = 'white';
+                            downloadLink.style.textDecoration = 'none';
+                            downloadLink.style.borderRadius = '3px';
+                            downloadLink.style.textAlign = 'center';
+                            
+                            // Add download link to the page
+                            const statusDiv = document.getElementById('status');
+                            console.log("BBC iframe: Status div found:", !!statusDiv);
+                            if (statusDiv) {
+                                statusDiv.appendChild(downloadLink);
+                                console.log("BBC iframe: Download link added to status div");
+                            } else {
+                                console.error("BBC iframe: Status div not found!");
+                            }
+                            
+                            // Also update the fallback download area
+                            const downloadArea = document.getElementById('download-area');
+                            const downloadLinkElement = document.getElementById('download-link');
+                            if (downloadArea && downloadLinkElement) {
+                                downloadLinkElement.href = url;
+                                downloadArea.style.display = 'block';
+                                console.log("BBC iframe: Fallback download area activated");
+                            }
+                            
+                            // Set flag to prevent infinite reload loop
+                            discLoaded = true;
+                            
+                            // Don't reload iframe - jsbeeb should pick up the disc automatically
+                            console.log("BBC iframe: Disc saved to localStorage, jsbeeb should load it automatically");
+                            updateStatus("Disc saved, program ready to run. Download link available for testing in other emulators.");
+                            
+                        } catch (localStorageError) {
+                            console.error("Error saving to localStorage:", localStorageError);
+                            updateStatus("Error saving disc: " + localStorageError.message);
+                        }
                         
                     } else {
                         // Fallback: try to dispatch a drop event
@@ -244,9 +490,9 @@
         function initBBCEmulator() {
             updateStatus("Loading jsbeeb emulator...");
             
-            // Create iframe to embed jsbeeb locally
+            // Create iframe to embed jsbeeb locally with local disc support and autoboot
             const iframe = document.createElement('iframe');
-            iframe.src = 'res/jsbeeb/dist/index.html?embed';
+            iframe.src = 'res/jsbeeb/dist/index.html?embed&disc1=local:PROGRAM.ssd&autoboot';
             iframe.style.width = '100%';
             iframe.style.height = '100%';
             iframe.style.border = 'none';
@@ -315,7 +561,6 @@
                 // Check for any queued programs
                 setTimeout(() => {
                     loadQueuedProgram();
-                    window.checkForProgramInURL();
                 }, 1000);
             };
             
@@ -332,8 +577,9 @@
             if (event.data && event.data.type === 'compiled_program' && event.data.program) {
                 console.log("BBC iframe: Received compiled program via postMessage:", event.data.program.length, "bytes");
                 
-                // Store the program
+                // Store the program and reset disc loaded flag for new program
                 lastCompiledProgram = event.data.program;
+                discLoaded = false; // Reset flag for new program
                 updateStatus("Program received via postMessage: " + event.data.program.length + " bytes");
                 
                 // Auto-load if requested
@@ -391,6 +637,7 @@
                     console.log("BBC iframe: First 16 bytes:", Array.from(programArray.slice(0, 16)).map(b => b.toString(16).padStart(2, '0')).join(' '));
                     
                     lastCompiledProgram = programArray;
+                    discLoaded = false; // Reset flag for new program
                     updateStatus("Program loaded from URL (gzip): " + programArray.length + " bytes");
                     
                     // Auto-load when emulator is ready
@@ -420,6 +667,7 @@
                     console.log("BBC iframe: First 16 bytes:", Array.from(programArray.slice(0, 16)).map(b => b.toString(16).padStart(2, '0')).join(' '));
                     
                     lastCompiledProgram = programArray;
+                    discLoaded = false; // Reset flag for new program
                     updateStatus("Program loaded from URL (base64): " + programArray.length + " bytes");
                     
                     // Auto-load when emulator is ready
@@ -451,6 +699,7 @@
                     console.log("BBC iframe: First 16 bytes:", Array.from(programArray.slice(0, 16)).map(b => b.toString(16).padStart(2, '0')).join(' '));
                     
                     lastCompiledProgram = programArray;
+                    discLoaded = false; // Reset flag for new program
                     updateStatus("Program loaded from URL (hex): " + programArray.length + " bytes");
                     
                     // Auto-load when emulator is ready
