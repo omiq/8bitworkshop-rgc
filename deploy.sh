@@ -122,16 +122,24 @@ AddType text/html .html
     Header set Access-Control-Allow-Origin "*"
 </Files>
 
-# Cache control for static assets
+# Cache control for static assets - shorter cache for development
 <FilesMatch "\.(js|css|wasm)$">
     ExpiresActive On
-    ExpiresDefault "access plus 1 month"
+    ExpiresDefault "access plus 1 hour"
+    Header set Cache-Control "public, max-age=3600"
 </FilesMatch>
 
 # No cache for HTML files
 <FilesMatch "\.html$">
     ExpiresActive On
     ExpiresDefault "access"
+    Header set Cache-Control "no-cache, no-store, must-revalidate"
+    Header set Pragma "no-cache"
+    Header set Expires 0
+</FilesMatch>
+
+# No cache for generated files that change frequently
+<FilesMatch "\.(prg|bin|ssd|dsd|uef)$">
     Header set Cache-Control "no-cache, no-store, must-revalidate"
     Header set Pragma "no-cache"
     Header set Expires 0

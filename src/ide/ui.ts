@@ -248,7 +248,8 @@ async function newFilesystem() {
 
 async function initProject() {
   var filesystem = await newFilesystem();
-  current_project = new CodeProject(newWorker(), platform_id, platform, filesystem);
+  var worker = newWorker();
+  current_project = new CodeProject(worker, platform_id, platform, filesystem);
   current_project.remoteTool = qs.tool || null;
   projectWindows = new ProjectWindows($("#workspace")[0] as HTMLElement, current_project);
   current_project.callbackBuildResult = (result:WorkerResult) => {
@@ -257,6 +258,9 @@ async function initProject() {
   current_project.callbackBuildStatus = (busy:boolean) => {
     setBusyStatus(busy);
   };
+  
+  // Expose worker globally for platform access
+  (window as any).worker = worker;
 }
 
 function setBusyStatus(busy: boolean) {
