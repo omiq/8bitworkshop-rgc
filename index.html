@@ -112,8 +112,8 @@ body {
       <li class="dropdown dropdown-submenu">
         <a tabindex="-1" href="#">About</a>
         <ul class="dropdown-menu">
-          <li><a class="dropdown-item" target="_8bws_help" href="https://8bitworkshop.com/">Creator Credit</a></li>
-          <li><a class="dropdown-item" target="_8bws_help" href="https://github.com/sehugg/8bitworkshop/issues/new">Report an Issue</a></li>
+          <li><a class="dropdown-item" target="_8bws_about" onClick="$('#aboutBox').show();" >About this IDE</a></li>
+          <li><a class="dropdown-item" target="_8bws_help" href="https://8bitworkshop.com/">8bitworkshop Creator Credit</a></li>
         </ul>
       </li>
 
@@ -310,6 +310,27 @@ body {
     <button type="button" class="close" onclick="$('.alert').hide()" aria-hidden="true">&times;</button>
     <div id="error_alert_msg"></div>
   </div>
+  <div id="aboutBox" class="alert alert-dismissable" style="z-index: 1000; box-shadow: 10px 10px 8px 10px black; ;background-color: white;position:absolute;right:0;top:0;display:none">
+    <button type="button" class="close" onclick="$('.alert').hide()" aria-hidden="true">&times;</button>
+    <div id="error_alert_msg">
+      <h3>About this IDE</h3>
+      <p>
+        Hope you enjoy my version of the <a href="https://8bitworkshop.com/" target="_blank">8bitworkshop IDE</a>! 
+      </p>
+      <p>  
+        The main changes I have made are to attempt to add more target platforms, and to add more features.
+        Most notable currently are the addition of the Commodore Vic20, the BBC Micro, and C64 BASIC. 
+      
+      <p>
+        Some elements are removed such as the Github integration, and the open source C64 ROMs were replaced with the original ones.
+      </p>
+      <hr>
+      <p>
+        <a href="https://retrogamecoders.com" target="_blank">Retro Game Coders</a> is a community of developers who create games for vintage computers and consoles.
+      </p>
+    </div>
+  </div>
+
 </div>
 
 <div id="pleaseWaitModal" class="modal fade">

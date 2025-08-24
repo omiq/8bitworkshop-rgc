@@ -5,8 +5,8 @@ import { RasterVideo, AnimationTimer } from "../common/emu";
 
 const VIC20_PRESETS : Preset[] = [
   {id:'hello.c', name:'Hello World', category:'C'},
-  {id:'siegegame.c', name:'Siege Game', category:'C'},
-  {id:'skeleton.cc65', name:'CC65 Skeleton', category:'C'},
+  {id:'siegegame.c', name:'Siege Game'},
+  {id:'skeleton.cc65', name:'C/CC65 Boilerplate'},
 ];
 
 const VIC20_MEMORY_MAP = { main:[
