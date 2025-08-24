@@ -36,6 +36,9 @@ def create_bbc_filesystem():
         ("asminc/bbc.inc", "asminc/bbc.inc"),
     ]
 
+    # Add our custom startup file
+    files_to_copy.append(("src/worker/lib/bbc/minimal_crt0.s", "lib/bbc/minimal_crt0.s"))
+
     # Copy all macro files (essential for assembly)
     macro_files = [
         "longbranch.mac", "generic.mac", "module.mac", "cpu.mac"
@@ -63,7 +66,12 @@ def create_bbc_filesystem():
     current_offset = 0
 
     for src_rel, dst_rel in files_to_copy:
-        src_path = Path(CC65_PATH) / src_rel
+        # Check if it's a project file or cc65 file
+        if src_rel.startswith("src/"):
+            src_path = Path(".") / src_rel
+        else:
+            src_path = Path(CC65_PATH) / src_rel
+            
         dst_path = temp_dir / dst_rel
 
         if src_path.exists():
@@ -94,7 +102,12 @@ def create_bbc_filesystem():
 
     with open(data_file, 'wb') as f:
         for src_rel, dst_rel in files_to_copy:
-            src_path = Path(CC65_PATH) / src_rel
+            # Check if it's a project file or cc65 file
+            if src_rel.startswith("src/"):
+                src_path = Path(".") / src_rel
+            else:
+                src_path = Path(CC65_PATH) / src_rel
+                
             if src_path.exists():
                 with open(src_path, 'rb') as src_f:
                     f.write(src_f.read())

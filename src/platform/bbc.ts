@@ -5,9 +5,18 @@ import { PLATFORMS } from '../common/emu';
 export class BBCMicroPlatform implements Platform {
   private machine: BBCMicroMachine | null = null;
   private mainElement: HTMLElement;
+  private currentSSDBlob: Blob | null = null;
 
   constructor(mainElement: HTMLElement) {
     this.mainElement = mainElement;
+    
+    // Listen for SSD blob messages from the iframe
+    window.addEventListener('message', (event) => {
+      if (event.data && event.data.type === 'ssd_blob_ready') {
+        console.log("BBCMicroPlatform: Received SSD blob from iframe");
+        this.setSSDBlob(event.data.blob);
+      }
+    });
   }
 
   getName(): string {
@@ -274,6 +283,20 @@ export class BBCMicroPlatform implements Platform {
         }, 1000);
       }
     };
+  }
+
+  getDownloadFile(): {extension: string, blob: Blob} | undefined {
+    if (this.currentSSDBlob) {
+      return {
+        extension: '.ssd',
+        blob: this.currentSSDBlob
+      };
+    }
+    return undefined;
+  }
+
+  setSSDBlob(blob: Blob): void {
+    this.currentSSDBlob = blob;
   }
 }
 

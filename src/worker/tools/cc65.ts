@@ -108,7 +108,14 @@ function parseCA65Listing(asmfn: string, code: string, symbols, segments, params
 }
 
 export function assembleCA65(step: BuildStep): BuildStepResult {
-    loadNative("ca65");
+    // Load the appropriate module for the platform
+    var moduleName = step.platform === 'bbc' ? 'ca65-bbc' : 'ca65';
+    loadNative(moduleName);
+    
+    // For BBC platform, also try to load the standard module as fallback
+    if (step.platform === 'bbc') {
+        loadNative('ca65');
+    }
     var errors = [];
     
     // Check ca65 version first
@@ -146,8 +153,19 @@ export function assembleCA65(step: BuildStep): BuildStepResult {
     var lstpath = step.prefix + ".lst";
     if (staleFiles(step, [objpath, lstpath])) {
         var objout, lstout;
-        var CA65: EmscriptenModule = emglobal.ca65({
-            instantiateWasm: moduleInstFn('ca65'),
+        // Use BBC-specific WASM modules for BBC platform
+        var moduleName = step.platform === 'bbc' ? 'ca65-bbc' : 'ca65';
+        
+        // Try to use the specific module, fallback to standard if not available
+        var moduleFunc = emglobal[moduleName];
+        if (!moduleFunc) {
+            console.log("BBC-specific module not available, falling back to standard ca65");
+            moduleName = 'ca65';
+            moduleFunc = emglobal.ca65;
+        }
+        
+        var CA65: EmscriptenModule = moduleFunc({
+            instantiateWasm: moduleInstFn(moduleName),
             noInitialRun: true,
             //logReadFiles:true,
             print: print_fn,
@@ -191,14 +209,32 @@ export function assembleCA65(step: BuildStep): BuildStepResult {
 }
 
 export function linkLD65(step: BuildStep): BuildStepResult {
-    loadNative("ld65");
+    // Load the appropriate module for the platform
+    var moduleName = step.platform === 'bbc' ? 'ld65-bbc' : 'ld65';
+    loadNative(moduleName);
+    
+    // For BBC platform, also try to load the standard module as fallback
+    if (step.platform === 'bbc') {
+        loadNative('ld65');
+    }
     var params = step.params;
     gatherFiles(step);
     var binpath = "main";
     if (staleFiles(step, [binpath])) {
         var errors = [];
-        var LD65: EmscriptenModule = emglobal.ld65({
-            instantiateWasm: moduleInstFn('ld65'),
+        // Use BBC-specific WASM modules for BBC platform
+        var moduleName = step.platform === 'bbc' ? 'ld65-bbc' : 'ld65';
+        
+        // Try to use the specific module, fallback to standard if not available
+        var moduleFunc = emglobal[moduleName];
+        if (!moduleFunc) {
+            console.log("BBC-specific module not available, falling back to standard ld65");
+            moduleName = 'ld65';
+            moduleFunc = emglobal.ld65;
+        }
+        
+        var LD65: EmscriptenModule = moduleFunc({
+            instantiateWasm: moduleInstFn(moduleName),
             noInitialRun: true,
             //logReadFiles:true,
             print: print_fn,
@@ -229,6 +265,11 @@ export function linkLD65(step: BuildStep): BuildStepResult {
             //'--dbgfile', 'main.dbg', // TODO: get proper line numbers
             '-o', 'main',
             '-m', 'main.map'].concat(step.args, libargs);
+        
+        // Add extra_link_args if specified
+        if (params.extra_link_args) {
+            args = args.concat(params.extra_link_args);
+        }
         execMain(step, LD65, args);
         if (errors.length)
             return { errors: errors };
@@ -319,7 +360,14 @@ export function linkLD65(step: BuildStep): BuildStepResult {
 }
 
 export function compileCC65(step: BuildStep): BuildStepResult {
-    loadNative("cc65");
+    // Load the appropriate module for the platform
+    var moduleName = step.platform === 'bbc' ? 'cc65-bbc' : 'cc65';
+    loadNative(moduleName);
+    
+    // For BBC platform, also try to load the standard module as fallback
+    if (step.platform === 'bbc') {
+        loadNative('cc65');
+    }
     var params = step.params;
     // stderr
     var re_err1 = /(.*?):(\d+): (.+)/;
@@ -340,8 +388,23 @@ export function compileCC65(step: BuildStep): BuildStepResult {
     
     // Check cc65 version first
     console.log("=== CC65 VERSION CHECK ===");
-    var CC65_VERSION: EmscriptenModule = emglobal.cc65({
-        instantiateWasm: moduleInstFn('cc65'),
+    // Use BBC-specific WASM modules for BBC platform
+    var moduleName = step.platform === 'bbc' ? 'cc65-bbc' : 'cc65';
+    console.log("Using module:", moduleName, "Available modules:", Object.keys(emglobal));
+    console.log("emglobal contents:", emglobal);
+    
+    // Try to use the specific module, fallback to standard if not available
+    var moduleFunc = emglobal[moduleName];
+    console.log("moduleFunc for", moduleName, ":", moduleFunc);
+    if (!moduleFunc) {
+        console.log("BBC-specific module not available, falling back to standard cc65");
+        moduleName = 'cc65';
+        moduleFunc = emglobal.cc65;
+        console.log("Fallback moduleFunc:", moduleFunc);
+    }
+    
+    var CC65_VERSION: EmscriptenModule = moduleFunc({
+        instantiateWasm: moduleInstFn(moduleName),
         noInitialRun: true,
         print: (s) => console.log("cc65 version:", s),
         printErr: (s) => console.log("cc65 version error:", s),
@@ -370,8 +433,19 @@ export function compileCC65(step: BuildStep): BuildStepResult {
     gatherFiles(step, { mainFilePath: "main.c" });
     var destpath = step.prefix + '.s';
     if (staleFiles(step, [destpath])) {
-        var CC65: EmscriptenModule = emglobal.cc65({
-            instantiateWasm: moduleInstFn('cc65'),
+        // Use BBC-specific WASM modules for BBC platform
+        var moduleName = step.platform === 'bbc' ? 'cc65-bbc' : 'cc65';
+        
+        // Try to use the specific module, fallback to standard if not available
+        var moduleFunc = emglobal[moduleName];
+        if (!moduleFunc) {
+            console.log("BBC-specific module not available, falling back to standard cc65");
+            moduleName = 'cc65';
+            moduleFunc = emglobal.cc65;
+        }
+        
+        var CC65: EmscriptenModule = moduleFunc({
+            instantiateWasm: moduleInstFn(moduleName),
             noInitialRun: true,
             //logReadFiles:true,
             print: print_fn,

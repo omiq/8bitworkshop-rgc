@@ -21,101 +21,106 @@
       "end": 1782378
     },
     {
-      "filename": "/asminc/longbranch.mac",
+      "filename": "/lib/bbc/minimal_crt0.s",
       "start": 1782378,
-      "end": 1785010
+      "end": 1782591
+    },
+    {
+      "filename": "/asminc/longbranch.mac",
+      "start": 1782591,
+      "end": 1785223
     },
     {
       "filename": "/asminc/generic.mac",
-      "start": 1785010,
-      "end": 1785947
+      "start": 1785223,
+      "end": 1786160
     },
     {
       "filename": "/asminc/module.mac",
-      "start": 1785947,
-      "end": 1786225
+      "start": 1786160,
+      "end": 1786438
     },
     {
       "filename": "/asminc/cpu.mac",
-      "start": 1786225,
-      "end": 1786442
+      "start": 1786438,
+      "end": 1786655
     },
     {
       "filename": "/include/stdio.h",
-      "start": 1786442,
-      "end": 1793441
+      "start": 1786655,
+      "end": 1793654
     },
     {
       "filename": "/include/stdlib.h",
-      "start": 1793441,
-      "end": 1800389
+      "start": 1793654,
+      "end": 1800602
     },
     {
       "filename": "/include/string.h",
-      "start": 1800389,
-      "end": 1806067
+      "start": 1800602,
+      "end": 1806280
     },
     {
       "filename": "/include/ctype.h",
-      "start": 1806067,
-      "end": 1810552
+      "start": 1806280,
+      "end": 1810765
     },
     {
       "filename": "/include/stddef.h",
-      "start": 1810552,
-      "end": 1813589
+      "start": 1810765,
+      "end": 1813802
     },
     {
       "filename": "/include/stdarg.h",
-      "start": 1813589,
-      "end": 1816502
+      "start": 1813802,
+      "end": 1816715
     },
     {
       "filename": "/include/stdbool.h",
-      "start": 1816502,
-      "end": 1819008
+      "start": 1816715,
+      "end": 1819221
     },
     {
       "filename": "/include/stdint.h",
-      "start": 1819008,
-      "end": 1824728
+      "start": 1819221,
+      "end": 1824941
     },
     {
       "filename": "/include/limits.h",
-      "start": 1824728,
-      "end": 1828463
+      "start": 1824941,
+      "end": 1828676
     },
     {
       "filename": "/include/errno.h",
-      "start": 1828463,
-      "end": 1834317
+      "start": 1828676,
+      "end": 1834530
     },
     {
       "filename": "/include/assert.h",
-      "start": 1834317,
-      "end": 1837319
+      "start": 1834530,
+      "end": 1837532
     },
     {
       "filename": "/include/time.h",
-      "start": 1837319,
-      "end": 1842653
+      "start": 1837532,
+      "end": 1842866
     },
     {
       "filename": "/include/setjmp.h",
-      "start": 1842653,
-      "end": 1845501
+      "start": 1842866,
+      "end": 1845714
     },
     {
       "filename": "/include/signal.h",
-      "start": 1845501,
-      "end": 1848846
+      "start": 1845714,
+      "end": 1849059
     },
     {
       "filename": "/include/unistd.h",
-      "start": 1848846,
-      "end": 1853155
+      "start": 1849059,
+      "end": 1853368
     }
   ],
-  "remote_package_size": 1853155,
-  "package_uuid": "bbc-micro-fs-1756047211"
+  "remote_package_size": 1853368,
+  "package_uuid": "bbc-micro-fs-1756057420"
 }

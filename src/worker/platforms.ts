@@ -289,7 +289,7 @@ export var PLATFORM_PARAMS = {
       arch: '6502',
       define: ['__BBC__', '__BBC_MICRO__'],
       cfgfile: 'bbc.cfg',
-      libargs: ['bbc.lib'],
+      libargs: ['bbc.lib'], // Use the working bbc.lib from your cc65 installation
       acmeargs: ['-f', 'bbc'],
       extra_compile_files: ['common.h'],
     },

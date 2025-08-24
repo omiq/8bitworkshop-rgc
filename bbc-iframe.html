@@ -135,7 +135,7 @@
             catalog.push(mainFile);
             
             // Create !BOOT file for auto-boot
-            const bootContent = "*RUN " + filename + "\r\n*FX 0\r\n";
+            const bootContent = "*RUN " + filename + "\r\n";
             const bootFile = {
                 spec: {
                     directory: String.fromCharCode(ord("$") | 0x80), // Auto-boot flag
@@ -413,6 +413,15 @@
                             // Create download link for the SSD file
                             console.log("BBC iframe: Creating download link for SSD file...");
                             const blob = new Blob([discImage], { type: 'application/octet-stream' });
+                            
+                            // Send the SSD blob to the parent platform for download menu integration
+                            if (window.parent && window.parent !== window) {
+                                window.parent.postMessage({
+                                    type: 'ssd_blob_ready',
+                                    blob: blob
+                                }, '*');
+                            }
+                            
                             const url = URL.createObjectURL(blob);
                             const downloadLink = document.createElement('a');
                             downloadLink.href = url;

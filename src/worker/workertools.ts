@@ -73,6 +73,7 @@ export const TOOL_PRELOADFS = {
   'ca65-atari8': '65-atari8',
   'cc65-bbc': '65-bbc',
   'ca65-bbc': '65-bbc',
+  'ld65-bbc': '65-bbc',
   '65-bbc': '65-bbc',
   'cc65-vector': '65-none',
   'ca65-vector': '65-none',
