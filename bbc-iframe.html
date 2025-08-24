@@ -46,6 +46,15 @@
             height: 100vh;
             font-size: 18px;
         }
+        
+        iframe {
+            outline: none;
+            border: none;
+        }
+        
+        iframe:focus {
+            outline: none;
+        }
     </style>
 </head>
 <body>
@@ -230,6 +239,56 @@
             iframe.style.height = '100%';
             iframe.style.border = 'none';
             iframe.style.backgroundColor = '#000';
+            
+            // Ensure keyboard focus goes to the emulator when clicked
+            iframe.addEventListener('load', function() {
+                const jsbeebWindow = iframe.contentWindow;
+                if (jsbeebWindow && jsbeebWindow.document) {
+                    // Focus the emulator screen when iframe is clicked
+                    iframe.addEventListener('click', function() {
+                        const screen = jsbeebWindow.document.getElementById('screen');
+                        if (screen) {
+                            screen.focus();
+                            console.log("BBC iframe: Focused emulator screen");
+                        }
+                    });
+                    
+                    // Also focus on mousedown to ensure immediate response
+                    iframe.addEventListener('mousedown', function() {
+                        const screen = jsbeebWindow.document.getElementById('screen');
+                        if (screen) {
+                            screen.focus();
+                            console.log("BBC iframe: Focused emulator screen (mousedown)");
+                        }
+                    });
+                    
+                    // Focus the iframe itself when clicked
+                    iframe.addEventListener('click', function() {
+                        iframe.focus();
+                        console.log("BBC iframe: Focused iframe");
+                    });
+                    
+                    // Prevent keyboard events from bubbling to parent
+                    iframe.addEventListener('keydown', function(e) {
+                        e.stopPropagation();
+                        console.log("BBC iframe: Keydown event captured:", e.key);
+                    });
+                    
+                    iframe.addEventListener('keyup', function(e) {
+                        e.stopPropagation();
+                        console.log("BBC iframe: Keyup event captured:", e.key);
+                    });
+                    
+                    // Set tabindex to make iframe focusable
+                    iframe.setAttribute('tabindex', '0');
+                    
+                    // Auto-focus the iframe when it loads
+                    setTimeout(() => {
+                        iframe.focus();
+                        console.log("BBC iframe: Auto-focused iframe");
+                    }, 1000);
+                }
+            });
             
             // Replace loading message with iframe
             const container = document.getElementById('canvas-container');
