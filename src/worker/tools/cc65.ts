@@ -400,9 +400,19 @@ export function compileCC65(step: BuildStep): BuildStepResult {
         var matches = re_err1.exec(s);
         if (matches) {
             errline = parseInt(matches[2]);
+            var message = matches[3];
+            
+            // Check if this is a warning (starts with "Warning:")
+            if (message.startsWith("Warning:")) {
+                // Log warnings but don't treat them as errors that stop compilation
+                console.log("CC65 Warning:", matches[1] + ":" + matches[2] + ":", message);
+                return;
+            }
+            
+            // Only add actual errors to the errors array
             errors.push({
                 line: errline,
-                msg: matches[3],
+                msg: message,
                 path: matches[1]
             });
         }
