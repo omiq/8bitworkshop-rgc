@@ -141,11 +141,7 @@
         </div>
     </div>
     
-    <!-- File upload button -->
-    <div style="position: fixed; top: 10px; right: 10px; z-index: 10000;">
-        <input type="file" id="ssd-file-input" accept=".ssd" style="display: none;">
-        <button id="load-ssd-button" style="background: #007bff; color: white; padding: 10px; border: none; border-radius: 5px; cursor: pointer;">Load SSD File</button>
-    </div>
+
 
     <script>
             // Global variables
@@ -247,24 +243,7 @@
             
             console.log('BBC iframe: Drag and drop setup complete');
         
-        // Add file upload functionality
-        const fileInput = document.getElementById('ssd-file-input');
-        const loadButton = document.getElementById('load-ssd-button');
-        
-        if (loadButton && fileInput) {
-            loadButton.addEventListener('click', function() {
-                console.log('BBC iframe: Load SSD button clicked');
-                fileInput.click();
-            });
-            
-            fileInput.addEventListener('change', function(e) {
-                const file = e.target.files[0];
-                if (file) {
-                    console.log('BBC iframe: File selected:', file.name);
-                    loadSSDFile(file);
-                }
-            });
-        }
+
         
         // Simple drag and drop test - this should definitely work
         document.addEventListener('dragover', function(e) {
@@ -279,7 +258,7 @@
             if (files.length > 0) {
                 console.log('BBC iframe: File dropped on document:', files[0].name);
                 if (files[0].name.toLowerCase().endsWith('.ssd')) {
-                    loadSSDFile(files[0]);
+                    alert('SSD file loading disabled - use compiled programs instead');
                 } else {
                     alert('Please select an SSD file (.ssd)');
                 }
@@ -315,7 +294,7 @@
                 
                 // Check if it's an SSD file
                 if (file.name.toLowerCase().endsWith('.ssd') || file.type === 'application/octet-stream') {
-                    loadSSDFile(file);
+                    updateStatus('SSD file loading disabled - use compiled programs instead');
                 } else {
                     updateStatus('Please drop an SSD file (.ssd)');
                 }
@@ -325,38 +304,7 @@
             unhighlight(e);
         }
         
-        async function loadSSDFile(file) {
-            try {
-                updateStatus('Loading SSD file...');
-                
-                // Read the file as ArrayBuffer
-                const arrayBuffer = await file.arrayBuffer();
-                const uint8Array = new Uint8Array(arrayBuffer);
-                
-                console.log('BBC iframe: Loaded SSD file, size:', uint8Array.length, 'bytes');
-                
-                // Convert to string format for localStorage (same as our generated files)
-                const discString = Array.from(uint8Array).map(byte => String.fromCharCode(byte)).join('');
-                
-                // Save to localStorage with the name jsbeeb expects
-                const discName = "disc_PROGRAM.ssd";
-                window.localStorage.setItem(discName, discString);
-                
-                console.log('✅ SSD file loaded to localStorage:', discName);
-                updateStatus('SSD file loaded successfully!');
-                
-                // Force emulator to reload the disc
-                const iframe = document.querySelector('iframe');
-                if (iframe && iframe.contentWindow) {
-                    // Try to trigger a reload or refresh of the emulator
-                    iframe.contentWindow.location.reload();
-                }
-                
-            } catch (error) {
-                console.error('BBC iframe: Error loading SSD file:', error);
-                updateStatus('Error loading SSD file: ' + error.message);
-            }
-        }
+
         
         // Status update function
         function updateStatus(message) {
