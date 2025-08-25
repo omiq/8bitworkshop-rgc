@@ -148,13 +148,16 @@
     </div>
 
     <script>
-        // Global variables
-        let emulatorReady = false;
-        let lastCompiledProgram = null;
-        let canvas = null;
-        let discLoaded = false; // Flag to prevent infinite reload loop
-        let currentIframe = null; // Track the current iframe for reloading
-        let isReloading = false; // Flag to prevent infinite reload loops
+            // Global variables
+    let emulatorReady = false;
+    let lastCompiledProgram = null;
+    let canvas = null;
+    let discLoaded = false; // Flag to prevent infinite reload loop
+    let currentIframe = null; // Track the current iframe for reloading
+    let isReloading = false; // Flag to prevent infinite reload loops
+    let discCounter = 0; // Counter for unique disc names
+    let isUpdatingDisc = false; // Flag to prevent disc update loops
+    let lastProgramHash = null; // Hash of the last loaded program to prevent duplicate loads
         
         // Drag and drop functionality
         function setupDragAndDrop() {
@@ -638,14 +641,34 @@
         
         // Core function to load program into emulator
         async function loadProgramIntoEmulator(programData) {
+            // Create a simple hash of the program data to detect duplicates
+            const programHash = btoa(String.fromCharCode.apply(null, new Uint8Array(programData))).substring(0, 32);
+            
+            // Prevent loading the same program multiple times
+            if (lastProgramHash === programHash) {
+                console.log("BBC iframe: Same program already loaded, skipping...");
+                return;
+            }
+            
+            // Prevent infinite loops by checking if we're already updating a disc
+            if (isUpdatingDisc) {
+                console.log("BBC iframe: Already updating disc, skipping...");
+                return;
+            }
+            
+            // Set flag to prevent concurrent updates
+            isUpdatingDisc = true;
+            
             if (!emulatorReady || !programData) {
                 updateStatus("Emulator not ready or no program available");
+                isUpdatingDisc = false; // Clear flag on early return
                 return;
             }
             
             // Prevent infinite reload loops
             if (isReloading) {
                 console.log("BBC iframe: Already reloading, skipping...");
+                isUpdatingDisc = false; // Clear flag on early return
                 return;
             }
             
@@ -700,11 +723,30 @@
                             const discString = Array.from(discImage).map(byte => String.fromCharCode(byte)).join('');
                             console.log("BBC iframe: Converted disc to string, length:", discString.length);
                             
-                            // Save to localStorage with the name jsbeeb expects
-                            const discName = "disc_PROGRAM.ssd"; // Add .ssd extension for proper type detection
-                            window.localStorage.setItem(discName, discString);
+                            // Generate unique disc name
+                            discCounter++;
+                            const uniqueDiscName = `PROGRAM_${discCounter}.ssd`;
+                            const localStorageKey = `disc_${uniqueDiscName}`;
                             
-                            console.log("✅ Disc saved to localStorage:", discName);
+                            // Save to localStorage with unique name
+                            window.localStorage.setItem(localStorageKey, discString);
+                            
+                            console.log("✅ Disc saved to localStorage:", localStorageKey);
+                            
+                            // Try to use jsbeeb's direct API to load the disc without reloading
+                            if (jsbeebWindow.IDE && jsbeebWindow.IDE.loadROM) {
+                                console.log("BBC iframe: Using jsbeeb IDE.loadROM API");
+                                jsbeebWindow.IDE.loadROM(discImage);
+                            } else {
+                                // Fallback: update iframe URL but with a flag to prevent loops
+                                console.log("BBC iframe: Using fallback iframe URL update");
+                                const timestamp = Date.now();
+                                iframe.src = `res/jsbeeb/dist/index.html?embed&disc1=local:${uniqueDiscName}&autoboot&t=${timestamp}`;
+                                console.log("BBC iframe: Updated iframe URL to load new disc:", uniqueDiscName, "with timestamp:", timestamp);
+                            }
+                            
+                            // Update the program hash to prevent duplicate loads
+                            lastProgramHash = programHash;
                             updateStatus("Program ready to run");
                             
                             // Create download link for the SSD file
@@ -722,7 +764,7 @@
                             const url = URL.createObjectURL(blob);
                             const downloadLink = document.createElement('a');
                             downloadLink.href = url;
-                            downloadLink.download = 'PROGRAM.ssd';
+                            downloadLink.download = uniqueDiscName;
                             downloadLink.textContent = 'Download SSD file for testing';
                             downloadLink.style.display = 'none';
                             downloadLink.style.margin = '10px';
@@ -805,6 +847,9 @@
             } catch (e) {
                 updateStatus("Error loading program: " + e.message);
                 console.error("Error loading program:", e);
+            } finally {
+                // Clear the flag to allow future updates
+                isUpdatingDisc = false;
             }
         }
         
