@@ -252,7 +252,45 @@ export class C64BasicTokenizer {
             'LIGHTBLUE': 0x9B
         };
 
-        return controlMap[control.toUpperCase()] || null;
+        // Allow numeric control codes inside braces, e.g. {65}, {$41}, {0x41}, {%01000001}, {0b01000001}
+        // Trim whitespace for robustness
+        const raw = control.trim();
+        if (raw.length > 0) {
+            let value: number | null = null;
+            const upper = raw.toUpperCase();
+
+            // Hex formats: $41 or 0x41
+            if (upper.startsWith('$')) {
+                const hex = upper.slice(1);
+                const parsed = parseInt(hex, 16);
+                if (!Number.isNaN(parsed)) value = parsed & 0xFF;
+            } else if (upper.startsWith('0X')) {
+                const hex = upper.slice(2);
+                const parsed = parseInt(hex, 16);
+                if (!Number.isNaN(parsed)) value = parsed & 0xFF;
+            // Binary formats: %01000001 or 0b01000001
+            } else if (upper.startsWith('%')) {
+                const bin = upper.slice(1);
+                const parsed = parseInt(bin, 2);
+                if (!Number.isNaN(parsed)) value = parsed & 0xFF;
+            } else if (upper.startsWith('0B')) {
+                const bin = upper.slice(2);
+                const parsed = parseInt(bin, 2);
+                if (!Number.isNaN(parsed)) value = parsed & 0xFF;
+            } else if (/^\d+$/.test(upper)) {
+                // Decimal
+                const parsed = parseInt(upper, 10);
+                if (!Number.isNaN(parsed)) value = parsed & 0xFF;
+            }
+
+            if (value !== null) return value;
+
+            // Fall back to named control codes
+            const mapped = controlMap[upper];
+            if (mapped !== undefined) return mapped;
+        }
+
+        return null;
     }
 
     /**

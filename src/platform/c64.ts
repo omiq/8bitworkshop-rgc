@@ -15,6 +15,7 @@ const C64_PRESETS : Preset[] = [
   {id:'labels.bas', name:'Label Demo (BASIC)'},
   {id:'adventure.bas', name:'Adventure Game (BASIC)'},
   {id:'trek64.bas', name:'Star Trek (BASIC)'},
+  {id:'@controlcodes.bas', name:'Control Codes Demo (BASIC)'},
   {id:'screen_ram.c', name:'Screen RAM', category:'8-bit Workshop Demos'},
   {id:'siegegame.c', name:'Siege Game'},
   {id:'joymove.c', name:'Sprite Movement'},
