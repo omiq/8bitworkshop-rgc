@@ -1,0 +1,196 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>PETSCII → Screen Code Converter</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    :root { font: 14px/1.4 system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial, sans-serif; }
+    body { margin: 24px; max-width: 1000px; }
+    h1 { font-size: 20px; margin: 0 0 12px; }
+    .row { display: grid; grid-template-columns: 1fr; gap: 12px; }
+    @media (min-width: 900px) { .row { grid-template-columns: 1fr 1fr; } }
+    textarea { width: 100%; min-height: 260px; padding: 10px; box-sizing: border-box; }
+    pre, textarea, input[type="text"] { border: 1px solid #bbb; border-radius: 6px; background: #fafafa; }
+    pre { padding: 10px; overflow: auto; max-height: 320px; }
+    .small { color: #555; font-size: 12px; }
+    .flex { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+    button { padding: 8px 12px; border: 1px solid #444; background: #fff; border-radius: 6px; cursor: pointer; }
+    button:active { transform: translateY(1px); }
+    .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace; }
+    .good { color: #0a7; }
+    .warn { color: #b60; }
+    .err  { color: #c00; }
+    label { font-weight: 600; }
+  </style>
+</head>
+<body>
+  <h1>PETSCII to Screen Code Converter</h1>
+
+  <div class="row">
+    <section>
+      <label for="in">Input PETSCII POKE codes</label>
+      <textarea id="in" class="mono" placeholder="Example:
+32,32,32,32,85,73,32,233,223,93, ..."></textarea>
+      <div class="flex small">
+        <span>Accepted: numbers 0..255, separated by commas, spaces, or newlines.</span>
+        <button id="demo">Load demo</button>
+        <button id="clear">Clear</button>
+      </div>
+      <div id="stats" class="small"></div>
+      <div id="issues" class="small"></div>
+    </section>
+
+    <section>
+      <div class="flex">
+        <label for="wrap">Wrap width</label>
+        <input id="wrap" type="text" value="40" size="4" class="mono" />
+        <button id="copyCsv">Copy CSV</button>
+        <button id="copyWrapped">Copy wrapped</button>
+        <button id="download">Download .txt</button>
+      </div>
+
+      <h2 class="small">CSV</h2>
+      <pre id="outCsv" class="mono"></pre>
+
+      <h2 class="small">Wrapped lines</h2>
+      <pre id="outWrapped" class="mono"></pre>
+    </section>
+  </div>
+
+  <details style="margin-top:16px">
+    <summary>Conversion rules</summary>
+    <pre class="mono">PETSCII  → SCREEN   Formula
+32..63   → 32..63   n
+64..95   → 0..31    n - 64
+96..127  → 64..95   n - 32
+160..191 → 96..127  n - 64
+192..254 → 64..126  n - 128
+255      → 94       255 - 161</pre>
+  </details>
+
+  <script>
+    // Map one PETSCII value to a screen code using the provided table
+    function petsciiToScreen(n) {
+      if (n >= 32 && n <= 63)   return n;           // n
+      if (n >= 64 && n <= 95)   return n - 64;      // n - 64
+      if (n >= 96 && n <= 127)  return n - 32;      // n - 32
+      if (n >= 160 && n <= 191) return n - 64;      // n - 64
+      if (n >= 192 && n <= 254) return n - 128;     // n - 128
+      if (n === 255)            return 94;          // 255 - 161
+      // Not covered by the table: keep as is but mark as unmapped
+      return null;
+    }
+
+    function parseNumbers(text) {
+      // Split on commas or whitespace
+      const tokens = text.split(/[\s,]+/).filter(Boolean);
+      const nums = [];
+      const bad = [];
+      for (let i = 0; i < tokens.length; i++) {
+        const t = tokens[i].trim();
+        if (!t) continue;
+        if (!/^-?\d+$/.test(t)) { bad.push({ idx: i, token: t, reason: "not an integer" }); continue; }
+        const n = Number(t);
+        if (n < 0 || n > 255) { bad.push({ idx: i, token: t, reason: "out of 0..255" }); continue; }
+        nums.push(n);
+      }
+      return { nums, bad, rawCount: tokens.filter(Boolean).length };
+    }
+
+    function wrapCsv(arr, width) {
+      const lines = [];
+      for (let i = 0; i < arr.length; i += width) {
+        lines.push(arr.slice(i, i + width).join(", "));
+      }
+      return lines.join("\n");
+    }
+
+    function convertAll() {
+      const input = document.getElementById("in").value;
+      const wrap = Math.max(1, parseInt(document.getElementById("wrap").value, 10) || 40);
+
+      const { nums, bad, rawCount } = parseNumbers(input);
+
+      const converted = [];
+      const unmapped = [];
+      for (let i = 0; i < nums.length; i++) {
+        const n = nums[i];
+        const s = petsciiToScreen(n);
+        if (s === null) { unmapped.push({ idx: i, value: n }); converted.push(n); }
+        else converted.push(s);
+      }
+
+      // Outputs
+      const outCsv = nums.length ? converted.join(", ") : "";
+      const outWrapped = nums.length ? wrapCsv(converted, wrap) : "";
+
+      document.getElementById("outCsv").textContent = outCsv;
+      document.getElementById("outWrapped").textContent = outWrapped;
+
+      // Stats and issues
+      const stats = [];
+      stats.push(`tokens: ${rawCount}`);
+      stats.push(`valid: ${nums.length}`);
+      stats.push(`converted: ${converted.length}`);
+      document.getElementById("stats").innerHTML = `<span class="good">${stats.join("  |  ")}</span>`;
+
+      const issues = [];
+      if (bad.length) {
+        issues.push(`<div class="err">invalid tokens: ${bad.length}</div>`);
+        issues.push(`<div class="small mono">${bad.slice(0, 10).map(b => `#${b.idx + 1} "${b.token}" (${b.reason})`).join("; ")}${bad.length > 10 ? " ..." : ""}</div>`);
+      }
+      if (unmapped.length) {
+        issues.push(`<div class="warn">values not covered by the table: ${unmapped.length} (kept as original)</div>`);
+        issues.push(`<div class="small mono">${unmapped.slice(0, 20).map(u => `#${u.idx + 1}:${u.value}`).join(", ")}${unmapped.length > 20 ? " ..." : ""}</div>`);
+      }
+      document.getElementById("issues").innerHTML = issues.join("\n");
+    }
+
+    // UI actions
+    document.getElementById("in").addEventListener("input", convertAll);
+    document.getElementById("wrap").addEventListener("input", convertAll);
+
+    document.getElementById("copyCsv").addEventListener("click", async () => {
+      const text = document.getElementById("outCsv").textContent;
+      if (!text) return;
+      await navigator.clipboard.writeText(text);
+    });
+
+    document.getElementById("copyWrapped").addEventListener("click", async () => {
+      const text = document.getElementById("outWrapped").textContent;
+      if (!text) return;
+      await navigator.clipboard.writeText(text);
+    });
+
+    document.getElementById("download").addEventListener("click", () => {
+      const csv = document.getElementById("outCsv").textContent;
+      if (!csv) return;
+      const blob = new Blob([csv + "\n"], { type: "text/plain;charset=utf-8" });
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = "screen-codes.txt";
+      a.click();
+      URL.revokeObjectURL(a.href);
+    });
+
+    document.getElementById("clear").addEventListener("click", () => {
+      document.getElementById("in").value = "";
+      convertAll();
+    });
+
+    document.getElementById("demo").addEventListener("click", () => {
+      // Short slice of your example to show it working
+      document.getElementById("in").value =
+`32, 32, 32, 32, 32, 85, 73, 32, 233, 223, 32, 93, 32,
+32, 32, 32, 32, 74, 75, 32, 32, 233, 105, 95, 223, 32,
+71, 85, 73, 236, 74, 75, 251, 85, 85, 73, 97, 112, 110`;
+      convertAll();
+    });
+
+    // Initial render
+    convertAll();
+  </script>
+</body>
+</html>
+

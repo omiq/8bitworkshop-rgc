@@ -13,6 +13,7 @@ const C64_PRESETS : Preset[] = [
   {id:'colors.bas', name:'Color Demo (BASIC)'},
   {id:'game.bas', name:'Number Game (BASIC)'},
   {id:'labels.bas', name:'Label Demo (BASIC)'},
+  {id:'lander.bas', name:'Space Lander Game (BASIC)'},
   {id:'adventure.bas', name:'Adventure Game (BASIC)'},
   {id:'trek64.bas', name:'Star Trek (BASIC)'},
   {id:'@controlcodes.bas', name:'Control Codes Demo (BASIC)'},
