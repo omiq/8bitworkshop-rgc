@@ -1,25 +1,20 @@
 #include <stdio.h>
 #include "msxbios.h"
 
+void print_string(char *msg);
+
 int main() {
-    char *msg;
     int row, col;
     
     CLS();
     POSIT(1, 1);  // Row 1, Column 1
     
     // Print title
-    msg = "MSX Graphics Demo";
-    while (*msg) {
-        CHPUT(*msg++);
-    }
+    print_string("MSX Graphics Demo");
     
     // Draw some simple graphics using characters
     POSIT(3, 1);  // Row 3, Column 1
-    msg = "Drawing a box:";
-    while (*msg) {
-        CHPUT(*msg++);
-    }
+    print_string("Drawing a box:");
     
     // Draw a simple box
     for (row = 5; row <= 10; row++) {
@@ -34,11 +29,14 @@ int main() {
     }
     
     POSIT(18, 1);  // Row 18, Column 1
-    msg = "Press any key to exit...";
-    while (*msg) {
-        CHPUT(*msg++);
-    }
+    print_string("Press any key to exit...");
     
     CHGET();
     return 0;
+}
+
+void print_string(char *msg) {
+    while (*msg) {
+        CHPUT(*msg++);
+    }
 }

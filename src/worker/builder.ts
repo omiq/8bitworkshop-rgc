@@ -331,7 +331,12 @@ export function populateExtraFiles(step: BuildStep, fs, extrafiles) {
         continue;
       }
       // fetch from network
-      var xpath = "lib/" + getBasePlatform(step.platform) + "/" + xfn;
+      var basePlatform = getBasePlatform(step.platform);
+      // Special case: msx-shell uses msx runtime files
+      if (basePlatform === 'msx-shell') {
+        basePlatform = 'msx';
+      }
+      var xpath = "lib/" + basePlatform + "/" + xfn;
       var xhr = new XMLHttpRequest();
       xhr.responseType = 'arraybuffer';
       xhr.open("GET", PWORKER + xpath, false);  // synchronous request
