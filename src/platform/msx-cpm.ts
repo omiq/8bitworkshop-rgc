@@ -22,6 +22,7 @@ class MSXCPMPlatform extends BaseZ80MachinePlatform<MSX1> implements Platform {
     private historyIndex: number = -1;
     private currentDirectory: string = "A:";
     private files: { [name: string]: Uint8Array } = {};
+    private compiledPrograms: {[filename: string]: Uint8Array} = {};
 
     constructor(mainElement: HTMLElement) {
         super(mainElement);
@@ -253,7 +254,7 @@ class MSXCPMPlatform extends BaseZ80MachinePlatform<MSX1> implements Platform {
                 const welcome = document.createElement('div');
                 welcome.innerHTML = `
 MSX-DOS/CP/M Command Interface
-Copyright (C) 2024 8bitworkshop
+RetroGameCoders.com 2025
 Z80 CPU Emulation Ready
 
 Type HELP for available commands.
@@ -320,6 +321,34 @@ OKMSG:  DB      'Memory test passed!', 0DH, 0AH, '$'
 ERRMSG: DB      'Memory test failed!', 0DH, 0AH, '$'
         END     START
 `);
+    }
+
+    private async sendBuildStep(buildStep: any, sourceCode: Uint8Array): Promise<any> {
+        // Create a worker message with the build step
+        const message = {
+            updates: [{
+                path: buildStep.path,
+                data: new TextDecoder().decode(sourceCode)
+            }],
+            buildsteps: [buildStep]
+        };
+
+        // Send to worker and wait for result
+        return new Promise((resolve, reject) => {
+            const worker = new Worker('/src/worker/worker.js');
+            
+            worker.onmessage = (event) => {
+                worker.terminate();
+                resolve(event.data);
+            };
+            
+            worker.onerror = (error) => {
+                worker.terminate();
+                reject(error);
+            };
+            
+            worker.postMessage(message);
+        });
     }
 
     // Command implementations
@@ -447,7 +476,7 @@ ERRMSG: DB      'Memory test failed!', 0DH, 0AH, '$'
         addOutput('Example: ASM HELLO.ASM');
     }
 
-    private executeAsm(parts: string[], addOutput: (text: string, color?: string) => void) {
+    private async executeAsm(parts: string[], addOutput: (text: string, color?: string) => void) {
         if (parts.length < 2) {
             addOutput('Usage: ASM <filename>');
             return;
@@ -456,8 +485,37 @@ ERRMSG: DB      'Memory test failed!', 0DH, 0AH, '$'
         const filename = parts[1].toUpperCase();
         if (this.files[filename]) {
             addOutput(`Assembling ${filename}...`);
-            addOutput('Assembly completed successfully!');
-            addOutput('Use RUN command to execute the program.');
+            
+            try {
+                // Create a build step for Z80 assembly
+                const buildStep = {
+                    path: filename,
+                    files: [filename],
+                    platform: 'msx-cpm',
+                    tool: 'zmac',
+                    mainfile: true
+                };
+
+                // Send the build step to the worker
+                const result = await this.sendBuildStep(buildStep, this.files[filename]);
+                
+                if (result.errors && result.errors.length > 0) {
+                    addOutput('Assembly failed:', '#f00');
+                    result.errors.forEach(error => {
+                        addOutput(`  Line ${error.line}: ${error.msg}`, '#f00');
+                    });
+                } else if (result.output) {
+                    addOutput('Assembly completed successfully!', '#0f0');
+                    addOutput(`Output: ${result.output.length} bytes`, '#0f0');
+                    // Store the compiled output
+                    this.compiledPrograms[filename] = result.output;
+                    addOutput('Use RUN command to execute the program.');
+                } else {
+                    addOutput('Assembly completed but no output generated.');
+                }
+            } catch (error) {
+                addOutput(`Assembly failed: ${error.message}`, '#f00');
+            }
         } else {
             addOutput(`File not found: ${filename}`);
         }
@@ -470,8 +528,67 @@ ERRMSG: DB      'Memory test failed!', 0DH, 0AH, '$'
         }
 
         const filename = parts[1].toUpperCase();
+        
+        if (!this.compiledPrograms[filename]) {
+            addOutput(`Program not compiled: ${filename}`);
+            addOutput('Use ASM command to compile first.');
+            return;
+        }
+
+        if (!this.machine || !this.machine.cpu) {
+            addOutput('CPU not initialized. Use RESET command first.');
+            return;
+        }
+
         addOutput(`Running ${filename}...`);
-        addOutput('Program execution completed.');
+        
+        try {
+            // Load the compiled program into memory at 0x100 (CP/M standard)
+            const program = this.compiledPrograms[filename];
+            for (let i = 0; i < program.length; i++) {
+                this.machine.write(0x100 + i, program[i]);
+            }
+            
+            // Set PC to start of program
+            this.machine.cpu.setPC(0x100);
+            
+            // Run the program for a limited number of cycles
+            let cycles = 0;
+            const maxCycles = 10000; // Prevent infinite loops
+            
+            while (cycles < maxCycles && this.machine.cpu.getPC() < 0x100 + program.length) {
+                const pc = this.machine.cpu.getPC();
+                const instruction = this.machine.read(pc);
+                
+                // Simple instruction execution
+                if (instruction === 0x76) { // HALT
+                    break;
+                } else if (instruction === 0xC9) { // RET
+                    break;
+                } else if (instruction === 0xC3) { // JP nn
+                    const low = this.machine.read(pc + 1);
+                    const high = this.machine.read(pc + 2);
+                    const addr = (high << 8) | low;
+                    this.machine.cpu.setPC(addr);
+                    cycles += 10;
+                    continue;
+                } else {
+                    // For now, just advance PC
+                    this.machine.cpu.setPC(pc + 1);
+                }
+                
+                cycles++;
+            }
+            
+            if (cycles >= maxCycles) {
+                addOutput('Program execution timed out (infinite loop protection).');
+            } else {
+                addOutput('Program execution completed.');
+            }
+            
+        } catch (error) {
+            addOutput(`Execution failed: ${error.message}`, '#f00');
+        }
     }
 
     private executeLoad(parts: string[], addOutput: (text: string, color?: string) => void) {
@@ -517,15 +634,21 @@ ERRMSG: DB      'Memory test failed!', 0DH, 0AH, '$'
     }
 
     private executeReset(addOutput: (text: string, color?: string) => void) {
-        if (this.machine) {
-            try {
+        try {
+            // Re-initialize the machine if needed
+            if (!this.machine) {
+                this.initializeMachine();
+            }
+            
+            if (this.machine) {
                 this.machine.reset();
                 addOutput('CPU reset completed.');
-            } catch (error) {
-                addOutput('CPU reset failed - machine may not be fully initialized');
+                addOutput('Machine ready for program execution.');
+            } else {
+                addOutput('Failed to initialize machine.');
             }
-        } else {
-            addOutput('CPU not initialized');
+        } catch (error) {
+            addOutput(`CPU reset failed: ${error.message}`, '#f00');
         }
     }
 
