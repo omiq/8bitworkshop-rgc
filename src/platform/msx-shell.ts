@@ -690,13 +690,30 @@ int main() {
             state.PC = 0x100;
             this.machine.cpu.loadState(state);
             
-            // Run the program for a limited number of cycles
+            // Run the program with MSX BIOS call handling
             let cycles = 0;
             const maxCycles = 10000; // Prevent infinite loops
             
             while (cycles < maxCycles && this.machine.cpu.getPC() < 0x100 + program.length) {
                 const pc = this.machine.cpu.getPC();
                 const instruction = this.machine.read(pc);
+                
+                // Check for MSX BIOS calls
+                if (instruction === 0xCD) { // CALL instruction
+                    const low = this.machine.read(pc + 1);
+                    const high = this.machine.read(pc + 2);
+                    const addr = (high << 8) | low;
+                    
+                    // Handle MSX BIOS calls
+                    if (this.handleMSXBIOSCall(addr, addOutput)) {
+                        // BIOS call handled, advance PC past CALL instruction
+                        const newState = this.machine.cpu.saveState();
+                        newState.PC = pc + 3;
+                        this.machine.cpu.loadState(newState);
+                        cycles += 10;
+                        continue;
+                    }
+                }
                 
                 // Simple instruction execution
                 if (instruction === 0x76) { // HALT
@@ -792,6 +809,50 @@ int main() {
             }
         } catch (error) {
             addOutput(`CPU reset failed: ${error.message}`, '#f00');
+        }
+    }
+
+    private handleMSXBIOSCall(addr: number, addOutput: (text: string, color?: string) => void): boolean {
+        const state = this.machine.cpu.saveState();
+        
+        switch (addr) {
+            case 0x00C3: // CLS - Clear screen
+                // Clear the terminal output (we can't actually clear the terminal, but we can add a separator)
+                addOutput('--- Program Output ---');
+                return true;
+                
+            case 0x00C6: // POSIT - Position cursor
+                // Get row from A register, column from H register
+                const row = state.A & 0xFF;
+                const col = state.H & 0xFF;
+                // We can't actually position the cursor, but we can note it
+                // addOutput(`[Cursor: ${row},${col}]`);
+                return true;
+                
+            case 0x00A2: // CHPUT - Character output
+                // Get character from A register
+                const char = state.A & 0xFF;
+                if (char >= 32 && char <= 126) { // Printable ASCII
+                    addOutput(String.fromCharCode(char), '#0f0');
+                } else if (char === 13) { // Carriage return
+                    // addOutput('\\r');
+                } else if (char === 10) { // Line feed
+                    // addOutput('\\n');
+                } else {
+                    addOutput(`[${char.toString(16).padStart(2, '0')}]`, '#888');
+                }
+                return true;
+                
+            case 0x009F: // CHGET - Character input
+                // For now, just return a dummy character (space)
+                const newState = this.machine.cpu.saveState();
+                newState.A = 32; // Space character
+                this.machine.cpu.loadState(newState);
+                return true;
+                
+            default:
+                // Not a handled BIOS call
+                return false;
         }
     }
 
