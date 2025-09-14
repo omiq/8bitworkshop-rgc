@@ -3,7 +3,7 @@
 
 int main() {
     CLS();
-    POSIT(0x0101);  // Row 1, Column 1
+    POSIT(1, 1);  // Row 1, Column 1
     
     // Print title
     const char* msg = "MSX Game Demo";
@@ -11,19 +11,19 @@ int main() {
         CHPUT(*msg++);
     }
     
-    POSIT(0x0301);  // Row 3, Column 1
+    POSIT(3, 1);  // Row 3, Column 1
     msg = "Simple interactive demo:";
     while (*msg) {
         CHPUT(*msg++);
     }
     
-    POSIT(0x0501);  // Row 5, Column 1
+    POSIT(5, 1);  // Row 5, Column 1
     msg = "Use arrow keys to move the cursor";
     while (*msg) {
         CHPUT(*msg++);
     }
     
-    POSIT(0x0701);  // Row 7, Column 1
+    POSIT(7, 1);  // Row 7, Column 1
     msg = "Press ESC to exit";
     while (*msg) {
         CHPUT(*msg++);
@@ -34,13 +34,13 @@ int main() {
     char key;
     
     do {
-        POSIT((y << 8) | x);
+            POSIT(y, x);
         CHPUT('*');
         
         key = CHGET();
         
         // Clear current position
-        POSIT((y << 8) | x);
+            POSIT(y, x);
         CHPUT(' ');
         
         // Move cursor based on key
@@ -61,7 +61,7 @@ int main() {
     } while (key != 27); // ESC key
     
     CLS();
-    POSIT(0x0101);
+    POSIT(1, 1);
     msg = "Game demo completed!";
     while (*msg) {
         CHPUT(*msg++);

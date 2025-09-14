@@ -3,7 +3,7 @@
 
 int main() {
     CLS();
-    POSIT(0x0101);  // Row 1, Column 1
+    POSIT(1, 1);  // Row 1, Column 1
     
     // Print welcome message
     const char* msg = "MSX Console I/O Demo";
@@ -11,7 +11,7 @@ int main() {
         CHPUT(*msg++);
     }
     
-    POSIT(0x0301);  // Row 3, Column 1
+    POSIT(3, 1);  // Row 3, Column 1
     msg = "Press any key to continue...";
     while (*msg) {
         CHPUT(*msg++);
@@ -20,14 +20,14 @@ int main() {
     // Wait for key press
     char key = CHGET();
     
-    POSIT(0x0501);  // Row 5, Column 1
+    POSIT(5, 1);  // Row 5, Column 1
     msg = "You pressed: ";
     while (*msg) {
         CHPUT(*msg++);
     }
     CHPUT(key);
     
-    POSIT(0x0701);  // Row 7, Column 1
+    POSIT(7, 1);  // Row 7, Column 1
     msg = "Press any key to exit...";
     while (*msg) {
         CHPUT(*msg++);

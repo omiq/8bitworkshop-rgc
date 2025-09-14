@@ -3,7 +3,7 @@
 
 int main() {
     CLS();
-    POSIT(0x0101);  // Row 1, Column 1
+    POSIT(1, 1);  // Row 1, Column 1
     CHPUT('H');
     CHPUT('e');
     CHPUT('l');
