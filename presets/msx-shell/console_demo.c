@@ -2,11 +2,14 @@
 #include "msxbios.h"
 
 int main() {
+    char *msg;
+    char key;
+    
     CLS();
     POSIT(1, 1);  // Row 1, Column 1
     
     // Print welcome message
-    const char* msg = "MSX Console I/O Demo";
+    msg = "MSX Console I/O Demo";
     while (*msg) {
         CHPUT(*msg++);
     }
@@ -18,7 +21,7 @@ int main() {
     }
     
     // Wait for key press
-    char key = CHGET();
+    key = CHGET();
     
     POSIT(5, 1);  // Row 5, Column 1
     msg = "You pressed: ";

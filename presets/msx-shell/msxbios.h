@@ -45,6 +45,8 @@ void CLS(void);
 void POSIT(unsigned char row, unsigned char col);
 void CHPUT(unsigned char ch);
 unsigned char CHGET(void);
+
+/* Function prototypes for other BIOS functions */
 unsigned char GTSTCK(unsigned char stick);
 unsigned char GTTRIG(unsigned char trigger);
 unsigned char SNSMAT(unsigned char matrix);

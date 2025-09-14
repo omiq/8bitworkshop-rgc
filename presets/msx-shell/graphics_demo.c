@@ -2,11 +2,14 @@
 #include "msxbios.h"
 
 int main() {
+    char *msg;
+    int row, col;
+    
     CLS();
     POSIT(1, 1);  // Row 1, Column 1
     
     // Print title
-    const char* msg = "MSX Graphics Demo";
+    msg = "MSX Graphics Demo";
     while (*msg) {
         CHPUT(*msg++);
     }
@@ -19,9 +22,9 @@ int main() {
     }
     
     // Draw a simple box
-    for (int row = 5; row <= 10; row++) {
+    for (row = 5; row <= 10; row++) {
         POSIT(row, 5);  // Row, Column
-        for (int col = 5; col <= 20; col++) {
+        for (col = 5; col <= 20; col++) {
             if (row == 5 || row == 10 || col == 5 || col == 20) {
                 CHPUT('*');
             } else {

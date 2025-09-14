@@ -2,11 +2,13 @@
 #include "msxbios.h"
 
 int main() {
+    char *msg;
+    
     CLS();
     POSIT(1, 1);  // Row 1, Column 1
     
     // Print title
-    const char* msg = "MSX Sound Demo";
+    msg = "MSX Sound Demo";
     while (*msg) {
         CHPUT(*msg++);
     }
