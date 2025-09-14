@@ -5,12 +5,12 @@
 
 start:
         ; Clear screen
-        call    CLS
+        call    0x00C3
         
         ; Position cursor at row 1, column 1
         ld      a, 1
         ld      h, 1
-        call    POSIT
+        call    0x00C6
         
         ; Print "Hello, MSX!"
         ld      hl, message
@@ -18,22 +18,16 @@ print_loop:
         ld      a, (hl)
         or      a
         jr      z, wait_key
-        call    CHPUT
+        call    0x00A2
         inc     hl
         jr      print_loop
         
 wait_key:
         ; Wait for key press
-        call    CHGET
+        call    0x009F
         
         ; Exit
         ret
 
 message:
         .db     "Hello, MSX!", 13, 10, 0
-
-; MSX BIOS function addresses
-CLS     equ     0x00C3
-POSIT   equ     0x00C6
-CHPUT   equ     0x00A2
-CHGET   equ     0x009F

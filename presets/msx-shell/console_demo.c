@@ -1,41 +1,36 @@
 #include <stdio.h>
 #include "msxbios.h"
 
+void print_string(char *msg);
+
 int main() {
-    char *msg;
     char key;
     
     CLS();
     POSIT(1, 1);  // Row 1, Column 1
     
     // Print welcome message
-    msg = "MSX Console I/O Demo";
-    while (*msg) {
-        CHPUT(*msg++);
-    }
+    print_string("MSX Console I/O Demo");
     
     POSIT(3, 1);  // Row 3, Column 1
-    msg = "Press any key to continue...";
-    while (*msg) {
-        CHPUT(*msg++);
-    }
+    print_string("Press any key to continue...");
     
     // Wait for key press
     key = CHGET();
     
     POSIT(5, 1);  // Row 5, Column 1
-    msg = "You pressed: ";
-    while (*msg) {
-        CHPUT(*msg++);
-    }
+    print_string("You pressed: ");
     CHPUT(key);
     
     POSIT(7, 1);  // Row 7, Column 1
-    msg = "Press any key to exit...";
-    while (*msg) {
-        CHPUT(*msg++);
-    }
+    print_string("Press any key to exit...");
     
     CHGET();
     return 0;
+}
+
+void print_string(char *msg) {
+    while (*msg) {
+        CHPUT(*msg++);
+    }
 }
