@@ -34,6 +34,7 @@ export function importPlatform(name: string) : Promise<any> {
       case "msx": return import("../platform/msx");
       case "msx-libcv": return import("../platform/msx");
       case "msx-cpm": return import("../platform/msx-cpm");
+      case "msx-shell": return import("../platform/msx-shell");
       case "mw8080bw": return import("../platform/mw8080bw");
       case "nes": return import("../platform/nes");
       case "nes-asm": return import("../platform/nes");
