@@ -578,7 +578,7 @@ int main() {
                     
                     if (fileData) {
                         sourceCode = new TextEncoder().encode(fileData);
-                        filename = currentFile.toUpperCase().replace('.C', '') + '.C';
+                        filename = currentFile.toUpperCase();
                     } else {
                         addOutput('No content in current editor');
                         return;

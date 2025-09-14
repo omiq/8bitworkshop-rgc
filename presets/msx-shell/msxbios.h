@@ -8,10 +8,10 @@
 #define MSXBIOS_H
 
 /* MSX BIOS Function Addresses */
-#define CLS     0x00C3    /* Clear screen */
-#define POSIT   0x00C6    /* Position cursor */
-#define CHPUT   0x00A2    /* Character output */
-#define CHGET   0x009F    /* Character input */
+#define CLS_ADDR     0x00C3    /* Clear screen */
+#define POSIT_ADDR   0x00C6    /* Position cursor */
+#define CHPUT_ADDR   0x00A2    /* Character output */
+#define CHGET_ADDR   0x009F    /* Character input */
 #define GTSTCK  0x00D5    /* Get joystick status */
 #define GTTRIG  0x00D8    /* Get trigger status */
 #define SNSMAT  0x0141    /* Sense matrix */
