@@ -512,6 +512,11 @@ int main() {
             return true;
         }
         
+        // Check if it's a compiled .C file
+        if (this.compiledPrograms[cmd.toUpperCase() + '.C']) {
+            return true;
+        }
+        
         // Check if it's a .COM file without extension
         if (cmd.toUpperCase().endsWith('.COM') && this.files[cmd.toUpperCase()]) {
             return true;
