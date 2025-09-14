@@ -258,7 +258,7 @@ RetroGameCoders.com 2025
 Z80 CPU Emulation Ready
 
 Type HELP for available commands.
-Type ASM <filename> to assemble Z80 code.
+Type ASM to assemble current editor content.
 Type RUN <filename> to execute programs.
 
 `;
@@ -503,58 +503,96 @@ ERRMSG: DB      'Memory test failed!', 0DH, 0AH, '$'
         addOutput('  EXIT, QUIT       - Exit interface');
         addOutput('');
         addOutput('Development Commands:');
-        addOutput('  ASM <file>       - Assemble Z80 code');
+        addOutput('  ASM              - Assemble current editor content');
+        addOutput('  ASM <file>       - Assemble specified file');
         addOutput('  RUN <file>       - Execute program');
         addOutput('  LOAD <file>      - Load compiled program');
         addOutput('  MEM              - Show memory map');
         addOutput('  REG              - Show CPU registers');
         addOutput('  RESET            - Reset CPU');
         addOutput('');
-        addOutput('Example: ASM HELLO.ASM');
+        addOutput('Examples:');
+        addOutput('  ASM              - Assemble code in editor');
+        addOutput('  ASM HELLO.ASM    - Assemble virtual file');
     }
 
     private async executeAsm(parts: string[], addOutput: (text: string, color?: string) => void) {
-        if (parts.length < 2) {
-            addOutput('Usage: ASM <filename>');
-            return;
-        }
+        let filename: string;
+        let sourceCode: Uint8Array;
 
-        const filename = parts[1].toUpperCase();
-        if (this.files[filename]) {
-            addOutput(`Assembling ${filename}...`);
-            
-            try {
-                // Create a build step for Z80 assembly
-                const buildStep = {
-                    path: filename,
-                    files: [filename],
-                    platform: 'msx-cpm',
-                    tool: 'zmac',
-                    mainfile: true
-                };
-
-                // Send the build step to the worker
-                const result = await this.sendBuildStep(buildStep, this.files[filename]);
-                
-                if (result.errors && result.errors.length > 0) {
-                    addOutput('Assembly failed:', '#f00');
-                    result.errors.forEach(error => {
-                        addOutput(`  Line ${error.line}: ${error.msg}`, '#f00');
-                    });
-                } else if (result.output) {
-                    addOutput('Assembly completed successfully!', '#0f0');
-                    addOutput(`Output: ${result.output.length} bytes`, '#0f0');
-                    // Store the compiled output
-                    this.compiledPrograms[filename] = result.output;
-                    addOutput('Use RUN command to execute the program.');
-                } else {
-                    addOutput('Assembly completed but no output generated.');
-                }
-            } catch (error) {
-                addOutput(`Assembly failed: ${error.message}`, '#f00');
+        if (parts.length >= 2) {
+            // Use specified filename
+            filename = parts[1].toUpperCase();
+            if (this.files[filename]) {
+                sourceCode = this.files[filename];
+            } else {
+                addOutput(`File not found: ${filename}`);
+                return;
             }
         } else {
-            addOutput(`File not found: ${filename}`);
+            // Use current editor content
+            filename = 'CURRENT.ASM';
+            try {
+                // Get current editor content from the IDE
+                const currentProject = (window as any).IDE?.getCurrentProject();
+                if (currentProject) {
+                    const currentFile = currentProject.getCurrentMainFilename();
+                    const fileData = currentProject.getFile(currentFile);
+                    if (fileData) {
+                        sourceCode = new TextEncoder().encode(fileData);
+                        filename = currentFile.toUpperCase().replace('.ASM', '') + '.ASM';
+                    } else {
+                        addOutput('No content in current editor');
+                        return;
+                    }
+                } else {
+                    addOutput('IDE not available - use ASM <filename>');
+                    return;
+                }
+            } catch (error) {
+                addOutput(`Error getting editor content: ${error.message}`);
+                return;
+            }
+        }
+
+        addOutput(`Assembling ${filename}...`);
+        
+        try {
+            // Create a build step for Z80 assembly
+            const buildStep = {
+                path: filename,
+                files: [filename],
+                platform: 'msx-cpm',
+                tool: 'zmac',
+                mainfile: true
+            };
+
+            // Send the build step to the worker
+            const result = await this.sendBuildStep(buildStep, sourceCode);
+            
+            if (result.errors && result.errors.length > 0) {
+                addOutput('Assembly failed:', '#f00');
+                result.errors.forEach(error => {
+                    addOutput(`  Line ${error.line}: ${error.msg}`, '#f00');
+                });
+            } else if (result.output) {
+                addOutput('Assembly completed successfully!', '#0f0');
+                addOutput(`Output: ${result.output.length} bytes`, '#0f0');
+                
+                // Store the compiled output for execution
+                this.compiledPrograms[filename] = result.output;
+                
+                // Save the binary as a .COM file in the virtual filesystem
+                const comFilename = filename.replace('.ASM', '.COM');
+                this.files[comFilename] = result.output;
+                addOutput(`Saved as: ${comFilename}`, '#0f0');
+                
+                addOutput('Use RUN command to execute the program.');
+            } else {
+                addOutput('Assembly completed but no output generated.');
+            }
+        } catch (error) {
+            addOutput(`Assembly failed: ${error.message}`, '#f00');
         }
     }
 
@@ -564,9 +602,28 @@ ERRMSG: DB      'Memory test failed!', 0DH, 0AH, '$'
             return;
         }
 
-        const filename = parts[1].toUpperCase();
+        let filename = parts[1].toUpperCase();
         
-        if (!this.compiledPrograms[filename]) {
+        // If no extension, try .COM first, then .ASM
+        if (!filename.includes('.')) {
+            if (this.files[filename + '.COM']) {
+                filename = filename + '.COM';
+            } else if (this.compiledPrograms[filename + '.ASM']) {
+                filename = filename + '.ASM';
+            } else {
+                addOutput(`Program not found: ${filename}`);
+                addOutput('Use ASM command to compile first.');
+                return;
+            }
+        }
+        
+        // Check if we have the compiled program
+        let program: Uint8Array;
+        if (this.files[filename] && filename.endsWith('.COM')) {
+            program = this.files[filename];
+        } else if (this.compiledPrograms[filename]) {
+            program = this.compiledPrograms[filename];
+        } else {
             addOutput(`Program not compiled: ${filename}`);
             addOutput('Use ASM command to compile first.');
             return;
@@ -581,7 +638,6 @@ ERRMSG: DB      'Memory test failed!', 0DH, 0AH, '$'
         
         try {
             // Load the compiled program into memory at 0x100 (CP/M standard)
-            const program = this.compiledPrograms[filename];
             for (let i = 0; i < program.length; i++) {
                 this.machine.write(0x100 + i, program[i]);
             }
