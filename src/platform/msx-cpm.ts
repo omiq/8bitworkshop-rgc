@@ -324,6 +324,12 @@ ERRMSG: DB      'Memory test failed!', 0DH, 0AH, '$'
     }
 
     private async sendBuildStep(buildStep: any, sourceCode: Uint8Array): Promise<any> {
+        // Use the global worker from the IDE
+        const worker = (window as any).worker;
+        if (!worker) {
+            throw new Error('Global worker not available');
+        }
+
         // Create a worker message with the build step
         const message = {
             updates: [{
@@ -335,17 +341,39 @@ ERRMSG: DB      'Memory test failed!', 0DH, 0AH, '$'
 
         // Send to worker and wait for result
         return new Promise((resolve, reject) => {
-            const worker = new Worker('/src/worker/worker.js');
+            const originalOnMessage = worker.onmessage;
+            let resolved = false;
             
-            worker.onmessage = (event) => {
-                worker.terminate();
-                resolve(event.data);
+            worker.onmessage = (event: MessageEvent) => {
+                // Call the original handler first
+                if (originalOnMessage) {
+                    originalOnMessage.call(worker, event);
+                }
+                
+                // Check if this is our build result
+                if (!resolved && event.data && (event.data.output || event.data.errors)) {
+                    resolved = true;
+                    worker.onmessage = originalOnMessage;
+                    resolve(event.data);
+                }
             };
             
             worker.onerror = (error) => {
-                worker.terminate();
-                reject(error);
+                if (!resolved) {
+                    resolved = true;
+                    worker.onmessage = originalOnMessage;
+                    reject(error);
+                }
             };
+            
+            // Set a timeout to prevent hanging
+            setTimeout(() => {
+                if (!resolved) {
+                    resolved = true;
+                    worker.onmessage = originalOnMessage;
+                    reject(new Error('Assembly timeout'));
+                }
+            }, 10000);
             
             worker.postMessage(message);
         });
@@ -444,8 +472,17 @@ ERRMSG: DB      'Memory test failed!', 0DH, 0AH, '$'
         if (newDir === 'A:' || newDir === 'B:' || newDir === 'C:') {
             this.currentDirectory = newDir;
             addOutput(`Current directory is now ${this.currentDirectory}`);
+            // Update the prompt to show the new directory
+            this.updatePrompt();
         } else {
             addOutput('Invalid drive. Use A:, B:, or C:');
+        }
+    }
+
+    private updatePrompt() {
+        const prompt = this.mainElement.querySelector('.prompt') as HTMLElement;
+        if (prompt) {
+            prompt.textContent = `${this.currentDirectory}> `;
         }
     }
 
@@ -686,7 +723,7 @@ ERRMSG: DB      'Memory test failed!', 0DH, 0AH, '$'
     }
 
     showHelp() {
-        return "https://8bitworkshop.com/docs/platforms/msx-cpm/";
+        return "https://retrogamecoders.com/docs/platforms/msx-cpm/";
     }
 }
 
