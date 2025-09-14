@@ -17,7 +17,7 @@ const MSX_CPM_PRESETS = [
 
 class MSXCPMPlatform extends BaseZ80MachinePlatform<MSX1> implements Platform {
     private tty: TeleTypeWithKeyboard;
-    private timer: AnimationTimer;
+    public timer: AnimationTimer;
     private commandHistory: string[] = [];
     private historyIndex: number = -1;
     private currentDirectory: string = "A:";
@@ -586,8 +586,10 @@ ERRMSG: DB      'Memory test failed!', 0DH, 0AH, '$'
                 this.machine.write(0x100 + i, program[i]);
             }
             
-            // Set PC to start of program
-            this.machine.cpu.setPC(0x100);
+            // Set PC to start of program by loading state
+            const state = this.machine.cpu.saveState();
+            state.PC = 0x100;
+            this.machine.cpu.loadState(state);
             
             // Run the program for a limited number of cycles
             let cycles = 0;
@@ -606,12 +608,16 @@ ERRMSG: DB      'Memory test failed!', 0DH, 0AH, '$'
                     const low = this.machine.read(pc + 1);
                     const high = this.machine.read(pc + 2);
                     const addr = (high << 8) | low;
-                    this.machine.cpu.setPC(addr);
+                    const newState = this.machine.cpu.saveState();
+                    newState.PC = addr;
+                    this.machine.cpu.loadState(newState);
                     cycles += 10;
                     continue;
                 } else {
                     // For now, just advance PC
-                    this.machine.cpu.setPC(pc + 1);
+                    const newState = this.machine.cpu.saveState();
+                    newState.PC = pc + 1;
+                    this.machine.cpu.loadState(newState);
                 }
                 
                 cycles++;
@@ -658,13 +664,14 @@ ERRMSG: DB      'Memory test failed!', 0DH, 0AH, '$'
     private executeReg(addOutput: (text: string, color?: string) => void) {
         if (this.machine && this.machine.cpu) {
             const cpu = this.machine.cpu;
+            const state = cpu.saveState();
             addOutput('Z80 CPU Registers:');
-            addOutput(`  PC: ${cpu.getPC().toString(16).padStart(4, '0').toUpperCase()}H`);
-            addOutput(`  SP: ${cpu.getSP().toString(16).padStart(4, '0').toUpperCase()}H`);
-            addOutput(`  AF: ${cpu.getAF().toString(16).padStart(4, '0').toUpperCase()}H`);
-            addOutput(`  BC: ${cpu.getBC().toString(16).padStart(4, '0').toUpperCase()}H`);
-            addOutput(`  DE: ${cpu.getDE().toString(16).padStart(4, '0').toUpperCase()}H`);
-            addOutput(`  HL: ${cpu.getHL().toString(16).padStart(4, '0').toUpperCase()}H`);
+            addOutput(`  PC: ${state.PC.toString(16).padStart(4, '0').toUpperCase()}H`);
+            addOutput(`  SP: ${state.SP.toString(16).padStart(4, '0').toUpperCase()}H`);
+            addOutput(`  AF: ${state.AF.toString(16).padStart(4, '0').toUpperCase()}H`);
+            addOutput(`  BC: ${state.BC.toString(16).padStart(4, '0').toUpperCase()}H`);
+            addOutput(`  DE: ${state.DE.toString(16).padStart(4, '0').toUpperCase()}H`);
+            addOutput(`  HL: ${state.HL.toString(16).padStart(4, '0').toUpperCase()}H`);
         } else {
             addOutput('CPU not initialized - use RESET command to initialize');
         }
