@@ -12,16 +12,16 @@
 #define POSIT_ADDR   0x00C6    /* Position cursor */
 #define CHPUT_ADDR   0x00A2    /* Character output */
 #define CHGET_ADDR   0x009F    /* Character input */
-#define GTSTCK  0x00D5    /* Get joystick status */
-#define GTTRIG  0x00D8    /* Get trigger status */
-#define SNSMAT  0x0141    /* Sense matrix */
-#define KILBUF  0x0156    /* Clear keyboard buffer */
-#define CALBAS  0x0159    /* Call BASIC */
-#define EXTROM  0x015F    /* Call external ROM */
-#define CHGCPU  0x0180    /* Change CPU mode */
-#define GETCPU  0x0183    /* Get CPU mode */
-#define PCMPLY  0x0186    /* PCM play */
-#define PCMREC  0x0189    /* PCM record */
+#define GTSTCK_ADDR  0x00D5    /* Get joystick status */
+#define GTTRIG_ADDR  0x00D8    /* Get trigger status */
+#define SNSMAT_ADDR  0x0141    /* Sense matrix */
+#define KILBUF_ADDR  0x0156    /* Clear keyboard buffer */
+#define CALBAS_ADDR  0x0159    /* Call BASIC */
+#define EXTROM_ADDR  0x015F    /* Call external ROM */
+#define CHGCPU_ADDR  0x0180    /* Change CPU mode */
+#define GETCPU_ADDR  0x0183    /* Get CPU mode */
+#define PCMPLY_ADDR  0x0186    /* PCM play */
+#define PCMREC_ADDR  0x0189    /* PCM record */
 
 /* Screen modes */
 #define SCREEN0 0x00      /* Text mode */
