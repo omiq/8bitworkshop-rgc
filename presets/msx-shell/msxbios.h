@@ -56,12 +56,6 @@ unsigned char GETCPU(void);
 void PCMPLY(unsigned char *data, unsigned int length);
 void PCMREC(unsigned char *data, unsigned int length);
 
-/* Inline assembly implementations */
-#define CLS() __asm__("call 0x00C3")
-#define POSIT(row, col) __asm__("ld a, %0\nld h, %1\ncall 0x00C6" : : "r" (row), "r" (col))
-#define CHPUT(ch) __asm__("ld a, %0\ncall 0x00A2" : : "r" (ch))
-#define CHGET() ({ unsigned char result; __asm__("call 0x009F\nld %0, a" : "=r" (result)); result; })
-
 /* Screen control functions */
 void set_screen_mode(unsigned char mode);
 void set_color(unsigned char foreground, unsigned char background);
