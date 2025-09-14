@@ -214,8 +214,14 @@ class MSXCPMPlatform extends BaseZ80MachinePlatform<MSX1> implements Platform {
                     // Empty command, do nothing
                     break;
                 default:
-                    addOutput(`Bad command or file name: ${cmd}`, '#f00');
-                    addOutput('Type HELP for available commands.', '#ff0');
+                    // Check if it's a filename that can be executed
+                    if (this.isExecutableFile(cmd, parts)) {
+                        // Treat as RUN command
+                        this.executeRun(parts, addOutput);
+                    } else {
+                        addOutput(`Bad command or file name: ${cmd}`, '#f00');
+                        addOutput('Type HELP for available commands.', '#ff0');
+                    }
             }
         };
 
@@ -486,6 +492,25 @@ ERRMSG: DB      'Memory test failed!', 0DH, 0AH, '$'
         }
     }
 
+    private isExecutableFile(cmd: string, parts: string[]): boolean {
+        // Check if it's a .COM file
+        if (this.files[cmd.toUpperCase() + '.COM']) {
+            return true;
+        }
+        
+        // Check if it's a compiled .ASM file
+        if (this.compiledPrograms[cmd.toUpperCase() + '.ASM']) {
+            return true;
+        }
+        
+        // Check if it's a .COM file without extension
+        if (cmd.toUpperCase().endsWith('.COM') && this.files[cmd.toUpperCase()]) {
+            return true;
+        }
+        
+        return false;
+    }
+
     private executeHelp(addOutput: (text: string, color?: string) => void) {
         addOutput('MSX-DOS/CP/M Command Interface');
         addOutput('');
@@ -514,6 +539,8 @@ ERRMSG: DB      'Memory test failed!', 0DH, 0AH, '$'
         addOutput('Examples:');
         addOutput('  ASM              - Assemble code in editor');
         addOutput('  ASM HELLO.ASM    - Assemble virtual file');
+        addOutput('  RUN CPM_DEMO     - Execute program');
+        addOutput('  CPM_DEMO         - Execute program (shortcut)');
     }
 
     private async executeAsm(parts: string[], addOutput: (text: string, color?: string) => void) {
