@@ -534,10 +534,14 @@ ERRMSG: DB      'Memory test failed!', 0DH, 0AH, '$'
             filename = 'CURRENT.ASM';
             try {
                 // Get current editor content from the IDE
-                const currentProject = (window as any).IDE?.getCurrentProject();
-                if (currentProject) {
-                    const currentFile = currentProject.getCurrentMainFilename();
+                const getCurrentProject = (window as any).IDE?.getCurrentProject;
+                const getCurrentMainFilename = (window as any).IDE?.getCurrentMainFilename;
+                
+                if (getCurrentProject && getCurrentMainFilename) {
+                    const currentProject = getCurrentProject();
+                    const currentFile = getCurrentMainFilename();
                     const fileData = currentProject.getFile(currentFile);
+                    
                     if (fileData) {
                         sourceCode = new TextEncoder().encode(fileData);
                         filename = currentFile.toUpperCase().replace('.ASM', '') + '.ASM';
