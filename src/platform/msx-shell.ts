@@ -704,6 +704,9 @@ int main() {
                     const high = this.machine.read(pc + 2);
                     const addr = (high << 8) | low;
                     
+                    // Debug: show all CALL instructions
+                    addOutput(`CALL 0x${addr.toString(16).padStart(4, '0')}`, '#888');
+                    
                     // Handle MSX BIOS calls
                     if (this.handleMSXBIOSCall(addr, addOutput)) {
                         // BIOS call handled, advance PC past CALL instruction
