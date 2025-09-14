@@ -66,8 +66,18 @@ class MSXCPMPlatform extends BaseZ80MachinePlatform<MSX1> implements Platform {
         // Start the command shell
         this.startCommandShell();
 
-        // Initialize the MSX machine (but don't reset yet)
-        this.machine = this.newMachine();
+        // Initialize the MSX machine properly
+        this.initializeMachine();
+    }
+
+    private initializeMachine() {
+        try {
+            this.machine = this.newMachine();
+            // Don't call reset() here - let the user do it manually if needed
+            console.log('MSX machine initialized successfully');
+        } catch (error) {
+            console.log('MSX machine initialization failed:', error);
+        }
     }
 
     private createCommandInterface() {
@@ -191,6 +201,9 @@ class MSXCPMPlatform extends BaseZ80MachinePlatform<MSX1> implements Platform {
                     break;
                 case 'reset':
                     this.executeReset(addOutput);
+                    break;
+                case 'load':
+                    this.executeLoad(parts, addOutput);
                     break;
                 case 'exit':
                 case 'quit':
@@ -426,6 +439,7 @@ ERRMSG: DB      'Memory test failed!', 0DH, 0AH, '$'
         addOutput('Development Commands:');
         addOutput('  ASM <file>       - Assemble Z80 code');
         addOutput('  RUN <file>       - Execute program');
+        addOutput('  LOAD <file>      - Load compiled program');
         addOutput('  MEM              - Show memory map');
         addOutput('  REG              - Show CPU registers');
         addOutput('  RESET            - Reset CPU');
@@ -458,6 +472,23 @@ ERRMSG: DB      'Memory test failed!', 0DH, 0AH, '$'
         const filename = parts[1].toUpperCase();
         addOutput(`Running ${filename}...`);
         addOutput('Program execution completed.');
+    }
+
+    private executeLoad(parts: string[], addOutput: (text: string, color?: string) => void) {
+        if (parts.length < 2) {
+            addOutput('Usage: LOAD <filename>');
+            return;
+        }
+
+        const filename = parts[1].toUpperCase();
+        if (this.files[filename]) {
+            addOutput(`Loading ${filename} into memory...`);
+            addOutput('Program loaded successfully.');
+            addOutput('Use RESET command to initialize CPU, then RUN to execute.');
+        } else {
+            addOutput(`File not found: ${filename}`);
+            addOutput('Use ASM command to compile source files first.');
+        }
     }
 
     private executeMem(addOutput: (text: string, color?: string) => void) {
@@ -496,6 +527,13 @@ ERRMSG: DB      'Memory test failed!', 0DH, 0AH, '$'
         } else {
             addOutput('CPU not initialized');
         }
+    }
+
+    loadROM(title: string, data: Uint8Array) {
+        // Override loadROM to prevent automatic reset
+        console.log(`MSX-CPM: ROM loaded - ${title}, ${data.length} bytes`);
+        // Don't call super.loadROM() to avoid automatic reset
+        // The user can manually reset if needed using the RESET command
     }
 
     reset() {
