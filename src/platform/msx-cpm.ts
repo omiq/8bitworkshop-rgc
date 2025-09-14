@@ -60,15 +60,14 @@ class MSXCPMPlatform extends BaseZ80MachinePlatform<MSX1> implements Platform {
     }
 
     async start() {
-        // Create the MSX machine
-        this.machine = this.newMachine();
-        this.machine.reset();
-
-        // Create command interface UI
+        // Create command interface UI first
         this.createCommandInterface();
 
         // Start the command shell
         this.startCommandShell();
+
+        // Initialize the MSX machine (but don't reset yet)
+        this.machine = this.newMachine();
     }
 
     private createCommandInterface() {
@@ -482,14 +481,18 @@ ERRMSG: DB      'Memory test failed!', 0DH, 0AH, '$'
             addOutput(`  DE: ${cpu.getDE().toString(16).padStart(4, '0').toUpperCase()}H`);
             addOutput(`  HL: ${cpu.getHL().toString(16).padStart(4, '0').toUpperCase()}H`);
         } else {
-            addOutput('CPU not initialized');
+            addOutput('CPU not initialized - use RESET command to initialize');
         }
     }
 
     private executeReset(addOutput: (text: string, color?: string) => void) {
         if (this.machine) {
-            this.machine.reset();
-            addOutput('CPU reset completed.');
+            try {
+                this.machine.reset();
+                addOutput('CPU reset completed.');
+            } catch (error) {
+                addOutput('CPU reset failed - machine may not be fully initialized');
+            }
         } else {
             addOutput('CPU not initialized');
         }
@@ -497,7 +500,11 @@ ERRMSG: DB      'Memory test failed!', 0DH, 0AH, '$'
 
     reset() {
         if (this.machine) {
-            this.machine.reset();
+            try {
+                this.machine.reset();
+            } catch (error) {
+                console.log('MSX machine reset failed:', error);
+            }
         }
     }
 
