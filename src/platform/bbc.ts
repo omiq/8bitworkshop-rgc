@@ -334,37 +334,63 @@ export class BBCMicroPlatform implements Platform {
     
     // Apply Acorn DFS format catalog (following owlet-editor exactly)
     write(0x0000, "BBCMICRO"); // DFS volume title
+    
+    // File entries (following owlet-editor pattern exactly)
+    write(0x0008, "!BOOT  $"); // Boot file
+    write(0x0010, "SCREEN $"); // Screen file  
+    write(0x0018, "PROGRAM$"); // Program file (this is what we want to load)
+    write(0x0020, "README $"); // Readme file
+    
+    // Catalog data at 0x0100
     write(0x0100, "BOT\0");
     write(0x0104, 0, 1); // BCD catalog cycle number
-    write(0x0105, 0, 1); // Number of files << 3 (will be updated)
+    write(0x0105, 0x20, 1); // Number of files << 3 (4 files = 32 = 0x20)
     write(0x0106, 0b00110000, 1); // *EXEC boot
     write(0x0107, 0x2003, 2); // Number of sectors in volume 0x0320
     
-    // Insert catalog entry at the beginning (following owlet-editor pattern)
-    write(0x0008, "       $"); // Initialize with spaces and $ marker
-    write(0x0008, filename); // Write filename (will overwrite the spaces)
-    write(0x0108, 0x1900, 2); // Load address (0x1900 for BASIC programs)
-    write(0x010a, 0x1900, 2); // Exec address (0x1900 for BASIC programs)
-    write(0x010c, basicBytes.length, 2); // File length
+    // File catalog entries (following owlet-editor structure)
+    // !BOOT file entry
+    write(0x0108, 0x1900, 2); // Load address
+    write(0x010a, 0x1900, 2); // Exec address  
+    write(0x010c, 0x0f, 2); // File length (15 bytes)
+    write(0x010e, 0x00, 1); // Extra info
+    write(0x010f, 0x02, 1); // Start sector
     
-    // Calculate extra info byte (following owlet-editor logic)
-    let extra = 0;
-    const execAdd = 0x1900;
-    const loadAdd = 0x1900;
-    const nextSector = 2;
-    extra |= ((execAdd & 0xffff0000) === (0xffff0000 | 0) ? 3 : 0) << 6;
-    extra |= ((basicBytes.length >> 16) & 3) << 4;
-    extra |= ((loadAdd & 0xffff0000) === (0xffff0000 | 0) ? 3 : 0) << 2;
-    extra |= ((nextSector >> 8) & 3) << 0;
-    write(0x010e, extra, 1);
+    // SCREEN file entry
+    write(0x0110, 0x3000, 2); // Load address
+    write(0x0112, 0x0000, 2); // Exec address
+    write(0x0114, 0x50, 2); // File length (80 bytes)
+    write(0x0116, 0x0c, 1); // Extra info
+    write(0x0117, 0x03, 1); // Start sector
     
-    write(0x010f, nextSector, 1); // Start sector (sector 2)
+    // PROGRAM file entry (our BASIC program)
+    write(0x0118, 0x1900, 2); // Load address
+    write(0x011a, 0x1900, 2); // Exec address
+    write(0x011c, basicBytes.length, 2); // File length
+    write(0x011e, 0x04, 1); // Extra info
+    write(0x011f, 0x05, 1); // Start sector (sector 5)
     
-    // Write the BASIC program data starting at sector 2
-    write(nextSector * 0x100, basicBytes);
+    // README file entry
+    write(0x0120, 0x0000, 2); // Load address
+    write(0x0122, 0x0000, 2); // Exec address
+    write(0x0124, 0x23, 2); // File length (35 bytes)
+    write(0x0126, 0x00, 1); // Extra info
+    write(0x0127, 0x06, 1); // Start sector
     
-    // Update disc status
-    write(0x0105, 1 << 3, 1); // Number of files << 3 (1 file = 8)
+    // Write file data
+    // !BOOT file (sector 2)
+    write(0x0200, "CHAIN\"PROGRAM\"\r");
+    
+    // SCREEN file (sector 3-4) - screen data
+    const screenData = new Uint8Array(0x50);
+    screenData.fill(0x14); // Fill with a pattern
+    write(0x0300, screenData);
+    
+    // PROGRAM file (sector 5) - our BASIC program
+    write(0x0500, basicBytes);
+    
+    // README file (sector 6)
+    write(0x0600, "Created by 8bitworkshop\r");
     
     console.log(`BBCMicroPlatform: Created proper SSD with ${basicBytes.length} bytes of BASIC program as ${filename}`);
     
