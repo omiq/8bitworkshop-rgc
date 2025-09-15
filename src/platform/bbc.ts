@@ -112,9 +112,23 @@ export class BBCMicroPlatform implements Platform {
     
     var frame = document.getElementById("bbc-iframe") as HTMLIFrameElement;
     if (frame && frame.contentWindow) {
-      // Instead of using URL parameters for large programs, use postMessage
-      if (rom.length > 0) { // Always use postMessage for all programs
-        console.log("BBCMicroPlatform: Large program detected, using postMessage instead of URL");
+      // Check if this is BBC BASIC (raw text) or compiled C code
+      const isBasicProgram = this.isBasicProgram(rom);
+      
+      if (isBasicProgram) {
+        console.log("BBCMicroPlatform: BBC BASIC program detected, using embedBasic parameter");
+        
+        // Convert bytes back to text for BASIC programs
+        const basicText = new TextDecoder().decode(rom);
+        const encodedBasic = encodeURIComponent(basicText);
+        
+        // Load iframe with embedBasic parameter
+        const iframeURL = `bbc-iframe.html?embedBasic=${encodedBasic}&t=${Date.now()}`;
+        frame.src = iframeURL;
+        
+        console.log("BBCMicroPlatform: Loading iframe with BASIC program:", iframeURL);
+      } else if (rom.length > 0) { // Compiled C program
+        console.log("BBCMicroPlatform: Compiled C program detected, using postMessage");
         
         // Load the iframe with just the base URL
         const baseURL = 'bbc-iframe.html?t=' + Date.now();
@@ -293,6 +307,24 @@ export class BBCMicroPlatform implements Platform {
 
   setSSDBlob(blob: Blob): void {
     this.currentSSDBlob = blob;
+  }
+
+  private isBasicProgram(rom: Uint8Array): boolean {
+    // Check if this looks like BBC BASIC source code
+    // BBC BASIC programs typically start with line numbers and contain BASIC keywords
+    const text = new TextDecoder().decode(rom);
+    
+    // Look for BBC BASIC patterns:
+    // 1. Starts with a line number (digits followed by space)
+    // 2. Contains BBC BASIC keywords
+    const basicKeywords = ['PRINT', 'REM', 'MODE', 'COLOUR', 'GOTO', 'FOR', 'NEXT', 'IF', 'THEN', 'ELSE', 'END', 'STOP', 'RUN', 'NEW', 'LOAD', 'SAVE'];
+    
+    const hasLineNumbers = /^\d+\s/.test(text.trim());
+    const hasBasicKeywords = basicKeywords.some(keyword => 
+      text.toUpperCase().includes(keyword)
+    );
+    
+    return hasLineNumbers && hasBasicKeywords;
   }
 }
 
