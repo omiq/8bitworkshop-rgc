@@ -116,17 +116,37 @@ export class BBCMicroPlatform implements Platform {
       const isBasicProgram = this.isBasicProgram(rom);
       
       if (isBasicProgram) {
-        console.log("BBCMicroPlatform: BBC BASIC program detected, using embedBasic parameter");
+        console.log("BBCMicroPlatform: BBC BASIC program detected");
         
         // Convert bytes back to text for BASIC programs
         const basicText = new TextDecoder().decode(rom);
         const encodedBasic = encodeURIComponent(basicText);
         
-        // Load iframe with embedBasic parameter
+        // Check if the URL would be too long (limit to ~1500 chars to be safe)
         const iframeURL = `bbc-iframe.html?embedBasic=${encodedBasic}&t=${Date.now()}`;
-        frame.src = iframeURL;
         
-        console.log("BBCMicroPlatform: Loading iframe with BASIC program:", iframeURL);
+        if (iframeURL.length > 1500) {
+          console.log("BBCMicroPlatform: BASIC program too long for URL, using postMessage approach");
+          // For long programs, use postMessage to send the BASIC text
+          const baseURL = 'bbc-iframe.html?t=' + Date.now();
+          frame.src = baseURL;
+          
+          const onLoad = () => {
+            console.log("BBCMicroPlatform: iframe loaded, sending BASIC program via postMessage");
+            frame.contentWindow!.postMessage({
+              type: 'basic_program',
+              program: basicText,
+              autoLoad: true
+            }, '*');
+            frame.removeEventListener('load', onLoad);
+          };
+          frame.addEventListener('load', onLoad);
+        } else {
+          console.log("BBCMicroPlatform: Using embedBasic parameter for short BASIC program");
+          frame.src = iframeURL;
+        }
+        
+        console.log("BBCMicroPlatform: Loading iframe with BASIC program, URL length:", iframeURL.length);
       } else if (rom.length > 0) { // Compiled C program
         console.log("BBCMicroPlatform: Compiled C program detected, using postMessage");
         
