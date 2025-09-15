@@ -340,7 +340,28 @@ export class BBCMicroPlatform implements Platform {
           console.log('BBCMicroPlatform: Global objects:', globalObjects.filter(k => k.includes('proc') || k.includes('cpu') || k.includes('emu')));
         }
         
-        return null;
+        // Try to find processor in nested objects
+        for (const key of Object.keys(jsbeebWindow)) {
+          const obj = jsbeebWindow[key];
+          if (obj && typeof obj === 'object') {
+            if (obj.processor || obj.cpu || obj.emulator) {
+              console.log(`BBCMicroPlatform: Found processor in ${key}:`, Object.keys(obj));
+              processor = obj.processor || obj.cpu || obj.emulator;
+              break;
+            }
+            // Check for readmem function which indicates a processor
+            if (typeof obj.readmem === 'function') {
+              console.log(`BBCMicroPlatform: Found readmem function in ${key}`);
+              processor = obj;
+              break;
+            }
+          }
+        }
+        
+        if (!processor) {
+          console.log('BBCMicroPlatform: Still no processor found after deep search');
+          return null;
+        }
       }
       
       // Read the BASIC program from memory
