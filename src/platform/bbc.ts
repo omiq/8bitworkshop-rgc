@@ -289,7 +289,7 @@ export class BBCMicroPlatform implements Platform {
     const basicText = new TextDecoder().decode(basicOutput);
     
     // Get the current filename or use a default
-    const currentFile = (window as any).IDE?.getCurrentFilename() || 'PROGRAM';
+    const currentFile = (window as any).IDE?.getCurrentMainFilename() || 'PROGRAM';
     const filename = currentFile.replace(/\.(bas|BAS)$/, '').toUpperCase().substring(0, 7); // Max 7 chars for DFS
     
     // Create a proper SSD disk image using the DFS format
