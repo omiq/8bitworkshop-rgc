@@ -46,23 +46,51 @@
   * Default extension .bas for BBC Micro
   * Download: .ssd when available
 
+## Features Implemented
+
+### Model Parameter Support
+- The `model=` parameter from the main index.html URL is now passed through to the jsbeeb emulator
+- This allows users to specify different BBC Micro models (e.g., `?model=master` for BBC Master)
+- Works for both BBC BASIC and C programs
+- Example: `https://ide.retrogamecoders.com/?platform=bbc&model=master`
+
+### Auto Line Numbering
+- BBC BASIC programs automatically get line numbers added if missing
+- Starts at line 10 and increments by 10
+- Preserves existing line numbers and adjusts the counter accordingly
+
+### Case-Insensitive File Extensions
+- `.bas` and `.BAS` files are both recognized as BBC BASIC programs
+- Applied across all platforms (BBC, C64, VCS, Atari 8-bit)
+
+### SSD Generation
+- Uses the exact `AcornDFSdisc` class from owlet-editor for compatibility
+- Generates proper SSD disc images with correct catalog structure
+- Includes !BOOT file for automatic program execution
+
 ## Risks
 - Full parity with owlet-editor Monaco mode in CodeMirror may be staged
 - Accurate token stream vs ROM tables requires validation on device
 
 ## Milestones
-M1: Minimal pipeline (tokenize -> run via iframe postMessage)
-M2: CodeMirror highlighting + presets
-M3: SSD packaging and download
-M4: Inline asm support/validation
+M1: Minimal pipeline (tokenize -> run via iframe postMessage) ✅
+M2: CodeMirror highlighting + presets ✅
+M3: SSD packaging and download ✅
+M4: Model parameter support ✅
+M5: Inline asm support/validation
 
 ## TODO
-- [ ] Add worker tool: bbcbasic (src/worker/tools/bbcbasic.ts)
-- [ ] Register tool in workertools.ts (TOOLS["bbcbasic"])
-- [ ] Map tool->mode in src/ide/ui.ts
-- [ ] Add CodeMirror mode (src/codemirror/bbcbasic.js)
-- [ ] BBC platform: .bas -> bbcbasic, presets, load path
-- [ ] Basic presets under presets/bbc/*.bas
-- [ ] Optional SSD writer (reuse Acorn DFS logic or minimal writer)
+- [x] Add worker tool: bbcbasic (src/worker/tools/bbcbasic.ts)
+- [x] Register tool in workertools.ts (TOOLS["bbcbasic"])
+- [x] Map tool->mode in src/ide/ui.ts
+- [x] Add CodeMirror mode (src/codemirror/basic.js - updated with BBC BASIC keywords)
+- [x] BBC platform: .bas -> bbcbasic, presets, load path
+- [x] Basic presets under presets/bbc/*.bas
+- [x] SSD writer (using AcornDFSdisc class from owlet-editor)
+- [x] Auto line numbering for BBC BASIC programs
+- [x] Case-insensitive .bas file extension handling
+- [x] BBC BASIC skeleton files
+- [x] Model parameter support (passing model= from main URL to jsbeeb)
+- [x] Persistent storage warning suppression
 - [ ] Tests for tokenization (sample lines: PRINT, DATA, PROC/FN, asm [])
 - [ ] README add dev flow for BBC BASIC
