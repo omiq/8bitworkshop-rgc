@@ -323,15 +323,19 @@ export class BBCMicroPlatform implements Platform {
       }
       
       const jsbeebWindow = iframe.contentWindow as any;
-      if (!jsbeebWindow.processor) {
-        console.log('BBCMicroPlatform: No processor found in jsbeeb');
+      
+      // Check for processor with multiple possible names
+      let processor = jsbeebWindow.processor || jsbeebWindow.cpu || jsbeebWindow.emulator;
+      if (!processor) {
+        console.log('BBCMicroPlatform: No processor found in jsbeeb (tried processor, cpu, emulator)');
+        console.log('BBCMicroPlatform: Available objects:', Object.keys(jsbeebWindow).filter(k => k.includes('proc') || k.includes('cpu') || k.includes('emu')));
         return null;
       }
       
       // Read the BASIC program from memory
       // The program is stored starting at the page indicated by 0x18
-      const page = jsbeebWindow.processor.readmem(0x18) << 8;
-      const top = (jsbeebWindow.processor.readmem(0x02) | (jsbeebWindow.processor.readmem(0x03) << 8));
+      const page = processor.readmem(0x18) << 8;
+      const top = (processor.readmem(0x02) | (processor.readmem(0x03) << 8));
       
       if (page === 0 || top === 0) {
         console.log('BBCMicroPlatform: No BASIC program in memory');
@@ -347,7 +351,7 @@ export class BBCMicroPlatform implements Platform {
       // Extract the tokenized BASIC program
       const tokenizedBasic = new Uint8Array(programLength);
       for (let i = 0; i < programLength; i++) {
-        tokenizedBasic[i] = jsbeebWindow.processor.readmem(page + i);
+        tokenizedBasic[i] = processor.readmem(page + i);
       }
       
       console.log(`BBCMicroPlatform: Extracted ${programLength} bytes of tokenized BASIC from emulator memory`);
