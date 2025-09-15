@@ -302,9 +302,7 @@ export class BBCMicroPlatform implements Platform {
   }
 
   private createProperSSD(basicText: string, filename: string): Uint8Array {
-    // Create a proper Acorn DFS SSD disk image
-    // This follows the DFS format used by the BBC Micro
-    
+    // Create a proper Acorn DFS SSD disk image following the owlet-editor format
     // Convert BASIC text to bytes (BBC Micro uses ASCII)
     const basicBytes = new TextEncoder().encode(basicText);
     
@@ -315,55 +313,56 @@ export class BBCMicroPlatform implements Platform {
     // Initialize with zeros
     disk.fill(0);
     
-    // Write DFS catalog header
-    // Volume title (8 bytes)
-    const volumeTitle = 'BBCMICRO';
-    for (let i = 0; i < 8; i++) {
-      disk[i] = i < volumeTitle.length ? volumeTitle.charCodeAt(i) : 0x20; // Space padding
-    }
+    // Helper function to write data to disk (similar to owlet-editor)
+    const write = (address: number, data: string | number | Uint8Array, length?: number) => {
+      if (typeof data === 'string') {
+        for (let i = 0; i < data.length; i++) {
+          disk[address + i] = data.charCodeAt(i) & 0xff;
+        }
+      } else if (typeof data === 'number') {
+        for (let b = 0; b < (length || 1); b++) {
+          disk[address + b] = (data >> (b * 8)) & 0xff;
+        }
+      } else if (data instanceof Uint8Array) {
+        for (let i = 0; i < data.length; i++) {
+          disk[address + i] = data[i];
+        }
+      }
+    };
     
-    // Catalog sector 0 header
-    disk[0x100] = 0x42; // 'B'
-    disk[0x101] = 0x4F; // 'O' 
-    disk[0x102] = 0x54; // 'T'
-    disk[0x103] = 0x00; // Null terminator
-    disk[0x104] = 0x00; // BCD catalog cycle number
-    disk[0x105] = 0x08; // Number of files << 3 (1 file = 8)
-    disk[0x106] = 0x30; // *EXEC boot
-    disk[0x107] = 0x20; // Number of sectors in volume (low byte)
-    disk[0x108] = 0x03; // Number of sectors in volume (high byte)
+    // Apply Acorn DFS format catalog (following owlet-editor exactly)
+    write(0x0000, "BBCMICRO"); // DFS volume title
+    write(0x0100, "BOT\0");
+    write(0x0104, 0, 1); // BCD catalog cycle number
+    write(0x0105, 0, 1); // Number of files << 3 (will be updated)
+    write(0x0106, 0b00110000, 1); // *EXEC boot
+    write(0x0107, 0x2003, 2); // Number of sectors in volume 0x0320
     
-    // File catalog entry
-    // Filename (7 bytes, padded with spaces)
-    const paddedFilename = filename.padEnd(7, ' ');
-    for (let i = 0; i < 7; i++) {
-      disk[0x008 + i] = paddedFilename.charCodeAt(i);
-    }
-    disk[0x00F] = 0x24; // '$' (file type indicator)
+    // Insert catalog entry at the beginning (following owlet-editor pattern)
+    write(0x0008, "       $"); // Initialize with spaces and $ marker
+    write(0x0008, filename); // Write filename (will overwrite the spaces)
+    write(0x0108, 0x1900, 2); // Load address (0x1900 for BASIC programs)
+    write(0x010a, 0x1900, 2); // Exec address (0x1900 for BASIC programs)
+    write(0x010c, basicBytes.length, 2); // File length
     
-    // Load address (0x1900 for BASIC programs)
-    disk[0x108] = 0x00; // Low byte
-    disk[0x109] = 0x19; // High byte
+    // Calculate extra info byte (following owlet-editor logic)
+    let extra = 0;
+    const execAdd = 0x1900;
+    const loadAdd = 0x1900;
+    const nextSector = 2;
+    extra |= ((execAdd & 0xffff0000) === (0xffff0000 | 0) ? 3 : 0) << 6;
+    extra |= ((basicBytes.length >> 16) & 3) << 4;
+    extra |= ((loadAdd & 0xffff0000) === (0xffff0000 | 0) ? 3 : 0) << 2;
+    extra |= ((nextSector >> 8) & 3) << 0;
+    write(0x010e, extra, 1);
     
-    // Exec address (0x1900 for BASIC programs)
-    disk[0x10A] = 0x00; // Low byte  
-    disk[0x10B] = 0x19; // High byte
-    
-    // File length
-    disk[0x10C] = basicBytes.length & 0xFF; // Low byte
-    disk[0x10D] = (basicBytes.length >> 8) & 0xFF; // High byte
-    
-    // Extra info byte
-    disk[0x10E] = 0x00; // Extra info
-    
-    // Start sector (sector 2, after catalog)
-    disk[0x10F] = 0x02;
+    write(0x010f, nextSector, 1); // Start sector (sector 2)
     
     // Write the BASIC program data starting at sector 2
-    const dataStart = 0x200; // Sector 2 * 256 bytes
-    for (let i = 0; i < basicBytes.length && i < (diskSize - dataStart); i++) {
-      disk[dataStart + i] = basicBytes[i];
-    }
+    write(nextSector * 0x100, basicBytes);
+    
+    // Update disc status
+    write(0x0105, 1 << 3, 1); // Number of files << 3 (1 file = 8)
     
     console.log(`BBCMicroPlatform: Created proper SSD with ${basicBytes.length} bytes of BASIC program as ${filename}`);
     
