@@ -805,9 +805,24 @@
         function initBBCEmulator() {
             updateStatus("Loading jsbeeb emulator...");
             
-            // Create iframe to embed jsbeeb locally with local disc support and autoboot
+            // Check if we have an embedBasic parameter to pass through
+            const urlParams = new URLSearchParams(window.location.search);
+            const embedBasic = urlParams.get('embedBasic');
+            
+            // Create iframe to embed jsbeeb locally
             const iframe = document.createElement('iframe');
-            iframe.src = 'res/jsbeeb/dist/index.html?embed&disc1=local:PROGRAM.ssd&autoboot';
+            let iframeSrc = 'res/jsbeeb/dist/index.html?embed';
+            
+            if (embedBasic) {
+                // If we have embedBasic, pass it through to jsbeeb
+                iframeSrc += `&embedBasic=${encodeURIComponent(embedBasic)}`;
+                console.log("BBC iframe: Passing embedBasic to jsbeeb:", embedBasic);
+            } else {
+                // Default: use local disc support and autoboot
+                iframeSrc += '&disc1=local:PROGRAM.ssd&autoboot';
+            }
+            
+            iframe.src = iframeSrc;
             iframe.style.width = '100%';
             iframe.style.height = '100%';
             iframe.style.border = 'none';
@@ -966,10 +981,12 @@
             const programData = urlParams.get('program');
             const programHex = urlParams.get('hex');
             const gzipData = urlParams.get('gzip');
+            const embedBasic = urlParams.get('embedBasic');
             
             console.log("BBC iframe: program param:", programData ? "found (" + programData.length + " chars)" : "not found");
             console.log("BBC iframe: hex param:", programHex ? "found (" + programHex.length + " chars)" : "not found");
             console.log("BBC iframe: gzip param:", gzipData ? "found (" + gzipData.length + " chars)" : "not found");
+            console.log("BBC iframe: embedBasic param:", embedBasic ? "found (" + embedBasic.length + " chars)" : "not found");
             
             if (gzipData) {
                 try {
@@ -1076,6 +1093,17 @@
                     console.error("BBC iframe: Error decoding hex program data:", e);
                     updateStatus("Error decoding program from URL: " + e.message);
                 }
+            } else if (embedBasic) {
+                console.log("BBC iframe: Found embedBasic parameter, passing to jsbeeb...");
+                updateStatus("BBC BASIC program found in URL");
+                
+                // For embedBasic, we don't need to process it - just pass it through to jsbeeb
+                // The jsbeeb emulator will handle the BASIC tokenization and execution
+                console.log("BBC iframe: embedBasic content:", embedBasic);
+                
+                // The iframe src already contains the embedBasic parameter,
+                // so jsbeeb should automatically load and run the BASIC program
+                updateStatus("BBC BASIC program ready to run");
             } else {
                 console.log("BBC iframe: No program parameters found in URL");
                 updateStatus("No program found in URL - ready for compilation");
