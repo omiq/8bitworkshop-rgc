@@ -37,7 +37,9 @@ CodeMirror.defineMode("basic", function(conf, parserConf) {
         'BASE','DATA','DEF','DIM',
         'GO','GOSUB','GOTO','INPUT','LET','ON','OPTION','PRINT',
         'RANDOMIZE','READ','REM','RESTORE','RETURN','STEP','STOP','SUB',
-        'CALL','CHANGE','CONVERT','CLEAR','DIALECT','SELECT','CASE'
+        'CALL','CHANGE','CONVERT','CLEAR','DIALECT','SELECT','CASE',
+        // BBC BASIC oriented tokens (approximate highlighting)
+        'MODE','COLOUR','VDU','PROC','REPEAT','UNTIL','TRACE','ENVELOPE','SOUND','CLS','CLG','GCOL','MOVE','DRAW','PLOT','PAGE','PTR','TIME','ERROR','LOCAL'
     ];
     var commontypes = ['xxxxbyte','xxxxword'];
 

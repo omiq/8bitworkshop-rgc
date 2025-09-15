@@ -74,6 +74,7 @@ export class BBCMicroPlatform implements Platform {
 
   getToolForFilename(filename: string): string {
     // BBC Micro uses cc65 for C compilation
+    if (filename.endsWith('.bas')) return 'bbcbasic';
     if (filename.endsWith('.c')) return 'cc65';
     if (filename.endsWith('.asm') || filename.endsWith('.s')) return 'ca65';
     if (filename.endsWith('.dasm')) return 'dasm';
@@ -86,7 +87,7 @@ export class BBCMicroPlatform implements Platform {
 
       getPresets(): any[] {
         return [
-   
+            { id: 'bbc_hello.bas', name: 'Hello World (BASIC)', category: 'BASIC' },
             { id: 'bbc_hello.c', name: 'Hello World', category: 'C' },
             { id: 'bbc_os_test.c', name: 'Inline Assembly' },
         ];

@@ -138,6 +138,7 @@ const TOOL_TO_SOURCE_STYLE = {
   'cc7800': 'text/x-csrc',
   'armtcc': 'text/x-csrc',
   'oscar64': 'text/x-csrc',
+  'bbcbasic': 'basic',
 }
 
 // TODO: move into tool class
