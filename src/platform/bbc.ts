@@ -324,11 +324,22 @@ export class BBCMicroPlatform implements Platform {
       
       const jsbeebWindow = iframe.contentWindow as any;
       
+      // Log all available objects to understand the jsbeeb structure
+      console.log('BBCMicroPlatform: All jsbeeb window objects:', Object.keys(jsbeebWindow));
+      
       // Check for processor with multiple possible names
       let processor = jsbeebWindow.processor || jsbeebWindow.cpu || jsbeebWindow.emulator;
       if (!processor) {
         console.log('BBCMicroPlatform: No processor found in jsbeeb (tried processor, cpu, emulator)');
         console.log('BBCMicroPlatform: Available objects:', Object.keys(jsbeebWindow).filter(k => k.includes('proc') || k.includes('cpu') || k.includes('emu')));
+        
+        // Try to access through document or other global objects
+        if (jsbeebWindow.document) {
+          console.log('BBCMicroPlatform: Document found, checking for global objects');
+          const globalObjects = Object.keys(jsbeebWindow.document.defaultView || {});
+          console.log('BBCMicroPlatform: Global objects:', globalObjects.filter(k => k.includes('proc') || k.includes('cpu') || k.includes('emu')));
+        }
+        
         return null;
       }
       
