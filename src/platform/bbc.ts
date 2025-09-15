@@ -263,6 +263,14 @@ export class BBCMicroPlatform implements Platform {
   }
 
   getDownloadFile(): {extension: string, blob: Blob} | undefined {
+    // Check if we have a BASIC program to create an SSD for
+    const output = (window as any).IDE?.getCurrentOutput();
+    if (output && output instanceof Uint8Array && this.isBasicProgram(output)) {
+      console.log("BBCMicroPlatform: Creating SSD disk image for BASIC program");
+      return this.createSSDForBasicProgram(output);
+    }
+    
+    // Fall back to existing SSD blob if available
     if (this.currentSSDBlob) {
       return {
         extension: '.ssd',
@@ -274,6 +282,92 @@ export class BBCMicroPlatform implements Platform {
 
   setSSDBlob(blob: Blob): void {
     this.currentSSDBlob = blob;
+  }
+
+  private createSSDForBasicProgram(basicOutput: Uint8Array): {extension: string, blob: Blob} {
+    // Convert the BASIC text to a format suitable for BBC Micro disk
+    const basicText = new TextDecoder().decode(basicOutput);
+    
+    // Get the current filename or use a default
+    const currentFile = (window as any).IDE?.getCurrentFilename() || 'PROGRAM';
+    const filename = currentFile.replace(/\.(bas|BAS)$/, '').toUpperCase().substring(0, 7); // Max 7 chars for DFS
+    
+    // Create a proper SSD disk image using the DFS format
+    const ssdData = this.createProperSSD(basicText, filename);
+    
+    return {
+      extension: '.ssd',
+      blob: new Blob([ssdData], { type: 'application/octet-stream' })
+    };
+  }
+
+  private createProperSSD(basicText: string, filename: string): Uint8Array {
+    // Create a proper Acorn DFS SSD disk image
+    // This follows the DFS format used by the BBC Micro
+    
+    // Convert BASIC text to bytes (BBC Micro uses ASCII)
+    const basicBytes = new TextEncoder().encode(basicText);
+    
+    // Create a 200KB disk image (80 tracks * 10 sectors * 256 bytes)
+    const diskSize = 80 * 10 * 256;
+    const disk = new Uint8Array(diskSize);
+    
+    // Initialize with zeros
+    disk.fill(0);
+    
+    // Write DFS catalog header
+    // Volume title (8 bytes)
+    const volumeTitle = 'BBCMICRO';
+    for (let i = 0; i < 8; i++) {
+      disk[i] = i < volumeTitle.length ? volumeTitle.charCodeAt(i) : 0x20; // Space padding
+    }
+    
+    // Catalog sector 0 header
+    disk[0x100] = 0x42; // 'B'
+    disk[0x101] = 0x4F; // 'O' 
+    disk[0x102] = 0x54; // 'T'
+    disk[0x103] = 0x00; // Null terminator
+    disk[0x104] = 0x00; // BCD catalog cycle number
+    disk[0x105] = 0x08; // Number of files << 3 (1 file = 8)
+    disk[0x106] = 0x30; // *EXEC boot
+    disk[0x107] = 0x20; // Number of sectors in volume (low byte)
+    disk[0x108] = 0x03; // Number of sectors in volume (high byte)
+    
+    // File catalog entry
+    // Filename (7 bytes, padded with spaces)
+    const paddedFilename = filename.padEnd(7, ' ');
+    for (let i = 0; i < 7; i++) {
+      disk[0x008 + i] = paddedFilename.charCodeAt(i);
+    }
+    disk[0x00F] = 0x24; // '$' (file type indicator)
+    
+    // Load address (0x1900 for BASIC programs)
+    disk[0x108] = 0x00; // Low byte
+    disk[0x109] = 0x19; // High byte
+    
+    // Exec address (0x1900 for BASIC programs)
+    disk[0x10A] = 0x00; // Low byte  
+    disk[0x10B] = 0x19; // High byte
+    
+    // File length
+    disk[0x10C] = basicBytes.length & 0xFF; // Low byte
+    disk[0x10D] = (basicBytes.length >> 8) & 0xFF; // High byte
+    
+    // Extra info byte
+    disk[0x10E] = 0x00; // Extra info
+    
+    // Start sector (sector 2, after catalog)
+    disk[0x10F] = 0x02;
+    
+    // Write the BASIC program data starting at sector 2
+    const dataStart = 0x200; // Sector 2 * 256 bytes
+    for (let i = 0; i < basicBytes.length && i < (diskSize - dataStart); i++) {
+      disk[dataStart + i] = basicBytes[i];
+    }
+    
+    console.log(`BBCMicroPlatform: Created proper SSD with ${basicBytes.length} bytes of BASIC program as ${filename}`);
+    
+    return disk;
   }
 
   private isBasicProgram(rom: Uint8Array): boolean {
