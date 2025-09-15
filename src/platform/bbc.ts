@@ -1,6 +1,7 @@
 import { Platform } from '../common/baseplatform';
 import { BBCMicroMachine } from '../machine/bbc';
 import { PLATFORMS } from '../common/emu';
+import { AcornDFSdisc } from './AcornDFSdisc';
 
 export class BBCMicroPlatform implements Platform {
   private machine: BBCMicroMachine | null = null;
@@ -74,10 +75,11 @@ export class BBCMicroPlatform implements Platform {
 
   getToolForFilename(filename: string): string {
     // BBC Micro uses cc65 for C compilation
-    if (filename.endsWith('.bas')) return 'bbcbasic';
-    if (filename.endsWith('.c')) return 'cc65';
-    if (filename.endsWith('.asm') || filename.endsWith('.s')) return 'ca65';
-    if (filename.endsWith('.dasm')) return 'dasm';
+    const lowerFilename = filename.toLowerCase();
+    if (lowerFilename.endsWith('.bas')) return 'bbcbasic';
+    if (lowerFilename.endsWith('.c')) return 'cc65';
+    if (lowerFilename.endsWith('.asm') || lowerFilename.endsWith('.s')) return 'ca65';
+    if (lowerFilename.endsWith('.dasm')) return 'dasm';
     return 'cc65'; // default
   }
 
@@ -87,6 +89,7 @@ export class BBCMicroPlatform implements Platform {
 
       getPresets(): any[] {
         return [
+            { id: 'bbc_skeleton.bas', name: 'BBC BASIC Skeleton', category: 'BASIC' },
             { id: 'bbc_hello.bas', name: 'Hello World (BASIC)', category: 'BASIC' },
             { id: 'bbc_hello.c', name: 'Hello World', category: 'C' },
             { id: 'bbc_os_test.c', name: 'Inline Assembly' },
@@ -112,6 +115,11 @@ export class BBCMicroPlatform implements Platform {
     
     var frame = document.getElementById("bbc-iframe") as HTMLIFrameElement;
     if (frame && frame.contentWindow) {
+      // Extract model parameter from main page URL (available for both BASIC and C programs)
+      const mainUrlParams = new URLSearchParams(window.location.search);
+      const modelParam = mainUrlParams.get('model');
+      const modelQuery = modelParam ? `&model=${encodeURIComponent(modelParam)}` : '';
+      
       // Check if this is BBC BASIC (raw text) or compiled C code
       const isBasicProgram = this.isBasicProgram(rom);
       
@@ -123,12 +131,12 @@ export class BBCMicroPlatform implements Platform {
         const encodedBasic = encodeURIComponent(basicText);
         
         // Check if the URL would be too long (limit to ~1500 chars to be safe)
-        const iframeURL = `bbc-iframe.html?embedBasic=${encodedBasic}&t=${Date.now()}`;
+        const iframeURL = `bbc-iframe.html?embedBasic=${encodedBasic}&t=${Date.now()}${modelQuery}`;
         
         if (iframeURL.length > 1500) {
           console.log("BBCMicroPlatform: BASIC program too long for URL, using postMessage approach");
           // For long programs, use postMessage to send the BASIC text
-          const baseURL = 'bbc-iframe.html?t=' + Date.now();
+          const baseURL = `bbc-iframe.html?t=${Date.now()}${modelQuery}`;
           frame.src = baseURL;
           
           const onLoad = () => {
@@ -150,8 +158,8 @@ export class BBCMicroPlatform implements Platform {
       } else if (rom.length > 0) { // Compiled C program
         console.log("BBCMicroPlatform: Compiled C program detected, using postMessage");
         
-        // Load the iframe with just the base URL
-        const baseURL = 'bbc-iframe.html?t=' + Date.now();
+        // Load the iframe with just the base URL (including model parameter)
+        const baseURL = `bbc-iframe.html?t=${Date.now()}${modelQuery}`;
         frame.src = baseURL;
         
         // Set up a one-time load event listener
@@ -296,11 +304,17 @@ export class BBCMicroPlatform implements Platform {
     const tokenizedBasic = this.extractTokenizedBasicFromEmulator();
     if (tokenizedBasic) {
       console.log('BBCMicroPlatform: Using tokenized BASIC from emulator memory');
-      const ssdData = this.createProperSSDWithTokenizedBasic(tokenizedBasic, filename);
-      return {
-        extension: '.ssd',
-        blob: new Blob([ssdData], { type: 'application/octet-stream' })
-      };
+      // Check if the extracted BASIC is complete by looking for the program terminator
+      if (tokenizedBasic[tokenizedBasic.length - 1] === 0xFF) {
+        console.log('BBCMicroPlatform: Extracted BASIC appears complete (ends with 0xFF)');
+        const ssdData = this.createProperSSDWithTokenizedBasic(tokenizedBasic, filename);
+        return {
+          extension: '.ssd',
+          blob: new Blob([ssdData], { type: 'application/octet-stream' })
+        };
+      } else {
+        console.log('BBCMicroPlatform: Extracted BASIC appears incomplete, falling back to custom tokenizer');
+      }
     }
     
     // Fallback to our tokenization
@@ -368,6 +382,7 @@ export class BBCMicroPlatform implements Platform {
       // The program is stored starting at the page indicated by 0x18
       const page = processor.readmem(0x18) << 8;
       const top = (processor.readmem(0x02) | (processor.readmem(0x03) << 8));
+      console.log(`BBCMicroPlatform: Memory page: 0x${page.toString(16)}, top: 0x${top.toString(16)}`);
       
       if (page === 0 || top === 0) {
         console.log('BBCMicroPlatform: No BASIC program in memory');
@@ -375,6 +390,7 @@ export class BBCMicroPlatform implements Platform {
       }
       
       const programLength = top - page;
+      console.log(`BBCMicroPlatform: Program length: ${programLength} bytes`);
       if (programLength <= 0 || programLength > 8000) {
         console.log('BBCMicroPlatform: Invalid program length:', programLength);
         return null;
@@ -386,8 +402,10 @@ export class BBCMicroPlatform implements Platform {
         tokenizedBasic[i] = processor.readmem(page + i);
       }
       
-      console.log(`BBCMicroPlatform: Extracted ${programLength} bytes of tokenized BASIC from emulator memory`);
-      return tokenizedBasic;
+    console.log(`BBCMicroPlatform: Extracted ${programLength} bytes of tokenized BASIC from emulator memory`);
+    console.log('BBCMicroPlatform: First 20 bytes of extracted BASIC:', Array.from(tokenizedBasic.slice(0, 20)).map(b => b.toString(16).padStart(2, '0')).join(' '));
+    console.log('BBCMicroPlatform: Last 20 bytes of extracted BASIC:', Array.from(tokenizedBasic.slice(-20)).map(b => b.toString(16).padStart(2, '0')).join(' '));
+    return tokenizedBasic;
       
     } catch (error) {
       console.log('BBCMicroPlatform: Error extracting tokenized BASIC:', error);
@@ -396,571 +414,19 @@ export class BBCMicroPlatform implements Platform {
   }
 
   private createProperSSDWithTokenizedBasic(tokenizedBasic: Uint8Array, filename: string): Uint8Array {
-    // Create a proper Acorn DFS SSD disk image using the tokenized BASIC from emulator
-    console.log(`BBCMicroPlatform: Creating SSD with ${tokenizedBasic.length} bytes of tokenized BASIC`);
+    // Use the exact same AcornDFSdisc class as owlet-editor
+    console.log(`BBCMicroPlatform: Creating SSD with ${tokenizedBasic.length} bytes of tokenized BASIC using AcornDFSdisc`);
     
-    // Create a 200KB disk image (80 tracks * 10 sectors * 256 bytes)
-    const diskSize = 80 * 10 * 256;
-    const disk = new Uint8Array(diskSize);
+    const disc = new AcornDFSdisc();
     
-    // Initialize with zeros
-    disk.fill(0);
+    // Add files in the same order as owlet-editor
+    disc.save("README", "Created by BBC BASIC\r", 0x0000, 0x0000);
+    disc.save("PROGRAM", tokenizedBasic, 0x1900, 0x1900);
+    disc.save("SCREEN", new Uint8Array(0x5000), 0xffff3000, 0x0000); // Empty screen dump
+    disc.save("!BOOT", 'CHAIN"PROGRAM"\r', 0x1900, 0x1900);
     
-    // Helper function to write data to disk
-    const write = (address: number, data: string | number | Uint8Array, length?: number) => {
-      if (typeof data === 'string') {
-        for (let i = 0; i < data.length; i++) {
-          disk[address + i] = data.charCodeAt(i) & 0xff;
-        }
-      } else if (typeof data === 'number') {
-        for (let b = 0; b < (length || 1); b++) {
-          disk[address + b] = (data >> (b * 8)) & 0xff;
-        }
-      } else if (data instanceof Uint8Array) {
-        for (let i = 0; i < data.length; i++) {
-          disk[address + i] = data[i];
-        }
-      }
-    };
-    
-    // Apply Acorn DFS format catalog (following owlet-editor exactly)
-    write(0x0000, "BBCMICRO"); // DFS volume title
-    
-    // File entries (following owlet-editor pattern exactly)
-    write(0x0008, "!BOOT  $"); // Boot file
-    write(0x0010, "SCREEN $"); // Screen file  
-    write(0x0018, "PROGRAM$"); // Program file (this is what we want to load)
-    write(0x0020, "README $"); // Readme file
-    
-    // Catalog data at 0x0100
-    write(0x0100, "BOT\0");
-    write(0x0104, 0, 1); // BCD catalog cycle number
-    write(0x0105, 0x20, 1); // Number of files << 3 (4 files = 32 = 0x20)
-    write(0x0106, 0b00110000, 1); // *EXEC boot
-    write(0x0107, 0x2003, 2);
-    write(0x0109, 0x0019, 2);
-    write(0x010B, 0x0019, 2);
-    write(0x010D, 0x0F, 1); // Boot file length
-    write(0x010E, 0x00, 1);
-    write(0x010F, 0x00, 1);
-    write(0x0110, 0x02, 1);
-    
-    // SCREEN file entry
-    write(0x0111, 0x30, 1);
-    write(0x0112, 0x00, 1);
-    write(0x0113, 0x00, 1);
-    write(0x0114, 0x50, 1);
-    write(0x0115, 0x0C, 1);
-    write(0x0116, 0x04, 1);
-    write(0x0117, 0x0019, 2);
-    write(0x0119, 0x0019, 2);
-    write(0x011B, 0x56, 1); // Screen file length
-    write(0x011C, 0x00, 1);
-    write(0x011D, 0x00, 1);
-    write(0x011E, 0x03, 1);
-    
-    // PROGRAM file entry
-    const programStart = 0x0500;
-    const programLength = tokenizedBasic.length;
-    const programSectors = Math.ceil(programLength / 256);
-    
-    write(0x011F, 0x00, 1);
-    write(0x0120, 0x00, 1);
-    write(0x0121, 0x00, 1);
-    write(0x0122, 0x23, 1);
-    write(0x0123, 0x00, 1);
-    write(0x0124, 0x00, 1);
-    write(0x0125, 0x06, 1);
-    write(0x0126, 0x00, 1);
-    write(0x0127, 0x00, 1);
-    write(0x0128, 0x00, 1);
-    write(0x0129, 0x00, 1);
-    write(0x012A, 0x00, 1);
-    write(0x012B, 0x00, 1);
-    write(0x012C, 0x00, 1);
-    write(0x012D, 0x00, 1);
-    write(0x012E, 0x00, 1);
-    write(0x012F, 0x00, 1);
-    write(0x0130, 0x00, 1);
-    write(0x0131, 0x00, 1);
-    write(0x0132, 0x00, 1);
-    write(0x0133, 0x00, 1);
-    write(0x0134, 0x00, 1);
-    write(0x0135, 0x00, 1);
-    write(0x0136, 0x00, 1);
-    write(0x0137, 0x00, 1);
-    write(0x0138, 0x00, 1);
-    write(0x0139, 0x00, 1);
-    write(0x013A, 0x00, 1);
-    write(0x013B, 0x00, 1);
-    write(0x013C, 0x00, 1);
-    write(0x013D, 0x00, 1);
-    write(0x013E, 0x00, 1);
-    write(0x013F, 0x00, 1);
-    write(0x0140, 0x00, 1);
-    write(0x0141, 0x00, 1);
-    write(0x0142, 0x00, 1);
-    write(0x0143, 0x00, 1);
-    write(0x0144, 0x00, 1);
-    write(0x0145, 0x00, 1);
-    write(0x0146, 0x00, 1);
-    write(0x0147, 0x00, 1);
-    write(0x0148, 0x00, 1);
-    write(0x0149, 0x00, 1);
-    write(0x014A, 0x00, 1);
-    write(0x014B, 0x00, 1);
-    write(0x014C, 0x00, 1);
-    write(0x014D, 0x00, 1);
-    write(0x014E, 0x00, 1);
-    write(0x014F, 0x00, 1);
-    write(0x0150, 0x00, 1);
-    write(0x0151, 0x00, 1);
-    write(0x0152, 0x00, 1);
-    write(0x0153, 0x00, 1);
-    write(0x0154, 0x00, 1);
-    write(0x0155, 0x00, 1);
-    write(0x0156, 0x00, 1);
-    write(0x0157, 0x00, 1);
-    write(0x0158, 0x00, 1);
-    write(0x0159, 0x00, 1);
-    write(0x015A, 0x00, 1);
-    write(0x015B, 0x00, 1);
-    write(0x015C, 0x00, 1);
-    write(0x015D, 0x00, 1);
-    write(0x015E, 0x00, 1);
-    write(0x015F, 0x00, 1);
-    write(0x0160, 0x00, 1);
-    write(0x0161, 0x00, 1);
-    write(0x0162, 0x00, 1);
-    write(0x0163, 0x00, 1);
-    write(0x0164, 0x00, 1);
-    write(0x0165, 0x00, 1);
-    write(0x0166, 0x00, 1);
-    write(0x0167, 0x00, 1);
-    write(0x0168, 0x00, 1);
-    write(0x0169, 0x00, 1);
-    write(0x016A, 0x00, 1);
-    write(0x016B, 0x00, 1);
-    write(0x016C, 0x00, 1);
-    write(0x016D, 0x00, 1);
-    write(0x016E, 0x00, 1);
-    write(0x016F, 0x00, 1);
-    write(0x0170, 0x00, 1);
-    write(0x0171, 0x00, 1);
-    write(0x0172, 0x00, 1);
-    write(0x0173, 0x00, 1);
-    write(0x0174, 0x00, 1);
-    write(0x0175, 0x00, 1);
-    write(0x0176, 0x00, 1);
-    write(0x0177, 0x00, 1);
-    write(0x0178, 0x00, 1);
-    write(0x0179, 0x00, 1);
-    write(0x017A, 0x00, 1);
-    write(0x017B, 0x00, 1);
-    write(0x017C, 0x00, 1);
-    write(0x017D, 0x00, 1);
-    write(0x017E, 0x00, 1);
-    write(0x017F, 0x00, 1);
-    write(0x0180, 0x00, 1);
-    write(0x0181, 0x00, 1);
-    write(0x0182, 0x00, 1);
-    write(0x0183, 0x00, 1);
-    write(0x0184, 0x00, 1);
-    write(0x0185, 0x00, 1);
-    write(0x0186, 0x00, 1);
-    write(0x0187, 0x00, 1);
-    write(0x0188, 0x00, 1);
-    write(0x0189, 0x00, 1);
-    write(0x018A, 0x00, 1);
-    write(0x018B, 0x00, 1);
-    write(0x018C, 0x00, 1);
-    write(0x018D, 0x00, 1);
-    write(0x018E, 0x00, 1);
-    write(0x018F, 0x00, 1);
-    write(0x0190, 0x00, 1);
-    write(0x0191, 0x00, 1);
-    write(0x0192, 0x00, 1);
-    write(0x0193, 0x00, 1);
-    write(0x0194, 0x00, 1);
-    write(0x0195, 0x00, 1);
-    write(0x0196, 0x00, 1);
-    write(0x0197, 0x00, 1);
-    write(0x0198, 0x00, 1);
-    write(0x0199, 0x00, 1);
-    write(0x019A, 0x00, 1);
-    write(0x019B, 0x00, 1);
-    write(0x019C, 0x00, 1);
-    write(0x019D, 0x00, 1);
-    write(0x019E, 0x00, 1);
-    write(0x019F, 0x00, 1);
-    write(0x01A0, 0x00, 1);
-    write(0x01A1, 0x00, 1);
-    write(0x01A2, 0x00, 1);
-    write(0x01A3, 0x00, 1);
-    write(0x01A4, 0x00, 1);
-    write(0x01A5, 0x00, 1);
-    write(0x01A6, 0x00, 1);
-    write(0x01A7, 0x00, 1);
-    write(0x01A8, 0x00, 1);
-    write(0x01A9, 0x00, 1);
-    write(0x01AA, 0x00, 1);
-    write(0x01AB, 0x00, 1);
-    write(0x01AC, 0x00, 1);
-    write(0x01AD, 0x00, 1);
-    write(0x01AE, 0x00, 1);
-    write(0x01AF, 0x00, 1);
-    write(0x01B0, 0x00, 1);
-    write(0x01B1, 0x00, 1);
-    write(0x01B2, 0x00, 1);
-    write(0x01B3, 0x00, 1);
-    write(0x01B4, 0x00, 1);
-    write(0x01B5, 0x00, 1);
-    write(0x01B6, 0x00, 1);
-    write(0x01B7, 0x00, 1);
-    write(0x01B8, 0x00, 1);
-    write(0x01B9, 0x00, 1);
-    write(0x01BA, 0x00, 1);
-    write(0x01BB, 0x00, 1);
-    write(0x01BC, 0x00, 1);
-    write(0x01BD, 0x00, 1);
-    write(0x01BE, 0x00, 1);
-    write(0x01BF, 0x00, 1);
-    write(0x01C0, 0x00, 1);
-    write(0x01C1, 0x00, 1);
-    write(0x01C2, 0x00, 1);
-    write(0x01C3, 0x00, 1);
-    write(0x01C4, 0x00, 1);
-    write(0x01C5, 0x00, 1);
-    write(0x01C6, 0x00, 1);
-    write(0x01C7, 0x00, 1);
-    write(0x01C8, 0x00, 1);
-    write(0x01C9, 0x00, 1);
-    write(0x01CA, 0x00, 1);
-    write(0x01CB, 0x00, 1);
-    write(0x01CC, 0x00, 1);
-    write(0x01CD, 0x00, 1);
-    write(0x01CE, 0x00, 1);
-    write(0x01CF, 0x00, 1);
-    write(0x01D0, 0x00, 1);
-    write(0x01D1, 0x00, 1);
-    write(0x01D2, 0x00, 1);
-    write(0x01D3, 0x00, 1);
-    write(0x01D4, 0x00, 1);
-    write(0x01D5, 0x00, 1);
-    write(0x01D6, 0x00, 1);
-    write(0x01D7, 0x00, 1);
-    write(0x01D8, 0x00, 1);
-    write(0x01D9, 0x00, 1);
-    write(0x01DA, 0x00, 1);
-    write(0x01DB, 0x00, 1);
-    write(0x01DC, 0x00, 1);
-    write(0x01DD, 0x00, 1);
-    write(0x01DE, 0x00, 1);
-    write(0x01DF, 0x00, 1);
-    write(0x01E0, 0x00, 1);
-    write(0x01E1, 0x00, 1);
-    write(0x01E2, 0x00, 1);
-    write(0x01E3, 0x00, 1);
-    write(0x01E4, 0x00, 1);
-    write(0x01E5, 0x00, 1);
-    write(0x01E6, 0x00, 1);
-    write(0x01E7, 0x00, 1);
-    write(0x01E8, 0x00, 1);
-    write(0x01E9, 0x00, 1);
-    write(0x01EA, 0x00, 1);
-    write(0x01EB, 0x00, 1);
-    write(0x01EC, 0x00, 1);
-    write(0x01ED, 0x00, 1);
-    write(0x01EE, 0x00, 1);
-    write(0x01EF, 0x00, 1);
-    write(0x01F0, 0x00, 1);
-    write(0x01F1, 0x00, 1);
-    write(0x01F2, 0x00, 1);
-    write(0x01F3, 0x00, 1);
-    write(0x01F4, 0x00, 1);
-    write(0x01F5, 0x00, 1);
-    write(0x01F6, 0x00, 1);
-    write(0x01F7, 0x00, 1);
-    write(0x01F8, 0x00, 1);
-    write(0x01F9, 0x00, 1);
-    write(0x01FA, 0x00, 1);
-    write(0x01FB, 0x00, 1);
-    write(0x01FC, 0x00, 1);
-    write(0x01FD, 0x00, 1);
-    write(0x01FE, 0x00, 1);
-    write(0x01FF, 0x00, 1);
-    
-    // README file entry
-    write(0x0200, 0x00, 1);
-    write(0x0201, 0x00, 1);
-    write(0x0202, 0x00, 1);
-    write(0x0203, 0x00, 1);
-    write(0x0204, 0x00, 1);
-    write(0x0205, 0x00, 1);
-    write(0x0206, 0x00, 1);
-    write(0x0207, 0x00, 1);
-    write(0x0208, 0x00, 1);
-    write(0x0209, 0x00, 1);
-    write(0x020A, 0x00, 1);
-    write(0x020B, 0x00, 1);
-    write(0x020C, 0x00, 1);
-    write(0x020D, 0x00, 1);
-    write(0x020E, 0x00, 1);
-    write(0x020F, 0x00, 1);
-    write(0x0210, 0x00, 1);
-    write(0x0211, 0x00, 1);
-    write(0x0212, 0x00, 1);
-    write(0x0213, 0x00, 1);
-    write(0x0214, 0x00, 1);
-    write(0x0215, 0x00, 1);
-    write(0x0216, 0x00, 1);
-    write(0x0217, 0x00, 1);
-    write(0x0218, 0x00, 1);
-    write(0x0219, 0x00, 1);
-    write(0x021A, 0x00, 1);
-    write(0x021B, 0x00, 1);
-    write(0x021C, 0x00, 1);
-    write(0x021D, 0x00, 1);
-    write(0x021E, 0x00, 1);
-    write(0x021F, 0x00, 1);
-    write(0x0220, 0x00, 1);
-    write(0x0221, 0x00, 1);
-    write(0x0222, 0x00, 1);
-    write(0x0223, 0x00, 1);
-    write(0x0224, 0x00, 1);
-    write(0x0225, 0x00, 1);
-    write(0x0226, 0x00, 1);
-    write(0x0227, 0x00, 1);
-    write(0x0228, 0x00, 1);
-    write(0x0229, 0x00, 1);
-    write(0x022A, 0x00, 1);
-    write(0x022B, 0x00, 1);
-    write(0x022C, 0x00, 1);
-    write(0x022D, 0x00, 1);
-    write(0x022E, 0x00, 1);
-    write(0x022F, 0x00, 1);
-    write(0x0230, 0x00, 1);
-    write(0x0231, 0x00, 1);
-    write(0x0232, 0x00, 1);
-    write(0x0233, 0x00, 1);
-    write(0x0234, 0x00, 1);
-    write(0x0235, 0x00, 1);
-    write(0x0236, 0x00, 1);
-    write(0x0237, 0x00, 1);
-    write(0x0238, 0x00, 1);
-    write(0x0239, 0x00, 1);
-    write(0x023A, 0x00, 1);
-    write(0x023B, 0x00, 1);
-    write(0x023C, 0x00, 1);
-    write(0x023D, 0x00, 1);
-    write(0x023E, 0x00, 1);
-    write(0x023F, 0x00, 1);
-    write(0x0240, 0x00, 1);
-    write(0x0241, 0x00, 1);
-    write(0x0242, 0x00, 1);
-    write(0x0243, 0x00, 1);
-    write(0x0244, 0x00, 1);
-    write(0x0245, 0x00, 1);
-    write(0x0246, 0x00, 1);
-    write(0x0247, 0x00, 1);
-    write(0x0248, 0x00, 1);
-    write(0x0249, 0x00, 1);
-    write(0x024A, 0x00, 1);
-    write(0x024B, 0x00, 1);
-    write(0x024C, 0x00, 1);
-    write(0x024D, 0x00, 1);
-    write(0x024E, 0x00, 1);
-    write(0x024F, 0x00, 1);
-    write(0x0250, 0x00, 1);
-    write(0x0251, 0x00, 1);
-    write(0x0252, 0x00, 1);
-    write(0x0253, 0x00, 1);
-    write(0x0254, 0x00, 1);
-    write(0x0255, 0x00, 1);
-    write(0x0256, 0x00, 1);
-    write(0x0257, 0x00, 1);
-    write(0x0258, 0x00, 1);
-    write(0x0259, 0x00, 1);
-    write(0x025A, 0x00, 1);
-    write(0x025B, 0x00, 1);
-    write(0x025C, 0x00, 1);
-    write(0x025D, 0x00, 1);
-    write(0x025E, 0x00, 1);
-    write(0x025F, 0x00, 1);
-    write(0x0260, 0x00, 1);
-    write(0x0261, 0x00, 1);
-    write(0x0262, 0x00, 1);
-    write(0x0263, 0x00, 1);
-    write(0x0264, 0x00, 1);
-    write(0x0265, 0x00, 1);
-    write(0x0266, 0x00, 1);
-    write(0x0267, 0x00, 1);
-    write(0x0268, 0x00, 1);
-    write(0x0269, 0x00, 1);
-    write(0x026A, 0x00, 1);
-    write(0x026B, 0x00, 1);
-    write(0x026C, 0x00, 1);
-    write(0x026D, 0x00, 1);
-    write(0x026E, 0x00, 1);
-    write(0x026F, 0x00, 1);
-    write(0x0270, 0x00, 1);
-    write(0x0271, 0x00, 1);
-    write(0x0272, 0x00, 1);
-    write(0x0273, 0x00, 1);
-    write(0x0274, 0x00, 1);
-    write(0x0275, 0x00, 1);
-    write(0x0276, 0x00, 1);
-    write(0x0277, 0x00, 1);
-    write(0x0278, 0x00, 1);
-    write(0x0279, 0x00, 1);
-    write(0x027A, 0x00, 1);
-    write(0x027B, 0x00, 1);
-    write(0x027C, 0x00, 1);
-    write(0x027D, 0x00, 1);
-    write(0x027E, 0x00, 1);
-    write(0x027F, 0x00, 1);
-    write(0x0280, 0x00, 1);
-    write(0x0281, 0x00, 1);
-    write(0x0282, 0x00, 1);
-    write(0x0283, 0x00, 1);
-    write(0x0284, 0x00, 1);
-    write(0x0285, 0x00, 1);
-    write(0x0286, 0x00, 1);
-    write(0x0287, 0x00, 1);
-    write(0x0288, 0x00, 1);
-    write(0x0289, 0x00, 1);
-    write(0x028A, 0x00, 1);
-    write(0x028B, 0x00, 1);
-    write(0x028C, 0x00, 1);
-    write(0x028D, 0x00, 1);
-    write(0x028E, 0x00, 1);
-    write(0x028F, 0x00, 1);
-    write(0x0290, 0x00, 1);
-    write(0x0291, 0x00, 1);
-    write(0x0292, 0x00, 1);
-    write(0x0293, 0x00, 1);
-    write(0x0294, 0x00, 1);
-    write(0x0295, 0x00, 1);
-    write(0x0296, 0x00, 1);
-    write(0x0297, 0x00, 1);
-    write(0x0298, 0x00, 1);
-    write(0x0299, 0x00, 1);
-    write(0x029A, 0x00, 1);
-    write(0x029B, 0x00, 1);
-    write(0x029C, 0x00, 1);
-    write(0x029D, 0x00, 1);
-    write(0x029E, 0x00, 1);
-    write(0x029F, 0x00, 1);
-    write(0x02A0, 0x00, 1);
-    write(0x02A1, 0x00, 1);
-    write(0x02A2, 0x00, 1);
-    write(0x02A3, 0x00, 1);
-    write(0x02A4, 0x00, 1);
-    write(0x02A5, 0x00, 1);
-    write(0x02A6, 0x00, 1);
-    write(0x02A7, 0x00, 1);
-    write(0x02A8, 0x00, 1);
-    write(0x02A9, 0x00, 1);
-    write(0x02AA, 0x00, 1);
-    write(0x02AB, 0x00, 1);
-    write(0x02AC, 0x00, 1);
-    write(0x02AD, 0x00, 1);
-    write(0x02AE, 0x00, 1);
-    write(0x02AF, 0x00, 1);
-    write(0x02B0, 0x00, 1);
-    write(0x02B1, 0x00, 1);
-    write(0x02B2, 0x00, 1);
-    write(0x02B3, 0x00, 1);
-    write(0x02B4, 0x00, 1);
-    write(0x02B5, 0x00, 1);
-    write(0x02B6, 0x00, 1);
-    write(0x02B7, 0x00, 1);
-    write(0x02B8, 0x00, 1);
-    write(0x02B9, 0x00, 1);
-    write(0x02BA, 0x00, 1);
-    write(0x02BB, 0x00, 1);
-    write(0x02BC, 0x00, 1);
-    write(0x02BD, 0x00, 1);
-    write(0x02BE, 0x00, 1);
-    write(0x02BF, 0x00, 1);
-    write(0x02C0, 0x00, 1);
-    write(0x02C1, 0x00, 1);
-    write(0x02C2, 0x00, 1);
-    write(0x02C3, 0x00, 1);
-    write(0x02C4, 0x00, 1);
-    write(0x02C5, 0x00, 1);
-    write(0x02C6, 0x00, 1);
-    write(0x02C7, 0x00, 1);
-    write(0x02C8, 0x00, 1);
-    write(0x02C9, 0x00, 1);
-    write(0x02CA, 0x00, 1);
-    write(0x02CB, 0x00, 1);
-    write(0x02CC, 0x00, 1);
-    write(0x02CD, 0x00, 1);
-    write(0x02CE, 0x00, 1);
-    write(0x02CF, 0x00, 1);
-    write(0x02D0, 0x00, 1);
-    write(0x02D1, 0x00, 1);
-    write(0x02D2, 0x00, 1);
-    write(0x02D3, 0x00, 1);
-    write(0x02D4, 0x00, 1);
-    write(0x02D5, 0x00, 1);
-    write(0x02D6, 0x00, 1);
-    write(0x02D7, 0x00, 1);
-    write(0x02D8, 0x00, 1);
-    write(0x02D9, 0x00, 1);
-    write(0x02DA, 0x00, 1);
-    write(0x02DB, 0x00, 1);
-    write(0x02DC, 0x00, 1);
-    write(0x02DD, 0x00, 1);
-    write(0x02DE, 0x00, 1);
-    write(0x02DF, 0x00, 1);
-    write(0x02E0, 0x00, 1);
-    write(0x02E1, 0x00, 1);
-    write(0x02E2, 0x00, 1);
-    write(0x02E3, 0x00, 1);
-    write(0x02E4, 0x00, 1);
-    write(0x02E5, 0x00, 1);
-    write(0x02E6, 0x00, 1);
-    write(0x02E7, 0x00, 1);
-    write(0x02E8, 0x00, 1);
-    write(0x02E9, 0x00, 1);
-    write(0x02EA, 0x00, 1);
-    write(0x02EB, 0x00, 1);
-    write(0x02EC, 0x00, 1);
-    write(0x02ED, 0x00, 1);
-    write(0x02EE, 0x00, 1);
-    write(0x02EF, 0x00, 1);
-    write(0x02F0, 0x00, 1);
-    write(0x02F1, 0x00, 1);
-    write(0x02F2, 0x00, 1);
-    write(0x02F3, 0x00, 1);
-    write(0x02F4, 0x00, 1);
-    write(0x02F5, 0x00, 1);
-    write(0x02F6, 0x00, 1);
-    write(0x02F7, 0x00, 1);
-    write(0x02F8, 0x00, 1);
-    write(0x02F9, 0x00, 1);
-    write(0x02FA, 0x00, 1);
-    write(0x02FB, 0x00, 1);
-    write(0x02FC, 0x00, 1);
-    write(0x02FD, 0x00, 1);
-    write(0x02FE, 0x00, 1);
-    write(0x02FF, 0x00, 1);
-    
-    // Write the tokenized BASIC program to the disk
-    write(programStart, tokenizedBasic);
-    
-    // Write boot file content (CHAIN"PROGRAM")
-    write(0x0200, 'CHAIN"PROGRAM"\r');
-    
-    // Write README file content
-    write(0x0600, 'Created by 8bitworkshop\r');
-    
-    console.log(`BBCMicroPlatform: Created proper SSD with ${tokenizedBasic.length} bytes of tokenized BASIC as ${filename}`);
-    return disk;
+    return disc.image;
   }
-
   private createProperSSD(basicText: string, filename: string): Uint8Array {
     // Create a proper Acorn DFS SSD disk image following the owlet-editor format
     // Convert BASIC text to tokenized BBC BASIC format

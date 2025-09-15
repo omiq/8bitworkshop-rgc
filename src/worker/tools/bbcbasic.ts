@@ -17,8 +17,9 @@ export function compileBbcBasic(step: BuildStep): BuildStepResult {
     try {
       const source = getWorkFileAsString(step.path) || '';
 
-      // Scaffold: write ASCII source as bytes for now
-      const asciiBytes = new TextEncoder().encode(source);
+      // Auto-add line numbers to lines that don't have them
+      const processedSource = addLineNumbers(source);
+      const asciiBytes = new TextEncoder().encode(processedSource);
       putWorkFile(outputPath, asciiBytes);
 
       return {
@@ -38,6 +39,40 @@ export function compileBbcBasic(step: BuildStep): BuildStepResult {
   }
 
   return { unchanged: true };
+}
+
+/**
+ * Add line numbers to BBC BASIC source code
+ */
+function addLineNumbers(source: string): string {
+  const lines = source.split('\n');
+  const processedLines: string[] = [];
+  let lineNumber = 10; // Start with line 10
+
+  for (const line of lines) {
+    const trimmed = line.trim();
+    
+    // Skip empty lines
+    if (trimmed.length === 0) {
+      processedLines.push(line); // Keep original whitespace
+      continue;
+    }
+
+    // Check if line already has a line number
+    const lineNumberMatch = trimmed.match(/^(\d+)\s+(.+)$/);
+    if (lineNumberMatch) {
+      // Line already has a number, use it and update our counter
+      lineNumber = parseInt(lineNumberMatch[1]) + 10; // Set counter to next available number
+      processedLines.push(line);
+    } else {
+      // Line doesn't have a number, add one
+      const indentation = line.match(/^(\s*)/)?.[1] || '';
+      processedLines.push(`${indentation}${lineNumber} ${trimmed}`);
+      lineNumber += 10; // Increment by 10 for next line
+    }
+  }
+
+  return processedLines.join('\n');
 }
 
 

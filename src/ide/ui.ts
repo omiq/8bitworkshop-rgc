@@ -220,11 +220,13 @@ function requestPersistPermission(interactive: boolean, failureonly: boolean) {
       if (persistent) {
         interactive && !failureonly && alertInfo("Your browser says it will persist your local file edits, but you may want to back up your work anyway.");
       } else {
-        interactive && alertError("Your browser refused to expand the peristent storage quota. Your edits may not be preserved after closing the page.");
+        // Suppress the persistent storage quota warning
+        // interactive && alertError("Your browser refused to expand the peristent storage quota. Your edits may not be preserved after closing the page.");
       }
     });
   } else {
-    interactive && alertError("Your browser may not persist edits after closing the page. Try a different browser.");
+    // Suppress the browser compatibility warning
+    // interactive && alertError("Your browser may not persist edits after closing the page. Try a different browser.");
   }
 }
 

@@ -589,6 +589,10 @@
         
         // Core function to load program into emulator
         async function loadProgramIntoEmulator(programData) {
+            // Extract model parameter from URL (same as in initBBCEmulator)
+            const urlParams = new URLSearchParams(window.location.search);
+            const modelParam = urlParams.get('model');
+            
             // Create a simple hash of the program data to detect duplicates
             const programHash = btoa(String.fromCharCode.apply(null, new Uint8Array(programData))).substring(0, 32);
             
@@ -689,7 +693,9 @@
                                 // Fallback: update iframe URL but with a flag to prevent loops
                                 console.log("BBC iframe: Using fallback iframe URL update");
                                 const timestamp = Date.now();
-                                iframe.src = `res/jsbeeb/dist/index.html?embed&disc1=local:${uniqueDiscName}&autoboot&t=${timestamp}`;
+                                // Include model parameter if present
+                                const modelQuery = modelParam ? `&model=${encodeURIComponent(modelParam)}` : '';
+                                iframe.src = `res/jsbeeb/dist/index.html?embed&disc1=local:${uniqueDiscName}&autoboot&t=${timestamp}${modelQuery}`;
                                 console.log("BBC iframe: Updated iframe URL to load new disc:", uniqueDiscName, "with timestamp:", timestamp);
                             }
                             
@@ -808,10 +814,17 @@
             // Check if we have an embedBasic parameter to pass through
             const urlParams = new URLSearchParams(window.location.search);
             const embedBasic = urlParams.get('embedBasic');
+            const modelParam = urlParams.get('model');
             
             // Create iframe to embed jsbeeb locally
             const iframe = document.createElement('iframe');
             let iframeSrc = 'res/jsbeeb/dist/index.html?embed';
+            
+            // Add model parameter if present
+            if (modelParam) {
+                iframeSrc += `&model=${encodeURIComponent(modelParam)}`;
+                console.log("BBC iframe: Passing model parameter to jsbeeb:", modelParam);
+            }
             
             if (embedBasic) {
                 // If we have embedBasic, pass it through to jsbeeb

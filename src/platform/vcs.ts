@@ -60,7 +60,7 @@ const VCS_PRESETS : Preset[] = [
 function getToolForFilename_vcs(fn: string) {
   if (fn.endsWith("-llvm.c")) return "remote:llvm-mos";
   if (fn.endsWith(".wiz")) return "wiz";
-  if (fn.endsWith(".bb") || fn.endsWith(".bas")) return "bataribasic";
+  if (fn.endsWith(".bb") || fn.toLowerCase().endsWith(".bas")) return "bataribasic";
   if (fn.endsWith(".ca65")) return "ca65";
   if (fn.endsWith(".acme")) return "acme";
   //if (fn.endsWith(".inc")) return "ca65";

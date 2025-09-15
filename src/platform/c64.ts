@@ -325,7 +325,7 @@ class C64ChipsPlatform implements Platform {
   }
 
   getToolForFilename(filename: string): string {
-    if (filename.endsWith(".bas")) return "c64basic";
+    if (filename.toLowerCase().endsWith(".bas")) return "c64basic";
     if (filename.endsWith(".c")) return "cc65";
     if (filename.endsWith(".dasm")) return "dasm";
     if (filename.endsWith(".acme")) return "acme";

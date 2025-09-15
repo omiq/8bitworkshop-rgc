@@ -36,7 +36,7 @@ const Atari800_MemoryMap = { main:[
 ] }
 
 function getToolForFilename_Atari8(fn:string) {
-  if (fn.endsWith(".bas") || fn.endsWith(".fb") || fn.endsWith(".fbi")) return "fastbasic";
+  if (fn.toLowerCase().endsWith(".bas") || fn.endsWith(".fb") || fn.endsWith(".fbi")) return "fastbasic";
   else return getToolForFilename_6502(fn);
 }
 
