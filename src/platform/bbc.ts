@@ -195,56 +195,13 @@ export class BBCMicroPlatform implements Platform {
     const output = (window as any).IDE?.getCurrentOutput();
     if (output && output instanceof Uint8Array) {
       console.log("BBCMicroPlatform: Found compiled program, loading iframe");
-      
-      const bbc_debug = (window as any).bbc_debug;
-      if (bbc_debug && bbc_debug.generateIframeURL) {
-        try {
-          // Await the async generateIframeURL function
-          const iframeURL = await bbc_debug.generateIframeURL(output);
-          console.log("BBCMicroPlatform: Generated iframe URL:", iframeURL);
-          
-          if (iframeURL) {
-            await this.loadIframeWithProgram(iframeURL);
-          } else {
-            console.error("BBCMicroPlatform: generateIframeURL returned null");
-          }
-        } catch (error) {
-          console.error("BBCMicroPlatform: Error generating iframe URL:", error);
-        }
-      } else {
-        console.error("BBCMicroPlatform: bbc_debug not available");
-      }
+      this.loadROM("compiled_program", output);
     } else {
       console.log("BBCMicroPlatform: No compiled program found, triggering compilation");
       await this.triggerCompilationAndReload();
     }
   }
 
-  private async loadIframeWithProgram(iframeURL: string) {
-    console.log("BBCMicroPlatform: Loading iframe with program URL:", iframeURL);
-    
-    var frame = document.getElementById("bbc-iframe") as HTMLIFrameElement;
-    if (frame && frame.contentWindow) {
-      const cacheBuster = '&t=' + Date.now();
-      const freshURL = iframeURL + cacheBuster;
-      console.log("BBCMicroPlatform: Loading fresh URL with cache buster:", freshURL);
-      
-      // Set up a one-time load event listener
-      const onLoad = () => {
-        console.log("BBCMicroPlatform: iframe loaded, calling checkForProgramInURL");
-        if ((frame.contentWindow as any).checkForProgramInURL) {
-          (frame.contentWindow as any).checkForProgramInURL();
-        }
-        frame.removeEventListener('load', onLoad);
-      };
-      frame.addEventListener('load', onLoad);
-      
-      // Set the location (this triggers the load event)
-      frame.contentWindow.location = freshURL;
-    } else {
-      console.error("BBCMicroPlatform: iframe not found or contentWindow not available");
-    }
-  }
 
   private async triggerCompilationAndReload() {
     console.log("BBCMicroPlatform: Triggering compilation and reload");
@@ -277,19 +234,9 @@ export class BBCMicroPlatform implements Platform {
       if (output && output instanceof Uint8Array) {
         console.log("BBCMicroPlatform: Compilation completed, reloading iframe with new program");
         
-        // Wait a bit for the compilation output to be processed
-        setTimeout(async () => {
-          const bbc_debug = (window as any).bbc_debug;
-          if (bbc_debug && bbc_debug.generateIframeURL) {
-            try {
-              const newIframeURL = await bbc_debug.generateIframeURL(output);
-              if (newIframeURL) {
-                await this.loadIframeWithProgram(newIframeURL);
-              }
-            } catch (error) {
-              console.error("BBCMicroPlatform: Error generating iframe URL after compilation:", error);
-            }
-          }
+        // Wait a bit for the compilation output to be processed, then use loadROM
+        setTimeout(() => {
+          this.loadROM("compiled_program", output);
         }, 1000);
       }
     };
