@@ -590,7 +590,15 @@ export class BBCMicroPlatform implements Platform {
           const isWordBoundary = /[^A-Za-z0-9_$%]/.test(before) && /[^A-Za-z0-9_$%]/.test(after);
           
           if (isWordBoundary) {
+            // Add space before token if there was one in original
+            if (i > 0 && content[i - 1] === ' ') {
+              result.push(0x20); // Space
+            }
             result.push(token);
+            // Add space after token if there was one in original
+            if (i + keyword.length < content.length && content[i + keyword.length] === ' ') {
+              result.push(0x20); // Space
+            }
             i += keyword.length;
             found = true;
             break;
