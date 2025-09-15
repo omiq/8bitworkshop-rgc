@@ -305,6 +305,8 @@ export class BBCMicroPlatform implements Platform {
     // Create a proper Acorn DFS SSD disk image following the owlet-editor format
     // Convert BASIC text to tokenized BBC BASIC format
     const basicBytes = this.tokenizeBasicProgram(basicText);
+    console.log(`BBCMicroPlatform: Tokenized ${basicText.length} chars to ${basicBytes.length} bytes`);
+    console.log(`BBCMicroPlatform: First 20 bytes:`, Array.from(basicBytes.slice(0, 20)).map(b => '0x' + b.toString(16).padStart(2, '0')).join(' '));
     
     // Create a 200KB disk image (80 tracks * 10 sectors * 256 bytes)
     const diskSize = 80 * 10 * 256;
@@ -386,7 +388,7 @@ export class BBCMicroPlatform implements Platform {
     }
     
     // Combine all tokenized lines
-    const totalLength = tokenizedLines.reduce((sum, line) => sum + line.length, 0);
+    const totalLength = tokenizedLines.reduce((sum, line) => sum + line.length, 0) + 1; // +1 for program terminator
     const result = new Uint8Array(totalLength);
     let offset = 0;
     
@@ -395,12 +397,15 @@ export class BBCMicroPlatform implements Platform {
       offset += line.length;
     }
     
+    // Add program terminator (0xFF)
+    result[offset] = 0xFF;
+    
     return result;
   }
 
   private tokenizeLine(line: string): Uint8Array {
-    // Simple line tokenization for BBC BASIC
-    // Format: [line_length][line_number_low][line_number_high][tokenized_content][0x0D]
+    // BBC BASIC line tokenization
+    // Format: [0x0D][line_number_low][line_number_high][line_length][tokenized_content]
     
     // Extract line number
     const match = line.match(/^(\d+)\s+(.*)$/);
@@ -412,30 +417,27 @@ export class BBCMicroPlatform implements Platform {
     // Tokenize the content (basic keyword replacement)
     const tokenizedContent = this.tokenizeContent(content);
     
-    // Calculate line length (4 bytes header + content + 1 byte terminator)
-    const lineLength = 4 + tokenizedContent.length + 1;
+    // Calculate line length (content length)
+    const lineLength = tokenizedContent.length;
     
     // Create the tokenized line
-    const result = new Uint8Array(lineLength);
+    const result = new Uint8Array(4 + lineLength);
     let offset = 0;
     
-    // Line length (1 byte)
-    result[offset++] = lineLength;
+    // Line terminator (0x0D)
+    result[offset++] = 0x0D;
     
     // Line number (2 bytes, little-endian)
     result[offset++] = lineNumber & 0xFF;
     result[offset++] = (lineNumber >> 8) & 0xFF;
     
-    // Line number token (0x8D)
-    result[offset++] = 0x8D;
+    // Line length (1 byte)
+    result[offset++] = lineLength;
     
     // Tokenized content
     for (let i = 0; i < tokenizedContent.length; i++) {
       result[offset++] = tokenizedContent[i];
     }
-    
-    // Line terminator
-    result[offset++] = 0x0D;
     
     return result;
   }
