@@ -303,8 +303,8 @@ export class BBCMicroPlatform implements Platform {
 
   private createProperSSD(basicText: string, filename: string): Uint8Array {
     // Create a proper Acorn DFS SSD disk image following the owlet-editor format
-    // Convert BASIC text to bytes (BBC Micro uses ASCII)
-    const basicBytes = new TextEncoder().encode(basicText);
+    // Convert BASIC text to tokenized BBC BASIC format
+    const basicBytes = this.tokenizeBasicProgram(basicText);
     
     // Create a 200KB disk image (80 tracks * 10 sectors * 256 bytes)
     const diskSize = 80 * 10 * 256;
@@ -367,6 +367,217 @@ export class BBCMicroPlatform implements Platform {
     console.log(`BBCMicroPlatform: Created proper SSD with ${basicBytes.length} bytes of BASIC program as ${filename}`);
     
     return disk;
+  }
+
+  private tokenizeBasicProgram(basicText: string): Uint8Array {
+    // Simple BBC BASIC tokenization
+    // This is a basic implementation - for production use, consider using a proper tokenizer
+    
+    const lines = basicText.split('\n');
+    const tokenizedLines: Uint8Array[] = [];
+    
+    for (const line of lines) {
+      if (line.trim() === '') continue;
+      
+      const tokenizedLine = this.tokenizeLine(line.trim());
+      if (tokenizedLine.length > 0) {
+        tokenizedLines.push(tokenizedLine);
+      }
+    }
+    
+    // Combine all tokenized lines
+    const totalLength = tokenizedLines.reduce((sum, line) => sum + line.length, 0);
+    const result = new Uint8Array(totalLength);
+    let offset = 0;
+    
+    for (const line of tokenizedLines) {
+      result.set(line, offset);
+      offset += line.length;
+    }
+    
+    return result;
+  }
+
+  private tokenizeLine(line: string): Uint8Array {
+    // Simple line tokenization for BBC BASIC
+    // Format: [line_length][line_number_low][line_number_high][tokenized_content][0x0D]
+    
+    // Extract line number
+    const match = line.match(/^(\d+)\s+(.*)$/);
+    if (!match) return new Uint8Array(0);
+    
+    const lineNumber = parseInt(match[1]);
+    const content = match[2];
+    
+    // Tokenize the content (basic keyword replacement)
+    const tokenizedContent = this.tokenizeContent(content);
+    
+    // Calculate line length (4 bytes header + content + 1 byte terminator)
+    const lineLength = 4 + tokenizedContent.length + 1;
+    
+    // Create the tokenized line
+    const result = new Uint8Array(lineLength);
+    let offset = 0;
+    
+    // Line length (1 byte)
+    result[offset++] = lineLength;
+    
+    // Line number (2 bytes, little-endian)
+    result[offset++] = lineNumber & 0xFF;
+    result[offset++] = (lineNumber >> 8) & 0xFF;
+    
+    // Line number token (0x8D)
+    result[offset++] = 0x8D;
+    
+    // Tokenized content
+    for (let i = 0; i < tokenizedContent.length; i++) {
+      result[offset++] = tokenizedContent[i];
+    }
+    
+    // Line terminator
+    result[offset++] = 0x0D;
+    
+    return result;
+  }
+
+  private tokenizeContent(content: string): Uint8Array {
+    // Basic keyword tokenization
+    const keywords: { [key: string]: number } = {
+      'REM': 0xF4,
+      'MODE': 0xEB,
+      'COLOUR': 0xFB,
+      'PRINT': 0xF1,
+      'GOTO': 0xE5,
+      'RND': 0xB3,
+      'IF': 0xE7,
+      'THEN': 0x8C,
+      'ELSE': 0x85,
+      'END': 0xE0,
+      'FOR': 0xE3,
+      'NEXT': 0xED,
+      'TO': 0xB8,
+      'STEP': 0x88,
+      'LET': 0xE9,
+      'INPUT': 0xE8,
+      'DATA': 0xDC,
+      'READ': 0xE3,
+      'RESTORE': 0x8B,
+      'GOSUB': 0xE4,
+      'RETURN': 0x8A,
+      'STOP': 0xFA,
+      'RUN': 0xF9,
+      'NEW': 0xCA,
+      'LOAD': 0xC8,
+      'SAVE': 0xCD,
+      'LIST': 0xC9,
+      'CLEAR': 0xD8,
+      'CLS': 0xDB,
+      'CLG': 0xDA,
+      'DRAW': 0xDF,
+      'MOVE': 0xEC,
+      'PLOT': 0xF0,
+      'GCOL': 0xE6,
+      'VDU': 0xEF,
+      'SOUND': 0xD4,
+      'ENVELOPE': 0xE2,
+      'REPEAT': 0xF5,
+      'UNTIL': 0xFD,
+      'WHILE': 0xFE,
+      'ENDWHILE': 0xFF,
+      'PROC': 0xF2,
+      'ENDPROC': 0xE1,
+      'DEF': 0xDD,
+      'FN': 0xA4,
+      'LOCAL': 0xEA,
+      'DIM': 0xDE,
+      'ON': 0xEE,
+      'ERROR': 0x85,
+      'TRACE': 0xFC,
+      'TIME': 0x91,
+      'PAGE': 0x90,
+      'PTR': 0x8F,
+      'LOMEM': 0x92,
+      'HIMEM': 0x93,
+      'ABS': 0x94,
+      'ACS': 0x95,
+      'ADVAL': 0x96,
+      'ASC': 0x97,
+      'ASN': 0x98,
+      'ATN': 0x99,
+      'BGET': 0x9A,
+      'COS': 0x9B,
+      'COUNT': 0x9C,
+      'DEG': 0x9D,
+      'ERL': 0x9E,
+      'ERR': 0x9F,
+      'EVAL': 0xA0,
+      'EXP': 0xA1,
+      'EXT': 0xA2,
+      'FALSE': 0xA3,
+      'GET': 0xA5,
+      'INKEY': 0xA6,
+      'INSTR': 0xA7,
+      'INT': 0xA8,
+      'LEN': 0xA9,
+      'LN': 0xAA,
+      'LOG': 0xAB,
+      'NOT': 0xAC,
+      'OPENIN': 0x8E,
+      'OPENOUT': 0xAE,
+      'OPENUP': 0xAD,
+      'PI': 0xAF,
+      'POINT': 0xB0,
+      'POS': 0xB1,
+      'RAD': 0xB2,
+      'RIGHT$': 0xC2,
+      'SGN': 0xB4,
+      'SIN': 0xB5,
+      'SQR': 0xB6,
+      'STR$': 0xC3,
+      'STRING$': 0xC4,
+      'TAN': 0xB7,
+      'TRUE': 0xB9,
+      'USR': 0xBA,
+      'VAL': 0xBB,
+      'VPOS': 0xBC,
+      'CHR$': 0xBD,
+      'GET$': 0xBE,
+      'INKEY$': 0xBF,
+      'LEFT$': 0xC0,
+      'MID$': 0xC1
+    };
+    
+    const result: number[] = [];
+    let i = 0;
+    
+    while (i < content.length) {
+      let found = false;
+      
+      // Check for keywords (case insensitive)
+      for (const [keyword, token] of Object.entries(keywords)) {
+        if (content.toUpperCase().substring(i, i + keyword.length) === keyword) {
+          // Check if it's a whole word (not part of a longer word)
+          const before = i === 0 ? ' ' : content[i - 1];
+          const after = i + keyword.length >= content.length ? ' ' : content[i + keyword.length];
+          const isWordBoundary = /[^A-Za-z0-9_$%]/.test(before) && /[^A-Za-z0-9_$%]/.test(after);
+          
+          if (isWordBoundary) {
+            result.push(token);
+            i += keyword.length;
+            found = true;
+            break;
+          }
+        }
+      }
+      
+      if (!found) {
+        // Regular character
+        result.push(content.charCodeAt(i));
+        i++;
+      }
+    }
+    
+    return new Uint8Array(result);
   }
 
   private isBasicProgram(rom: Uint8Array): boolean {
