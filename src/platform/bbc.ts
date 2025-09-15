@@ -453,9 +453,9 @@ export class BBCMicroPlatform implements Platform {
     // Line terminator (0x0D)
     result[offset++] = 0x0D;
     
-    // Line number (2 bytes, little-endian)
-    result[offset++] = lineNumber & 0xFF;
+    // Line number (2 bytes, big-endian)
     result[offset++] = (lineNumber >> 8) & 0xFF;
+    result[offset++] = lineNumber & 0xFF;
     
     // Line length (1 byte)
     result[offset++] = lineLength;
