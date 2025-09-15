@@ -158,6 +158,10 @@ export function _downloadCassetteFile(e) {
 }
 
 export function _downloadROMImage(e) {
+    console.log("_downloadROMImage called, platform:", platform_id);
+    console.log("getCurrentOutput():", getCurrentOutput());
+    console.log("platform.getDownloadFile exists:", !!platform.getDownloadFile);
+    
     if (getCurrentOutput() == null) {
         alertError("Please finish compiling with no errors before downloading ROM.");
         return true;
@@ -165,12 +169,20 @@ export function _downloadROMImage(e) {
     var prefix = getFilenamePrefix(getCurrentMainFilename());
     if (platform.getDownloadFile) {
         var dl = platform.getDownloadFile();
-        var prefix = getFilenamePrefix(getCurrentMainFilename());
-        saveAs(dl.blob, prefix + dl.extension);
+        console.log("platform.getDownloadFile() returned:", dl);
+        if (dl) {
+            var prefix = getFilenamePrefix(getCurrentMainFilename());
+            console.log("Downloading file:", prefix + dl.extension);
+            saveAs(dl.blob, prefix + dl.extension);
+        } else {
+            console.log("getDownloadFile() returned null/undefined");
+            alertError("No downloadable file available. Make sure you have compiled a program.");
+        }
     } else if (getCurrentOutput() instanceof Uint8Array) {
         var blob = new Blob([getCurrentOutput()], { type: "application/octet-stream" });
         var suffix = (platform.getROMExtension && platform.getROMExtension(getCurrentOutput()))
             || "-" + getBasePlatform(platform_id) + ".bin";
+        console.log("Using fallback download, suffix:", suffix);
         saveAs(blob, prefix + suffix);
     } else {
         alertError(`The "${platform_id}" platform doesn't have downloadable ROMs.`);
