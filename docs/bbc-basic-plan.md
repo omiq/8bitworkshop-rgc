@@ -68,6 +68,14 @@
 - Generates proper SSD disc images with correct catalog structure
 - Includes !BOOT file for automatic program execution
 
+### Example Presets
+- Added BASIC examples under `presets/bbc/` and registered in the BBC platform presets menu:
+  - `bbc_hello.bas` – minimal hello world
+  - `bbc_labels.bas` – ON...GOTO sections, loops, PROC subroutine
+  - `bbc_input.bas` – keyboard input via GET$ and simple movement
+  - `bbc_textformat.bas` – MODE 7 colours, TAB alignment, ASCII box rendering
+  - `bbc_skeleton.bas` / `skeleton.bbcbasic` – starter template
+
 ## Risks
 - Full parity with owlet-editor Monaco mode in CodeMirror may be staged
 - Accurate token stream vs ROM tables requires validation on device
