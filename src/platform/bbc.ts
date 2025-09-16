@@ -89,11 +89,10 @@ export class BBCMicroPlatform implements Platform {
 
       getPresets(): any[] {
         return [
-            { id: 'bbc_skeleton.bas', name: 'BBC BASIC Skeleton', category: 'BASIC' },
-            { id: 'bbc_hello.bas', name: 'Hello World (BASIC)', category: 'BASIC' },
-            { id: 'bbc_labels.bas', name: 'Labels and Subroutines (BASIC)', category: 'BASIC' },
-            { id: 'bbc_input.bas', name: 'Keyboard Input and Movement (BASIC)', category: 'BASIC' },
-            { id: 'bbc_textformat.bas', name: 'Text Formatting (BASIC)', category: 'BASIC' },
+            { id: 'bbc_hello.bas', name: 'Hello World (BASIC)' },
+            { id: 'bbc_labels.bas', name: 'Labels and Subroutines (BASIC)' },
+            { id: 'bbc_input.bas', name: 'Keyboard Input and Movement (BASIC)' },
+            { id: 'bbc_textformat.bas', name: 'Text Formatting (BASIC)' },
             { id: 'bbc_hello.c', name: 'Hello World', category: 'C' },
             { id: 'bbc_os_test.c', name: 'Inline Assembly' },
         ];

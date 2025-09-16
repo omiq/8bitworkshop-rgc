@@ -1,5 +1,5 @@
 10 REM BBC BASIC: Keypress input and simple movement
-20 MODE 7:CLS
+20 MODE 7:CLS:VDU 23,1,0;0;0;0;: REM Cursor off
 30 PRINT "Use WASD to move the @, Q to quit"
 40 X=10:Y=10
 50 PROCdraw(X,Y)
@@ -16,4 +16,3 @@
 160 DEF PROCdraw(X,Y)
 170 PRINT TAB(X,Y);"@"
 180 ENDPROC
-

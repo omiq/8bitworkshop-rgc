@@ -11,3 +11,6 @@ node_modules
 config.js
 chromedriver.log
 nightwatch.conf.js
+owlet-editor/
+owlet-editor
+owlet-editor.zip
