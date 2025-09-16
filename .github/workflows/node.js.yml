@@ -28,10 +28,13 @@ jobs:
     - run: npm ci
     - run: npm run build --if-present
     - run: npm test
+      if: ${{ secrets.TEST8BIT_GITHUB_TOKEN != '' }}
       env:
         TEST8BIT_GITHUB_TOKEN: ${{ secrets.TEST8BIT_GITHUB_TOKEN }}
     - run: make distro
+      if: ${{ github.repository == 'sehugg/8bitworkshop' }}
     - name: Deploy
+      if: ${{ github.repository == 'sehugg/8bitworkshop' }}
       uses: JamesIves/github-pages-deploy-action@v4.2.5
       with:
         branch: gh-pages
