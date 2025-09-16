@@ -11,9 +11,9 @@
 110 PRINT "Mixed";TAB(10);"columns";TAB(30);"demo"
 120 PRINT
 130 PRINT "Box made from ASCII characters:"
-140 PRINT CHR$(43);STRING$(30,45);CHR$(43)
+140 PRINT CHR$(43);STRING$(30,"-");CHR$(43)
 150 FOR R=1 TO 3: PRINT CHR$(124);SPC(30);CHR$(124): NEXT
-160 PRINT CHR$(43);STRING$(30,45);CHR$(43)
+160 PRINT CHR$(43);STRING$(30,"-");CHR$(43)
 170 PRINT
 180 PRINT "Press any key to continue...";:A$=GET$
 
