@@ -448,36 +448,35 @@
                     case 'reset':
                         console.log("C64 iframe: Received reset command");
                         updateStatus("Resetting C64 emulator...");
-                        if (window.h && typeof window.h.reset === 'function') {
-                            window.h.reset();
-                        } else if (window.h && typeof window.h.c64_reset === 'function') {
-                            window.h.c64_reset();
+                        // For reset, reload the last program if available
+                        if (lastCompiledProgram && emulatorReady) {
+                            console.log("C64 iframe: Reloading program for reset");
+                            setTimeout(() => loadProgramIntoEmulator(lastCompiledProgram), 100);
                         } else {
-                            console.log("C64 iframe: No reset function found on emulator");
+                            console.log("C64 iframe: No program to reload for reset");
+                            updateStatus("No program available to reset");
                         }
                         break;
                         
                     case 'pause':
                         console.log("C64 iframe: Received pause command");
                         updateStatus("Pausing C64 emulator...");
-                        if (window.h && typeof window.h.pause === 'function') {
-                            window.h.pause();
-                        } else if (window.h && typeof window.h.c64_pause === 'function') {
-                            window.h.c64_pause();
+                        if (window.h && typeof window.h.pauseMainLoop === 'function') {
+                            window.h.pauseMainLoop();
+                            console.log("C64 iframe: Emulator paused");
                         } else {
-                            console.log("C64 iframe: No pause function found on emulator");
+                            console.log("C64 iframe: No pauseMainLoop function found on emulator");
                         }
                         break;
                         
                     case 'resume':
                         console.log("C64 iframe: Received resume command");
                         updateStatus("Resuming C64 emulator...");
-                        if (window.h && typeof window.h.resume === 'function') {
-                            window.h.resume();
-                        } else if (window.h && typeof window.h.c64_resume === 'function') {
-                            window.h.c64_resume();
+                        if (window.h && typeof window.h.resumeMainLoop === 'function') {
+                            window.h.resumeMainLoop();
+                            console.log("C64 iframe: Emulator resumed");
                         } else {
-                            console.log("C64 iframe: No resume function found on emulator");
+                            console.log("C64 iframe: No resumeMainLoop function found on emulator");
                         }
                         break;
                         
