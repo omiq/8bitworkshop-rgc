@@ -73,6 +73,7 @@ var userPaused : boolean;		// did user explicitly pause?
 var current_output : any;     // current ROM (or other object)
 var current_preset : Preset;	// current preset object (if selected)
 var store : LocalForage;			// persistent store
+var autoCompileEnabled : boolean = true;  // auto-compile on changes
 
 const isElectron = parseBool(qs.electron);
 const isEmbed = parseBool(qs.embed);
@@ -1381,6 +1382,46 @@ function _addLinkFile() {
     alertError("Can't add linked file to this project type (" + tool + ")");
 }
 
+function toggleAutoCompile() {
+  autoCompileEnabled = !autoCompileEnabled;
+  // Update global variable for project access
+  (window as any).autoCompileEnabled = autoCompileEnabled;
+  updateAutoCompileUI();
+  console.log("Auto-compile", autoCompileEnabled ? "enabled" : "disabled");
+}
+
+function manualBuildAndRun() {
+  if (current_project && current_project.mainPath) {
+    console.log("Manual build and run triggered");
+    current_project.sendBuild();
+  }
+}
+
+function updateAutoCompileUI() {
+  const toggleBtn = document.getElementById('auto_compile_toggle') as HTMLElement;
+  const manualBtn = document.getElementById('manual_build_btn') as HTMLElement;
+  
+  if (toggleBtn) {
+    if (autoCompileEnabled) {
+      toggleBtn.classList.remove('btn-default');
+      toggleBtn.classList.add('btn-success');
+      toggleBtn.title = 'Auto-Compile Enabled (Ctrl+Alt+C)';
+    } else {
+      toggleBtn.classList.remove('btn-success');
+      toggleBtn.classList.add('btn-default');
+      toggleBtn.title = 'Auto-Compile Disabled (Ctrl+Alt+C)';
+    }
+  }
+  
+  if (manualBtn) {
+    if (autoCompileEnabled) {
+      manualBtn.style.display = 'none';
+    } else {
+      manualBtn.style.display = 'inline-block';
+    }
+  }
+}
+
 function setupDebugControls() {
   // create toolbar buttons
   uitoolbar = new Toolbar($("#toolbar")[0], null);
@@ -1391,6 +1432,12 @@ function setupDebugControls() {
   if (platform.restartAtPC) {
     uitoolbar.add('ctrl+alt+/', 'Restart at Cursor', 'glyphicon-play-circle', restartAtCursor).prop('id','dbg_restartatline');
   }
+  uitoolbar.newGroup();
+  uitoolbar.grp.prop('id','compile_bar');
+  // Add auto-compile toggle
+  uitoolbar.add('ctrl+alt+c', 'Toggle Auto-Compile', 'glyphicon-flash', toggleAutoCompile).prop('id','auto_compile_toggle');
+  // Add manual build button (initially hidden)
+  uitoolbar.add('ctrl+alt+m', 'Build and Run', 'glyphicon-play', manualBuildAndRun).prop('id','manual_build_btn');
   uitoolbar.newGroup();
   uitoolbar.grp.prop('id','debug_bar');
   if (platform.runEval) {
@@ -1416,6 +1463,10 @@ function setupDebugControls() {
   }
   uitoolbar.newGroup();
   uitoolbar.grp.prop('id','xtra_bar');
+  
+  // Initialize auto-compile UI state
+  updateAutoCompileUI();
+  
   // add menu clicks
   $(".dropdown-menu").collapse({toggle: false});
   $("#item_new_file").click(_createNewFile);
@@ -2134,6 +2185,9 @@ if (typeof process === 'undefined') {
 
 // Expose key IDE variables globally for console access
 function exposeToGlobal() {
+  // Expose autoCompileEnabled globally for project access
+  (window as any).autoCompileEnabled = autoCompileEnabled;
+  
   (window as any).IDE = {
     platform,
     platform_id,
@@ -2143,6 +2197,7 @@ function exposeToGlobal() {
     store_id,
     repo_id,
     lastDebugState,
+    autoCompileEnabled,
     getCurrentProject,
     getCurrentMainFilename,
     getCurrentEditorFilename,

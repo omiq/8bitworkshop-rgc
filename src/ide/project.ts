@@ -257,7 +257,9 @@ export class CodeProject {
   }
 
   okToSend():boolean {
-    return this.pendingWorkerMessages++ == 0 && this.mainPath != null;
+    // Check if auto-compile is enabled (access global variable from ui.ts)
+    const autoCompileEnabled = (window as any).autoCompileEnabled !== false;
+    return this.pendingWorkerMessages++ == 0 && this.mainPath != null && autoCompileEnabled;
   }
 
   updateFileInStore(path:string, text:FileData) {
