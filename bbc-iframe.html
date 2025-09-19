@@ -154,6 +154,8 @@
     let discCounter = 0; // Counter for unique disc names
     let isUpdatingDisc = false; // Flag to prevent disc update loops
     let lastProgramHash = null; // Hash of the last loaded program to prevent duplicate loads
+    let resetSupported = false;
+    let pauseResumeSupported = false;
         
         // Drag and drop functionality
         function setupDragAndDrop() {
@@ -312,6 +314,86 @@
             if (status) {
                 status.textContent = message;
                 console.log("BBC iframe:", message);
+            }
+        }
+        
+        // Function to test if reset/pause/resume functionality actually works
+        function testEmulatorCapabilities() {
+            console.log("BBC iframe: Testing emulator capabilities...");
+            
+            const iframe = document.querySelector('iframe');
+            if (!iframe || !iframe.contentWindow) {
+                console.log("BBC iframe: No iframe found for capability test");
+                resetSupported = false;
+                pauseResumeSupported = false;
+                sendCapabilitiesToParent();
+                return;
+            }
+            
+            const jsbeebWindow = iframe.contentWindow;
+            
+            // Test reset capability
+            let resetWorks = false;
+            if (jsbeebWindow.processor && typeof jsbeebWindow.processor.reset === 'function') {
+                try {
+                    // Test if reset function exists and can be called
+                    console.log("BBC iframe: Reset function found, testing...");
+                    resetWorks = true;
+                } catch (e) {
+                    console.log("BBC iframe: Reset function test failed:", e);
+                    resetWorks = false;
+                }
+            } else {
+                console.log("BBC iframe: No reset function found on processor");
+                resetWorks = false;
+            }
+            
+            // Test pause/resume capability
+            let pauseResumeWorks = false;
+            if (jsbeebWindow.processor && 
+                typeof jsbeebWindow.processor.pause === 'function' && 
+                typeof jsbeebWindow.processor.resume === 'function') {
+                try {
+                    // Test if pause/resume functions exist and can be called
+                    console.log("BBC iframe: Pause/resume functions found, testing...");
+                    pauseResumeWorks = true;
+                } catch (e) {
+                    console.log("BBC iframe: Pause/resume function test failed:", e);
+                    pauseResumeWorks = false;
+                }
+            } else {
+                console.log("BBC iframe: No pause/resume functions found on processor");
+                pauseResumeWorks = false;
+            }
+            
+            // Set global capability flags
+            resetSupported = resetWorks;
+            pauseResumeSupported = pauseResumeWorks;
+            
+            console.log("BBC iframe: Capability test results:");
+            console.log("  - Reset supported:", resetSupported);
+            console.log("  - Pause/Resume supported:", pauseResumeSupported);
+            
+            // Send capabilities to parent window
+            sendCapabilitiesToParent();
+        }
+        
+        // Send capability information to parent window
+        function sendCapabilitiesToParent() {
+            if (window.parent && window.parent !== window) {
+                window.parent.postMessage({
+                    type: 'emulator_capabilities',
+                    capabilities: {
+                        reset: resetSupported,
+                        pause: pauseResumeSupported,
+                        resume: pauseResumeSupported
+                    }
+                }, '*');
+                console.log("BBC iframe: Sent capabilities to parent:", {
+                    reset: resetSupported,
+                    pause: pauseResumeSupported,
+                    resume: pauseResumeSupported
+                });
             }
         }
         
@@ -910,6 +992,11 @@
                 emulatorReady = true;
                 isReloading = false; // Reset reload flag
                 
+                // Test emulator capabilities after a short delay to ensure everything is loaded
+                setTimeout(() => {
+                    testEmulatorCapabilities();
+                }, 2000);
+                
                 // Suppress audio messages from jsbeeb
                 try {
                     const jsbeebWindow = iframe.contentWindow;
@@ -996,6 +1083,88 @@
                     iframe.src = newURL;
                     
                     updateStatus("BBC BASIC program loaded via postMessage");
+                }
+            } else if (event.data && event.data.type) {
+                // Handle control commands
+                switch (event.data.type) {
+                    case 'reset':
+                        console.log("BBC iframe: Received reset command");
+                        updateStatus("Resetting BBC emulator...");
+                        
+                        if (resetSupported) {
+                            // Try to use the emulator's reset function
+                            const iframe = document.querySelector('iframe');
+                            if (iframe && iframe.contentWindow && iframe.contentWindow.processor) {
+                                try {
+                                    iframe.contentWindow.processor.reset();
+                                    console.log("BBC iframe: Emulator reset successfully");
+                                    updateStatus("BBC emulator reset");
+                                } catch (e) {
+                                    console.log("BBC iframe: Error resetting emulator:", e);
+                                    updateStatus("Error resetting emulator: " + e.message);
+                                }
+                            }
+                        } else {
+                            // Fallback: reload the iframe
+                            console.log("BBC iframe: Reset not supported, reloading iframe");
+                            updateStatus("Reloading BBC emulator...");
+                            
+                            const iframe = document.querySelector('iframe');
+                            if (iframe) {
+                                // Reload the iframe to reset the emulator
+                                const currentSrc = iframe.src;
+                                iframe.src = currentSrc + (currentSrc.includes('?') ? '&' : '?') + 'reset=' + Date.now();
+                                updateStatus("BBC emulator reloaded");
+                            }
+                        }
+                        break;
+                        
+                    case 'pause':
+                        console.log("BBC iframe: Received pause command");
+                        updateStatus("Pausing BBC emulator...");
+                        
+                        if (pauseResumeSupported) {
+                            const iframe = document.querySelector('iframe');
+                            if (iframe && iframe.contentWindow && iframe.contentWindow.processor) {
+                                try {
+                                    iframe.contentWindow.processor.pause();
+                                    console.log("BBC iframe: Emulator paused successfully");
+                                    updateStatus("BBC emulator paused");
+                                } catch (e) {
+                                    console.log("BBC iframe: Error pausing emulator:", e);
+                                    updateStatus("Error pausing emulator: " + e.message);
+                                }
+                            }
+                        } else {
+                            console.log("BBC iframe: Pause not supported by emulator");
+                            updateStatus("Pause not supported by emulator");
+                        }
+                        break;
+                        
+                    case 'resume':
+                        console.log("BBC iframe: Received resume command");
+                        updateStatus("Resuming BBC emulator...");
+                        
+                        if (pauseResumeSupported) {
+                            const iframe = document.querySelector('iframe');
+                            if (iframe && iframe.contentWindow && iframe.contentWindow.processor) {
+                                try {
+                                    iframe.contentWindow.processor.resume();
+                                    console.log("BBC iframe: Emulator resumed successfully");
+                                    updateStatus("BBC emulator resumed");
+                                } catch (e) {
+                                    console.log("BBC iframe: Error resuming emulator:", e);
+                                    updateStatus("Error resuming emulator: " + e.message);
+                                }
+                            }
+                        } else {
+                            console.log("BBC iframe: Resume not supported by emulator");
+                            updateStatus("Resume not supported by emulator");
+                        }
+                        break;
+                        
+                    default:
+                        console.log("BBC iframe: Unknown message type:", event.data.type);
                 }
             }
         });

@@ -7,6 +7,8 @@ export class BBCMicroPlatform implements Platform {
   private machine: BBCMicroMachine | null = null;
   private mainElement: HTMLElement;
   private currentSSDBlob: Blob | null = null;
+  private resetSupported = false;
+  private pauseResumeSupported = false;
 
   constructor(mainElement: HTMLElement) {
     this.mainElement = mainElement;
@@ -16,6 +18,20 @@ export class BBCMicroPlatform implements Platform {
       if (event.data && event.data.type === 'ssd_blob_ready') {
         console.log("BBCMicroPlatform: Received SSD blob from iframe");
         this.setSSDBlob(event.data.blob);
+      } else if (event.data && event.data.type === 'emulator_capabilities') {
+        console.log("BBCMicroPlatform: Received emulator capabilities:", event.data.capabilities);
+        
+        if (event.data.capabilities && typeof event.data.capabilities.reset === 'boolean') {
+          this.resetSupported = event.data.capabilities.reset;
+        }
+        if (event.data.capabilities && typeof event.data.capabilities.pause === 'boolean') {
+          this.pauseResumeSupported = event.data.capabilities.pause;
+        }
+        
+        console.log("BBCMicroPlatform: Updated capabilities - Reset:", this.resetSupported, "Pause/Resume:", this.pauseResumeSupported);
+        
+        // Update button visibility based on capabilities
+        this.updateControlButtons();
       }
     });
   }
@@ -35,6 +51,9 @@ export class BBCMicroPlatform implements Platform {
 
   start(): void {
     console.log("BBCMicroPlatform start() called");
+    
+    // Initially hide control buttons until we know capabilities
+    this.updateControlButtons();
     
     // Create iframe for BBC Micro emulator
     const iframe = document.createElement('iframe');
@@ -64,6 +83,15 @@ export class BBCMicroPlatform implements Platform {
 
   reset(): void {
     console.log("BBCMicroPlatform reset() called");
+    
+    // Send reset command to iframe emulator
+    const frame = document.getElementById("bbc-iframe") as HTMLIFrameElement;
+    if (frame && frame.contentWindow) {
+      frame.contentWindow.postMessage({ type: 'reset' }, '*');
+      console.log("BBCMicroPlatform: Sent reset command to iframe");
+    }
+    
+    // Also reset the local machine for consistency
     if (this.machine) {
       this.machine.reset();
     }
@@ -99,14 +127,42 @@ export class BBCMicroPlatform implements Platform {
     }
 
   pause(): void {
+    if (!this.pauseResumeSupported) {
+      console.log("BBCMicroPlatform: Pause not supported by emulator");
+      return;
+    }
+    
     console.log("BBCMicroPlatform pause() called");
+    
+    // Send pause command to iframe emulator
+    const frame = document.getElementById("bbc-iframe") as HTMLIFrameElement;
+    if (frame && frame.contentWindow) {
+      frame.contentWindow.postMessage({ type: 'pause' }, '*');
+      console.log("BBCMicroPlatform: Sent pause command to iframe");
+    }
+    
+    // Also pause the local machine for consistency
     if (this.machine) {
       this.machine.stop();
     }
   }
 
   resume(): void {
+    if (!this.pauseResumeSupported) {
+      console.log("BBCMicroPlatform: Resume not supported by emulator");
+      return;
+    }
+    
     console.log("BBCMicroPlatform resume() called");
+    
+    // Send resume command to iframe emulator
+    const frame = document.getElementById("bbc-iframe") as HTMLIFrameElement;
+    if (frame && frame.contentWindow) {
+      frame.contentWindow.postMessage({ type: 'resume' }, '*');
+      console.log("BBCMicroPlatform: Sent resume command to iframe");
+    }
+    
+    // Also resume the local machine for consistency
     if (this.machine) {
       this.machine.run();
     }
@@ -760,6 +816,28 @@ export class BBCMicroPlatform implements Platform {
     );
     
     return hasLineNumbers && hasBasicKeywords;
+  }
+
+  private updateControlButtons(): void {
+    // Find the control buttons in the UI and show/hide them based on capability
+    const resetButton = document.getElementById('dbg_reset') as HTMLElement;
+    const pauseButton = document.getElementById('dbg_pause') as HTMLElement;
+    const resumeButton = document.getElementById('dbg_go') as HTMLElement;
+    
+    if (resetButton) {
+      resetButton.style.display = this.resetSupported ? 'inline-block' : 'none';
+      console.log("BBCMicroPlatform: Reset button visibility:", this.resetSupported ? 'visible' : 'hidden');
+    }
+    
+    if (pauseButton) {
+      pauseButton.style.display = this.pauseResumeSupported ? 'inline-block' : 'none';
+      console.log("BBCMicroPlatform: Pause button visibility:", this.pauseResumeSupported ? 'visible' : 'hidden');
+    }
+    
+    if (resumeButton) {
+      resumeButton.style.display = this.pauseResumeSupported ? 'inline-block' : 'none';
+      console.log("BBCMicroPlatform: Resume button visibility:", this.pauseResumeSupported ? 'visible' : 'hidden');
+    }
   }
 }
 
