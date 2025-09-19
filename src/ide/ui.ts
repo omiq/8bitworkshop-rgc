@@ -1400,6 +1400,7 @@ function manualBuildAndRun() {
 function updateAutoCompileUI() {
   const toggleBtn = document.getElementById('auto_compile_toggle') as HTMLElement;
   const manualBtn = document.getElementById('manual_build_btn') as HTMLElement;
+  const statusLabel = document.getElementById('auto_compile_status') as HTMLElement;
   
   if (toggleBtn) {
     if (autoCompileEnabled) {
@@ -1410,6 +1411,16 @@ function updateAutoCompileUI() {
       toggleBtn.classList.remove('btn-success');
       toggleBtn.classList.add('btn-default');
       toggleBtn.title = 'Auto-Compile Disabled (Ctrl+Alt+C)';
+    }
+  }
+  
+  if (statusLabel) {
+    if (autoCompileEnabled) {
+      statusLabel.textContent = 'Auto-Compile: ON';
+      statusLabel.style.color = '#5cb85c'; // Green color
+    } else {
+      statusLabel.textContent = 'Auto-Compile: OFF';
+      statusLabel.style.color = '#d9534f'; // Red color
     }
   }
   
@@ -1436,6 +1447,9 @@ function setupDebugControls() {
   uitoolbar.grp.prop('id','compile_bar');
   // Add auto-compile toggle
   uitoolbar.add('ctrl+alt+c', 'Toggle Auto-Compile', 'glyphicon-flash', toggleAutoCompile).prop('id','auto_compile_toggle');
+  // Add auto-compile status label
+  const statusLabel = $('<span class="auto-compile-status">Auto-Compile: ON</span>').appendTo(uitoolbar.grp);
+  statusLabel.prop('id', 'auto_compile_status');
   // Add manual build button (initially hidden)
   uitoolbar.add('ctrl+alt+m', 'Build and Run', 'glyphicon-play', manualBuildAndRun).prop('id','manual_build_btn');
   uitoolbar.newGroup();
