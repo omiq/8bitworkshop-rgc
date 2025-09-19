@@ -8,7 +8,7 @@ import { Platform, Preset, DebugSymbols, DebugEvalCondition, isDebuggable, EmuSt
 import { PLATFORMS, EmuHalt } from "../common/emu";
 import { Toolbar } from "./toolbar";
 import { getFilenameForPath, getFilenamePrefix, highlightDifferences, byteArrayToString, compressLZG, stringToByteArray,
-         byteArrayToUTF8, isProbablyBinary, getWithBinary, getBasePlatform, getRootBasePlatform, hex, loadScript, decodeQueryString, parseBool, getCookie } from "../common/util";
+         byteArrayToUTF8, isProbablyBinary, getWithBinary, getBasePlatform, getRootBasePlatform, hex, loadScript, decodeQueryString, parseBool, getCookie, setCookie } from "../common/util";
 import { StateRecorderImpl } from "../common/recorder";
 import { getRepos, parseGithubURL } from "./services";
 import Split = require('split.js');
@@ -74,6 +74,21 @@ var current_output : any;     // current ROM (or other object)
 var current_preset : Preset;	// current preset object (if selected)
 var store : LocalForage;			// persistent store
 var autoCompileEnabled : boolean = true;  // auto-compile on changes
+
+// Cookie-based persistence for auto-compile setting
+const AUTO_COMPILE_COOKIE_NAME = 'retrogamecoders_auto_compile';
+
+function loadAutoCompileState(): boolean {
+  const savedState = getCookie(AUTO_COMPILE_COOKIE_NAME);
+  if (savedState !== null) {
+    return savedState === 'true';
+  }
+  return true; // Default to enabled
+}
+
+function saveAutoCompileState(enabled: boolean): void {
+  setCookie(AUTO_COMPILE_COOKIE_NAME, enabled.toString(), 365); // Save for 1 year
+}
 
 const isElectron = parseBool(qs.electron);
 const isEmbed = parseBool(qs.embed);
@@ -1384,6 +1399,8 @@ function _addLinkFile() {
 
 function toggleAutoCompile() {
   autoCompileEnabled = !autoCompileEnabled;
+  // Save state to cookie
+  saveAutoCompileState(autoCompileEnabled);
   // Update global variable for project access
   (window as any).autoCompileEnabled = autoCompileEnabled;
   updateAutoCompileUI();
@@ -1863,6 +1880,13 @@ async function startPlatform() {
   await initProject();
   await loadProject(qs.file);
   platform.sourceFileFetch = (path) => current_project.filedata[path];
+  
+  // Initialize auto-compile state from cookie
+  autoCompileEnabled = loadAutoCompileState();
+  // Update global variable for project access
+  (window as any).autoCompileEnabled = autoCompileEnabled;
+  console.log("Auto-compile state loaded from cookie:", autoCompileEnabled ? "enabled" : "disabled");
+  
   setupDebugControls();
   addPageFocusHandlers();
   showInstructions();
