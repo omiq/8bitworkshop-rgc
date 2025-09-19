@@ -247,9 +247,10 @@ export class C64BasicTokenizer {
             'PINK': 0x96,
             'GRAY1': 0x97,
             'GRAY2': 0x98,
-            'GRAY3': 0x99,
-            'LIGHTGREEN': 0x9A,
-            'LIGHTBLUE': 0x9B
+            // Correct PETSCII extended colors
+            'LIGHTGREEN': 0x99, // 153
+            'LIGHTBLUE': 0x9A,  // 154
+            'GRAY3': 0x9B       // 155 (light grey)
         };
 
         // Allow numeric control codes inside braces, e.g. {65}, {$41}, {0x41}, {%01000001}, {0b01000001}
