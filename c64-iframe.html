@@ -442,6 +442,48 @@
                         // The program will be loaded when emulatorReady becomes true
                     }
                 }
+            } else if (event.data && event.data.type) {
+                // Handle control commands
+                switch (event.data.type) {
+                    case 'reset':
+                        console.log("C64 iframe: Received reset command");
+                        updateStatus("Resetting C64 emulator...");
+                        if (window.h && typeof window.h.reset === 'function') {
+                            window.h.reset();
+                        } else if (window.h && typeof window.h.c64_reset === 'function') {
+                            window.h.c64_reset();
+                        } else {
+                            console.log("C64 iframe: No reset function found on emulator");
+                        }
+                        break;
+                        
+                    case 'pause':
+                        console.log("C64 iframe: Received pause command");
+                        updateStatus("Pausing C64 emulator...");
+                        if (window.h && typeof window.h.pause === 'function') {
+                            window.h.pause();
+                        } else if (window.h && typeof window.h.c64_pause === 'function') {
+                            window.h.c64_pause();
+                        } else {
+                            console.log("C64 iframe: No pause function found on emulator");
+                        }
+                        break;
+                        
+                    case 'resume':
+                        console.log("C64 iframe: Received resume command");
+                        updateStatus("Resuming C64 emulator...");
+                        if (window.h && typeof window.h.resume === 'function') {
+                            window.h.resume();
+                        } else if (window.h && typeof window.h.c64_resume === 'function') {
+                            window.h.c64_resume();
+                        } else {
+                            console.log("C64 iframe: No resume function found on emulator");
+                        }
+                        break;
+                        
+                    default:
+                        console.log("C64 iframe: Unknown message type:", event.data.type);
+                }
             }
         });
         

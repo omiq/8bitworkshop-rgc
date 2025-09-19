@@ -114,6 +114,14 @@ class C64ChipsPlatform implements Platform {
   }
 
   reset(): void {
+    // Send reset command to iframe emulator
+    const frame = document.getElementById("c64-iframe") as HTMLIFrameElement;
+    if (frame && frame.contentWindow) {
+      frame.contentWindow.postMessage({ type: 'reset' }, '*');
+      console.log("C64ChipsPlatform: Sent reset command to iframe");
+    }
+    
+    // Also reset the local machine for consistency
     if (this.machine) {
       this.machine.reset();
     }
@@ -124,6 +132,14 @@ class C64ChipsPlatform implements Platform {
   }
 
   pause(): void {
+    // Send pause command to iframe emulator
+    const frame = document.getElementById("c64-iframe") as HTMLIFrameElement;
+    if (frame && frame.contentWindow) {
+      frame.contentWindow.postMessage({ type: 'pause' }, '*');
+      console.log("C64ChipsPlatform: Sent pause command to iframe");
+    }
+    
+    // Also pause the local machine for consistency
     if (this.machine) {
       this.machine.stop();
       this.running = false;
@@ -131,6 +147,14 @@ class C64ChipsPlatform implements Platform {
   }
 
   resume(): void {
+    // Send resume command to iframe emulator
+    const frame = document.getElementById("c64-iframe") as HTMLIFrameElement;
+    if (frame && frame.contentWindow) {
+      frame.contentWindow.postMessage({ type: 'resume' }, '*');
+      console.log("C64ChipsPlatform: Sent resume command to iframe");
+    }
+    
+    // Also resume the local machine for consistency
     if (this.machine) {
       this.machine.run();
       this.running = true;
