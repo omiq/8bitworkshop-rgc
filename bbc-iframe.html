@@ -1089,32 +1089,58 @@
                 switch (event.data.type) {
                     case 'reset':
                         console.log("BBC iframe: Received reset command");
-                        updateStatus("Resetting BBC emulator...");
+                        updateStatus("Resetting BBC emulator and reloading program...");
                         
                         if (resetSupported) {
-                            // Try to use the emulator's reset function
+                            // Try to use the emulator's reset function, then reload the program
                             const iframe = document.querySelector('iframe');
                             if (iframe && iframe.contentWindow && iframe.contentWindow.processor) {
                                 try {
                                     iframe.contentWindow.processor.reset();
                                     console.log("BBC iframe: Emulator reset successfully");
-                                    updateStatus("BBC emulator reset");
+                                    
+                                    // After reset, reload the last program if available
+                                    if (lastCompiledProgram && emulatorReady) {
+                                        console.log("BBC iframe: Reloading program after reset");
+                                        setTimeout(() => loadProgramIntoEmulator(lastCompiledProgram), 500);
+                                    } else {
+                                        console.log("BBC iframe: No program to reload for reset");
+                                        updateStatus("BBC emulator reset (no program to reload)");
+                                    }
                                 } catch (e) {
                                     console.log("BBC iframe: Error resetting emulator:", e);
                                     updateStatus("Error resetting emulator: " + e.message);
                                 }
                             }
                         } else {
-                            // Fallback: reload the iframe
-                            console.log("BBC iframe: Reset not supported, reloading iframe");
-                            updateStatus("Reloading BBC emulator...");
+                            // Fallback: reload the iframe and then reload the program
+                            console.log("BBC iframe: Reset not supported, reloading iframe and program");
+                            updateStatus("Reloading BBC emulator and program...");
                             
                             const iframe = document.querySelector('iframe');
                             if (iframe) {
+                                // Store the program to reload after iframe reload
+                                const programToReload = lastCompiledProgram;
+                                
                                 // Reload the iframe to reset the emulator
                                 const currentSrc = iframe.src;
                                 iframe.src = currentSrc + (currentSrc.includes('?') ? '&' : '?') + 'reset=' + Date.now();
-                                updateStatus("BBC emulator reloaded");
+                                
+                                // Set up a listener to reload the program after iframe reloads
+                                const onIframeReload = () => {
+                                    console.log("BBC iframe: Iframe reloaded, reloading program");
+                                    if (programToReload) {
+                                        setTimeout(() => {
+                                            lastCompiledProgram = programToReload;
+                                            emulatorReady = true;
+                                            loadProgramIntoEmulator(programToReload);
+                                        }, 1000);
+                                    }
+                                    iframe.removeEventListener('load', onIframeReload);
+                                };
+                                iframe.addEventListener('load', onIframeReload);
+                                
+                                updateStatus("BBC emulator reloaded, program will reload shortly");
                             }
                         }
                         break;
