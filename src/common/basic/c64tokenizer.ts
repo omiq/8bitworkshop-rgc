@@ -230,6 +230,9 @@ export class C64BasicTokenizer {
             'INS': 0x94,
             'RVS': 0x12,
             'RVS OFF': 0x92,
+            // Character set switches
+            'LOWER': 0x0E,   // switch to lower/upper character set
+            'UPPER': 0x8E,   // switch to upper/graphics character set
             'DOWN': 0x11,
             'UP': 0x91,
             'LEFT': 0x9D,

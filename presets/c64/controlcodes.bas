@@ -1,5 +1,5 @@
 10 REM C64 BASIC Control Codes Demo
-20 PRINT "{CLR}"
+20 PRINT "{CLR}{LOWER}"
 30 PRINT "CONTROL CODES DEMO"
 40 PRINT "-------------------"
 50 PRINT
@@ -20,7 +20,8 @@
 200 PRINT
 210 PRINT "Mixed text: ";"{YELLOW}";"YELLOW ";"{GREEN}";"GREEN ";"{BLUE}";"BLUE";"{WHITE}"
 220 PRINT
-230 PRINT "Press any key...";:GET A$
-240 PRINT "{CLR}";"DONE"
+230 PRINT
+240 PRINT "{UPPER}";"Press any key...";:GET A$
+250 PRINT "{CLR}";"DONE"
 250 END
 
