@@ -21,7 +21,8 @@
 210 PRINT "Mixed text: ";"{YELLOW}";"YELLOW ";"{GREEN}";"GREEN ";"{BLUE}";"BLUE";"{WHITE}"
 220 PRINT
 230 PRINT
-240 PRINT "{UPPER}";"Press any key...";:GET A$
+240 PRINT "{UPPER}";"Press any key...";
+245 A$="":IF A$="" THEN GET A$:IF A$="" THEN 245
 250 PRINT "{CLR}";"DONE"
-250 END
+260 END
 
