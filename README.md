@@ -8,6 +8,12 @@ Hope you enjoy my version of the 8bitworkshop IDE!
 
 The main changes I have made are to attempt to add more target platforms, and to add more features. Most notable currently are the addition of the Commodore Vic20, the BBC Micro, and C64 BASIC.
 
+### Recent Features
+- **Auto-compile toggle** - Toggle automatic compilation on/off for smoother editing experience
+- **Manual build control** - Build and run programs on-demand when auto-compile is disabled
+- **Visual status indicator** - Clear "Auto-Compile: ON/OFF" caption with color coding
+- **Keyboard shortcuts** - Quick access via `Ctrl+Alt+C` (toggle) and `Ctrl+Alt+M` (manual build)
+
 Some elements are removed such as the Github integration, and the open source C64 ROMs were replaced with the original ones.
 
 --- 

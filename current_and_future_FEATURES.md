@@ -119,10 +119,20 @@ RetroGameCoders IDE is a comprehensive web-based development environment designe
 
 ### **Integrated Development Environment**
 - **Real-time compilation** - Instant feedback on code changes
+- **Auto-compile toggle** - Enable/disable automatic compilation for smoother editing
+- **Manual build control** - Build and run programs on-demand when auto-compile is disabled
 - **Live emulation** - See your code run immediately
 - **Integrated debugging** - Set breakpoints, inspect memory, step through code
 - **Syntax highlighting** - Support for C, assembly, BASIC, and more
 - **Code completion** - Intelligent suggestions and autocomplete
+
+### **Smart Compilation Control**
+- **Auto-compile toggle** - Toggle automatic compilation on/off with a single click
+- **Visual status indicator** - Clear "Auto-Compile: ON/OFF" caption with color coding
+- **Manual build button** - Build and run programs manually when auto-compile is disabled
+- **Keyboard shortcuts** - Quick access via `Ctrl+Alt+C` (toggle) and `Ctrl+Alt+M` (manual build)
+- **Smooth editing experience** - Disable auto-compile to prevent interruptions during active coding
+- **Flexible workflow** - Choose between real-time feedback and manual control based on your needs
 
 ### **Advanced Debugging**
 - **Breakpoint support** - Set conditional and unconditional breakpoints
