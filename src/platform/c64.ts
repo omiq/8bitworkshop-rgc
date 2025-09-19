@@ -78,6 +78,7 @@ class C64ChipsPlatform implements Platform {
   private timer: AnimationTimer;
   private video: RasterVideo;
   private running = false;
+  private pauseResumeSupported = false;
 
   constructor(mainElement: HTMLElement) {
     this.mainElement = mainElement;
@@ -86,6 +87,9 @@ class C64ChipsPlatform implements Platform {
 
   async start(): Promise<void> {
     console.log("C64ChipsPlatform start() called - EMULATOR DISABLED FOR TESTING");
+    
+    // Set up message listener for iframe capabilities
+    this.setupIframeMessageListener();
     
     // Create iframe for C64 emulator
     const iframe = document.createElement('iframe');
@@ -113,6 +117,44 @@ class C64ChipsPlatform implements Platform {
     }
   }
 
+  private setupIframeMessageListener(): void {
+    window.addEventListener('message', (event) => {
+      // Only accept messages from our iframe
+      const iframe = document.getElementById("c64-iframe") as HTMLIFrameElement;
+      if (!iframe || event.source !== iframe.contentWindow) {
+        return;
+      }
+
+      if (event.data && event.data.type === 'emulator_capabilities') {
+        console.log("C64ChipsPlatform: Received emulator capabilities:", event.data.capabilities);
+        
+        if (event.data.capabilities && typeof event.data.capabilities.pauseResume === 'boolean') {
+          this.pauseResumeSupported = event.data.capabilities.pauseResume;
+          console.log("C64ChipsPlatform: Pause/resume supported:", this.pauseResumeSupported);
+          
+          // Update the UI to show/hide pause/resume buttons
+          this.updateControlButtons();
+        }
+      }
+    });
+  }
+
+  private updateControlButtons(): void {
+    // Find the control buttons in the UI and show/hide them based on capability
+    const pauseButton = document.querySelector('[data-action="pause"]') as HTMLElement;
+    const resumeButton = document.querySelector('[data-action="resume"]') as HTMLElement;
+    
+    if (pauseButton) {
+      pauseButton.style.display = this.pauseResumeSupported ? 'inline-block' : 'none';
+      console.log("C64ChipsPlatform: Pause button visibility:", this.pauseResumeSupported ? 'visible' : 'hidden');
+    }
+    
+    if (resumeButton) {
+      resumeButton.style.display = this.pauseResumeSupported ? 'inline-block' : 'none';
+      console.log("C64ChipsPlatform: Resume button visibility:", this.pauseResumeSupported ? 'visible' : 'hidden');
+    }
+  }
+
   reset(): void {
     // Send reset command to iframe emulator
     const frame = document.getElementById("c64-iframe") as HTMLIFrameElement;
@@ -132,6 +174,11 @@ class C64ChipsPlatform implements Platform {
   }
 
   pause(): void {
+    if (!this.pauseResumeSupported) {
+      console.log("C64ChipsPlatform: Pause not supported by emulator");
+      return;
+    }
+    
     // Send pause command to iframe emulator
     const frame = document.getElementById("c64-iframe") as HTMLIFrameElement;
     if (frame && frame.contentWindow) {
@@ -147,6 +194,11 @@ class C64ChipsPlatform implements Platform {
   }
 
   resume(): void {
+    if (!this.pauseResumeSupported) {
+      console.log("C64ChipsPlatform: Resume not supported by emulator");
+      return;
+    }
+    
     // Send resume command to iframe emulator
     const frame = document.getElementById("c64-iframe") as HTMLIFrameElement;
     if (frame && frame.contentWindow) {

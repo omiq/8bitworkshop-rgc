@@ -55,10 +55,96 @@
         
         let emulatorReady = false;
         let lastCompiledProgram = null;
+        let pauseResumeSupported = false;
         
         function updateStatus(message) {
             status.textContent = message;
             console.log("C64 iframe:", message);
+        }
+        
+        // Function to test if pause/resume functionality actually works
+        function testPauseResumeCapability() {
+            console.log("C64 iframe: Testing pause/resume capability...");
+            
+            if (!window.h) {
+                console.log("C64 iframe: window.h not available for capability test");
+                pauseResumeSupported = false;
+                return false;
+            }
+            
+            // Check if the functions exist
+            const hasPause = typeof window.h.pauseMainLoop === 'function';
+            const hasResume = typeof window.h.resumeMainLoop === 'function';
+            
+            console.log("C64 iframe: pauseMainLoop exists:", hasPause);
+            console.log("C64 iframe: resumeMainLoop exists:", hasResume);
+            
+            if (!hasPause || !hasResume) {
+                console.log("C64 iframe: Pause/resume functions not available");
+                pauseResumeSupported = false;
+                return false;
+            }
+            
+            // Try to test the functions by calling them and checking for errors
+            try {
+                console.log("C64 iframe: Testing pause function...");
+                window.h.pauseMainLoop();
+                console.log("C64 iframe: Pause function called successfully");
+                
+                // Wait a moment, then test resume
+                setTimeout(() => {
+                    try {
+                        console.log("C64 iframe: Testing resume function...");
+                        window.h.resumeMainLoop();
+                        console.log("C64 iframe: Resume function called successfully");
+                        
+                        // If we get here without errors, the functions work
+                        pauseResumeSupported = true;
+                        console.log("C64 iframe: Pause/resume capability confirmed");
+                        
+                        // Notify parent window of capability
+                        if (window.parent) {
+                            window.parent.postMessage({
+                                type: 'emulator_capabilities',
+                                capabilities: {
+                                    pauseResume: true
+                                }
+                            }, '*');
+                            console.log("C64 iframe: Sent capability info to parent");
+                        }
+                        
+                    } catch (e) {
+                        console.log("C64 iframe: Resume function failed:", e);
+                        pauseResumeSupported = false;
+                        
+                        // Notify parent window that pause/resume is not supported
+                        if (window.parent) {
+                            window.parent.postMessage({
+                                type: 'emulator_capabilities',
+                                capabilities: {
+                                    pauseResume: false
+                                }
+                            }, '*');
+                        }
+                    }
+                }, 100);
+                
+            } catch (e) {
+                console.log("C64 iframe: Pause function failed:", e);
+                pauseResumeSupported = false;
+                
+                // Notify parent window that pause/resume is not supported
+                if (window.parent) {
+                    window.parent.postMessage({
+                        type: 'emulator_capabilities',
+                        capabilities: {
+                            pauseResume: false
+                        }
+                    }, '*');
+                }
+            }
+            
+            return pauseResumeSupported;
         }
         
         // Core function to load program into emulator
@@ -107,6 +193,26 @@
                                 console.log("⚠️ Could not trigger execution:", e);
                             }
                         }
+                        
+                        // Also try to type "RUN" command to execute the program
+                        setTimeout(() => {
+                            console.log("🎯 Attempting to type RUN command...");
+                            try {
+                                // Type "RUN" followed by Enter
+                                const runCommand = "RUN\r";
+                                for (let i = 0; i < runCommand.length; i++) {
+                                    const charCode = runCommand.charCodeAt(i);
+                                    if (window.h && typeof window.h._ === 'function') {
+                                        window.h._(canvas, charCode, 2, 0); // keydown
+                                        window.h._(canvas, charCode, 3, 0); // keyup
+                                    }
+                                }
+                                console.log("✅ Typed RUN command");
+                                updateStatus("Program loaded and RUN command sent");
+                            } catch (e) {
+                                console.log("⚠️ Could not type RUN command:", e);
+                            }
+                        }, 500);
                     }, 1000);
                     
                 } else if (window.h && typeof window.h.loadProgram === 'function') {
@@ -160,6 +266,11 @@
                                 emulatorReady = true;
                                 updateStatus("C64 emulator started - Ready to load programs");
                                 
+                                // Test pause/resume capability
+                                setTimeout(() => {
+                                    testPauseResumeCapability();
+                                }, 500);
+                                
                                 // Check for latest compiled program and load any queued program
                                 setTimeout(() => {
                                     window.checkForProgramInURL();
@@ -187,6 +298,12 @@
                                 console.log("C64 iframe: Emulator already running (calledRun = true)");
                                 emulatorReady = true;
                                 updateStatus("C64 emulator already running - Ready to load programs");
+                                
+                                // Test pause/resume capability
+                                setTimeout(() => {
+                                    testPauseResumeCapability();
+                                }, 500);
+                                
                                 setTimeout(() => {
                                     window.checkForProgramInURL();
                                     loadQueuedProgram();
@@ -198,6 +315,12 @@
                                         window.h._main();
                                         emulatorReady = true;
                                         updateStatus("C64 emulator started via _main - Ready to load programs");
+                                        
+                                        // Test pause/resume capability
+                                        setTimeout(() => {
+                                            testPauseResumeCapability();
+                                        }, 500);
+                                        
                                         setTimeout(() => {
                                             window.checkForProgramInURL();
                                             loadQueuedProgram();
@@ -211,6 +334,12 @@
                                         window.h.resumeMainLoop();
                                         emulatorReady = true;
                                         updateStatus("C64 emulator started via resumeMainLoop - Ready to load programs");
+                                        
+                                        // Test pause/resume capability
+                                        setTimeout(() => {
+                                            testPauseResumeCapability();
+                                        }, 500);
+                                        
                                         setTimeout(() => window.checkForProgramInURL(), 1000);
                                     } catch (e) {
                                         updateStatus("Error starting emulator via resumeMainLoop: " + e.message);
@@ -221,6 +350,12 @@
                                         window.h.c64_run();
                                         emulatorReady = true;
                                         updateStatus("C64 emulator started via c64_run - Ready to load programs");
+                                        
+                                        // Test pause/resume capability
+                                        setTimeout(() => {
+                                            testPauseResumeCapability();
+                                        }, 500);
+                                        
                                         setTimeout(() => window.checkForProgramInURL(), 1000);
                                     } catch (e) {
                                         updateStatus("Error starting emulator via c64_run: " + e.message);
@@ -231,6 +366,12 @@
                                         window.h.run();
                                         emulatorReady = true;
                                         updateStatus("C64 emulator started via run - Ready to load programs");
+                                        
+                                        // Test pause/resume capability
+                                        setTimeout(() => {
+                                            testPauseResumeCapability();
+                                        }, 500);
+                                        
                                         setTimeout(() => window.checkForProgramInURL(), 1000);
                                     } catch (e) {
                                         updateStatus("Error starting emulator via run: " + e.message);
@@ -241,6 +382,12 @@
                                         window.h.start();
                                         emulatorReady = true;
                                         updateStatus("C64 emulator started via start - Ready to load programs");
+                                        
+                                        // Test pause/resume capability
+                                        setTimeout(() => {
+                                            testPauseResumeCapability();
+                                        }, 500);
+                                        
                                         setTimeout(() => window.checkForProgramInURL(), 1000);
                                     } catch (e) {
                                         updateStatus("Error starting emulator via start: " + e.message);
@@ -251,6 +398,12 @@
                                     console.log("C64 iframe: No explicit start function found, assuming emulator is running");
                                     emulatorReady = true;
                                     updateStatus("C64 emulator ready (assumed running) - Ready to load programs");
+                                    
+                                    // Test pause/resume capability
+                                    setTimeout(() => {
+                                        testPauseResumeCapability();
+                                    }, 500);
+                                    
                                     setTimeout(() => {
                                         window.checkForProgramInURL();
                                         loadQueuedProgram();
@@ -461,22 +614,38 @@
                     case 'pause':
                         console.log("C64 iframe: Received pause command");
                         updateStatus("Pausing C64 emulator...");
-                        if (window.h && typeof window.h.pauseMainLoop === 'function') {
-                            window.h.pauseMainLoop();
-                            console.log("C64 iframe: Emulator paused");
+                        
+                        if (pauseResumeSupported && window.h && typeof window.h.pauseMainLoop === 'function') {
+                            try {
+                                window.h.pauseMainLoop();
+                                console.log("C64 iframe: Emulator paused successfully");
+                                updateStatus("C64 emulator paused");
+                            } catch (e) {
+                                console.log("C64 iframe: Error pausing emulator:", e);
+                                updateStatus("Error pausing emulator: " + e.message);
+                            }
                         } else {
-                            console.log("C64 iframe: No pauseMainLoop function found on emulator");
+                            console.log("C64 iframe: Pause not supported or function not available");
+                            updateStatus("Pause not supported by this emulator");
                         }
                         break;
                         
                     case 'resume':
                         console.log("C64 iframe: Received resume command");
                         updateStatus("Resuming C64 emulator...");
-                        if (window.h && typeof window.h.resumeMainLoop === 'function') {
-                            window.h.resumeMainLoop();
-                            console.log("C64 iframe: Emulator resumed");
+                        
+                        if (pauseResumeSupported && window.h && typeof window.h.resumeMainLoop === 'function') {
+                            try {
+                                window.h.resumeMainLoop();
+                                console.log("C64 iframe: Emulator resumed successfully");
+                                updateStatus("C64 emulator resumed");
+                            } catch (e) {
+                                console.log("C64 iframe: Error resuming emulator:", e);
+                                updateStatus("Error resuming emulator: " + e.message);
+                            }
                         } else {
-                            console.log("C64 iframe: No resumeMainLoop function found on emulator");
+                            console.log("C64 iframe: Resume not supported or function not available");
+                            updateStatus("Resume not supported by this emulator");
                         }
                         break;
                         
