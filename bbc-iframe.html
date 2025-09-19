@@ -1072,6 +1072,10 @@
             } else if (event.data && event.data.type === 'basic_program' && event.data.program) {
                 console.log("BBC iframe: Received BASIC program via postMessage:", event.data.program.length, "chars");
                 
+                // Store the BASIC program for potential reload after reset
+                lastCompiledProgram = event.data.program;
+                discLoaded = false; // Reset flag for new program
+                
                 // For BASIC programs, we need to pass them to jsbeeb using embedBasic
                 // We'll update the iframe URL to include the embedBasic parameter
                 const iframe = document.querySelector('iframe');
@@ -1102,7 +1106,20 @@
                                     // After reset, reload the last program if available
                                     if (lastCompiledProgram && emulatorReady) {
                                         console.log("BBC iframe: Reloading program after reset");
-                                        setTimeout(() => loadProgramIntoEmulator(lastCompiledProgram), 500);
+                                        // Check if it's a BASIC program (string) or compiled program (Uint8Array)
+                                        if (typeof lastCompiledProgram === 'string') {
+                                            // It's a BASIC program, reload using embedBasic
+                                            const iframe = document.querySelector('iframe');
+                                            if (iframe) {
+                                                const encodedBasic = encodeURIComponent(lastCompiledProgram);
+                                                const newURL = `res/jsbeeb/dist/index.html?embed&embedBasic=${encodedBasic}`;
+                                                iframe.src = newURL;
+                                                console.log("BBC iframe: Reloaded BASIC program after reset");
+                                            }
+                                        } else {
+                                            // It's a compiled program, use loadProgramIntoEmulator
+                                            setTimeout(() => loadProgramIntoEmulator(lastCompiledProgram), 500);
+                                        }
                                     } else {
                                         console.log("BBC iframe: No program to reload for reset");
                                         updateStatus("BBC emulator reset (no program to reload)");
@@ -1133,7 +1150,17 @@
                                         setTimeout(() => {
                                             lastCompiledProgram = programToReload;
                                             emulatorReady = true;
-                                            loadProgramIntoEmulator(programToReload);
+                                            // Check if it's a BASIC program (string) or compiled program (Uint8Array)
+                                            if (typeof programToReload === 'string') {
+                                                // It's a BASIC program, reload using embedBasic
+                                                const encodedBasic = encodeURIComponent(programToReload);
+                                                const newURL = `res/jsbeeb/dist/index.html?embed&embedBasic=${encodedBasic}`;
+                                                iframe.src = newURL;
+                                                console.log("BBC iframe: Reloaded BASIC program after iframe reset");
+                                            } else {
+                                                // It's a compiled program, use loadProgramIntoEmulator
+                                                loadProgramIntoEmulator(programToReload);
+                                            }
                                         }, 1000);
                                     }
                                     iframe.removeEventListener('load', onIframeReload);
