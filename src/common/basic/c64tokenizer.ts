@@ -224,19 +224,46 @@ export class C64BasicTokenizer {
      */
     private parseControlCode(control: string): number | null {
         const controlMap: { [key: string]: number } = {
+            // Screen/control
             'CLR': 0x93,
+            'CLEAR': 0x93,
             'HOME': 0x13,
             'DEL': 0x14,
+            'DELETE': 0x14,
             'INS': 0x94,
-            'RVS': 0x12,
+            'INST': 0x94,
+            'INSERT': 0x94,
+            'RVS': 0x12,          // reverse on
+            'RVS ON': 0x12,
             'RVS OFF': 0x92,
+            'REVERSE ON': 0x12,
+            'REVERSE OFF': 0x92,
+            'RVSON': 0x12,
+            'RVSOFF': 0x92,
+            'RETURN': 0x0D,       // carriage return
+            'SHIFT RETURN': 0x8D, // shifted return
+            'SPACE': 0x20,
+            'PI': 0xFF,
+
             // Character set switches
             'LOWER': 0x0E,   // switch to lower/upper character set
             'UPPER': 0x8E,   // switch to upper/graphics character set
+
+            // Cursor movement
             'DOWN': 0x11,
             'UP': 0x91,
             'LEFT': 0x9D,
             'RIGHT': 0x1D,
+            'CURSOR DOWN': 0x11,
+            'CURSOR UP': 0x91,
+            'CURSOR LEFT': 0x9D,
+            'CURSOR RIGHT': 0x1D,
+            'CRSR DOWN': 0x11,
+            'CRSR UP': 0x91,
+            'CRSR LEFT': 0x9D,
+            'CRSR RIGHT': 0x1D,
+
+            // Colors (full names)
             'BLACK': 0x90,
             'WHITE': 0x05,
             'RED': 0x1C,
@@ -247,13 +274,54 @@ export class C64BasicTokenizer {
             'YELLOW': 0x9E,
             'ORANGE': 0x81,
             'BROWN': 0x95,
-            'PINK': 0x96,
-            'GRAY1': 0x97,
-            'GRAY2': 0x98,
+            'PINK': 0x96,        // also called LIGHT-RED
+            'LIGHT-RED': 0x96,
+            'GRAY1': 0x97,       // dark grey
+            'DARK GREY': 0x97,
+            'DARKGREY': 0x97,
+            'DARK GRAY': 0x97,
+            'DARKGRAY': 0x97,
+            'GRAY2': 0x98,       // medium grey
+            'GREY': 0x98,
+            'GREY 1': 0x97,
+            'GREY1': 0x97,
+            'GREY 2': 0x98,
+            'GREY2': 0x98,
             // Correct PETSCII extended colors
             'LIGHTGREEN': 0x99, // 153
+            'LIGHT BLUE': 0x9A, // allow space variant
             'LIGHTBLUE': 0x9A,  // 154
-            'GRAY3': 0x9B       // 155 (light grey)
+            'GRAY3': 0x9B,      // 155 (light grey)
+            'LIGHTGREY': 0x9B,
+            'LIGHT GRAY': 0x9B,
+            'LIGHTGRAY': 0x9B,
+            'GREY 3': 0x9B,
+            'GREY3': 0x9B,
+
+            // Colors (abbreviations)
+            'BLK': 0x90,
+            'WHT': 0x05,
+            'CYN': 0x9F,
+            'PUR': 0x9C,
+            'GRN': 0x1E,
+            'BLU': 0x1F,
+            'YEL': 0x9E
+        
+            ,
+            // Function keys (PETSCII): note mapping of plain F2/F4/F6/F8 are shifted
+            'F1': 0x85, // 133
+            'F2': 0x89, // 137 (SHIFT+F1)
+            'F3': 0x86, // 134
+            'F4': 0x8A, // 138 (SHIFT+F3)
+            'F5': 0x87, // 135
+            'F6': 0x8B, // 139 (SHIFT+F5)
+            'F7': 0x88, // 136
+            'F8': 0x8C, // 140 (SHIFT+F7)
+
+            // 64er/Checksummer aliases
+            'LIG.RED': 0x96,
+            'LIG.GREEN': 0x99,
+            'LIG.BLUE': 0x9A
         };
 
         // Allow numeric control codes inside braces, e.g. {65}, {$41}, {0x41}, {%01000001}, {0b01000001}
