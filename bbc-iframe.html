@@ -909,8 +909,8 @@
             }
             
             if (embedBasic) {
-                // If we have embedBasic, pass it through to jsbeeb
-                iframeSrc += `&embedBasic=${encodeURIComponent(embedBasic)}`;
+                // If we have embedBasic, pass it through to jsbeeb with cache-busting timestamp
+                iframeSrc += `&embedBasic=${encodeURIComponent(embedBasic)}&t=${Date.now()}`;
                 console.log("BBC iframe: Passing embedBasic to jsbeeb:", embedBasic);
             } else {
                 // Default: use local disc support and autoboot
@@ -1077,7 +1077,7 @@
                 const iframe = document.querySelector('iframe');
                 if (iframe && iframe.contentWindow) {
                     const encodedBasic = encodeURIComponent(event.data.program);
-                    const newURL = `res/jsbeeb/dist/index.html?embed&embedBasic=${encodedBasic}`;
+                    const newURL = `res/jsbeeb/dist/index.html?embed&embedBasic=${encodedBasic}&t=${Date.now()}`;
                     
                     console.log("BBC iframe: Updating jsbeeb iframe with BASIC program");
                     iframe.src = newURL;
