@@ -66,9 +66,9 @@ export class BBCMicroPlatform implements Platform {
     // Add iframe to the main element
     this.mainElement.innerHTML = '';
     this.mainElement.appendChild(iframe);
-    console.log("BBCMicroPlatform: iframe created, setting up with auto-compilation");
+    console.log("BBCMicroPlatform: iframe created");
     
-    // Set up iframe with auto-compilation (async)
+    // Set up iframe with auto-compilation (will check for worker availability)
     this.setupIframeWithAutoCompilation().catch(error => {
       console.error("BBCMicroPlatform: Error in setupIframeWithAutoCompilation:", error);
     });
@@ -193,21 +193,9 @@ export class BBCMicroPlatform implements Platform {
         const iframeURL = `bbc-iframe.html?embedBasic=${encodedBasic}&t=${Date.now()}${modelQuery}`;
         
         if (iframeURL.length > 1500) {
-          console.log("BBCMicroPlatform: BASIC program too long for URL, sending plain BASIC via postMessage");
-          // For long programs, send the BASIC text and let the iframe pass it to jsbeeb
-          const baseURL = `bbc-iframe.html?t=${Date.now()}${modelQuery}`;
-          frame.src = baseURL;
-          
-          const onLoad = () => {
-            console.log("BBCMicroPlatform: iframe loaded, sending BASIC program via postMessage");
-            frame.contentWindow!.postMessage({
-              type: 'basic_program',
-              program: basicText,
-              autoLoad: true
-            }, '*');
-            frame.removeEventListener('load', onLoad);
-          };
-          frame.addEventListener('load', onLoad);
+          console.log("BBCMicroPlatform: BASIC program too long for URL, saving to PHP server and using loadBasic");
+          // For long programs, save to PHP server and use loadBasic URL parameter
+          this.saveFileToServerAndLoad(basicText, frame, modelQuery);
         } else {
           console.log("BBCMicroPlatform: Using embedBasic parameter for short BASIC program");
           frame.src = iframeURL;
@@ -290,20 +278,101 @@ export class BBCMicroPlatform implements Platform {
   }
 
 
+  private async saveFileToServerAndLoad(basicText: string, frame: HTMLIFrameElement, modelQuery: string) {
+    try {
+      // Generate a unique session ID for this file
+      const sessionID = 'user_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+      const filename = 'program.bas';
+      
+      // Save the file to the PHP server
+      const formData = new FormData();
+      formData.append('content', basicText);
+      formData.append('session', sessionID);
+      formData.append('file', filename);
+      
+      const response = await fetch('https://ide.retrogamecoders.com/savefile.php', {
+        method: 'POST',
+        body: formData
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to save file to server: ' + response.statusText);
+      }
+      
+      console.log("BBCMicroPlatform: File saved to PHP server, using loadBasic URL");
+      
+      // Create the loadBasic URL using the PHP endpoint
+      const loadBasicURL = `https://ide.retrogamecoders.com/userfile.php?session=${encodeURIComponent(sessionID)}&file=${encodeURIComponent(filename)}`;
+      const iframeURL = `bbc-iframe.html?loadBasic=${encodeURIComponent(loadBasicURL)}&autoboot&t=${Date.now()}${modelQuery}`;
+      
+      frame.src = iframeURL;
+      
+    } catch (error) {
+      console.error("BBCMicroPlatform: Failed to save file to PHP server, falling back to postMessage:", error);
+      
+      // Fallback to postMessage approach
+      const baseURL = `bbc-iframe.html?postMessage=true&t=${Date.now()}${modelQuery}`;
+      frame.src = baseURL;
+      
+      const onLoad = () => {
+        console.log("BBCMicroPlatform: iframe loaded, sending BASIC program via postMessage (fallback)");
+        frame.contentWindow!.postMessage({
+          type: 'basic_program',
+          program: basicText,
+          autoLoad: true
+        }, '*');
+        frame.removeEventListener('load', onLoad);
+      };
+      frame.addEventListener('load', onLoad);
+    }
+  }
+
   private async triggerCompilationAndReload() {
     console.log("BBCMicroPlatform: Triggering compilation and reload");
     
     // Set up a one-time compilation listener
     this.setupCompilationListener();
     
-    // Trigger compilation
-    const worker = (window as any).worker;
-    if (worker && worker.postMessage) {
-      console.log("BBCMicroPlatform: Triggering compilation via worker");
-      worker.postMessage({ type: 'compile' });
-    } else {
-      console.error("BBCMicroPlatform: Worker not available for compilation");
-    }
+    // Check for worker availability with retry
+    const checkWorkerAndCompile = () => {
+      const worker = (window as any).worker;
+      if (worker && worker.postMessage) {
+        console.log("BBCMicroPlatform: Triggering compilation via worker");
+        
+        // Get current project files
+        const project = (window as any).IDE?.getCurrentProject();
+        const files = project?.getFiles() || {};
+        
+        // Check if we have any files to compile
+        const fileKeys = Object.keys(files);
+        if (fileKeys.length === 0) {
+          console.log("BBCMicroPlatform: No files to compile, skipping worker message");
+          return;
+        }
+        
+        // Create proper worker message format
+        const mainFile = fileKeys[0];
+        const message = {
+          updates: Object.entries(files).map(([path, data]) => ({
+            path: path,
+            data: typeof data === 'string' ? data : new TextDecoder().decode(data as Uint8Array)
+          })),
+          buildsteps: [{
+            path: mainFile,
+            files: [mainFile],
+            platform: 'bbc',
+            tool: 'bbcbasic',
+            mainfile: true
+          }]
+        };
+        worker.postMessage(message);
+      } else {
+        console.log("BBCMicroPlatform: Worker not yet available, retrying in 500ms");
+        setTimeout(checkWorkerAndCompile, 500);
+      }
+    };
+    
+    checkWorkerAndCompile();
   }
 
   private setupCompilationListener() {
@@ -369,7 +438,7 @@ export class BBCMicroPlatform implements Platform {
         const ssdData = this.createProperSSDWithTokenizedBasic(tokenizedBasic, filename);
         return {
           extension: '.ssd',
-          blob: new Blob([ssdData], { type: 'application/octet-stream' })
+          blob: new Blob([ssdData.buffer as ArrayBuffer], { type: 'application/octet-stream' })
         };
       } else {
         console.log('BBCMicroPlatform: Extracted BASIC appears incomplete, falling back to custom tokenizer');
@@ -382,7 +451,7 @@ export class BBCMicroPlatform implements Platform {
     
     return {
       extension: '.ssd',
-      blob: new Blob([ssdData], { type: 'application/octet-stream' })
+      blob: new Blob([ssdData.buffer as ArrayBuffer], { type: 'application/octet-stream' })
     };
   }
 

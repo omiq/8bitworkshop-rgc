@@ -24,6 +24,8 @@ const app = express();
 app.use(cors());
 
 app.use(express.json({ limit: 1024*1024 })); // limit 1 MB
+app.use(express.text({ limit: 1024*1024 })); // limit 1 MB for text files
+app.use(express.urlencoded({ extended: true, limit: 1024*1024 })); // for FormData
 
 app.get('/info', (req: Request, res: Response) => {
     // send a list of supported tools
@@ -65,6 +67,70 @@ app.post('/build', async (req: Request, res: Response, next) => {
         const env = new ServerBuildEnv(SERVER_ROOT, sessionID, bestTool);
         const result = await env.compileAndLink(buildStep, updates);
         res.json(result);
+    } catch (err) {
+        return next(err);
+    }
+});
+
+// Save user files for jsbeeb loadBasic parameter
+app.post('/userfile', (req: Request, res: Response, next) => {
+    try {
+        const { content, session, file } = req.body;
+        
+        if (!content || !session || !file) {
+            return res.status(400).json({ error: 'Missing parameters' });
+        }
+        
+        const sessionPath = path.join(SESSION_ROOT, session);
+        
+        // Create session directory if it doesn't exist
+        if (!fs.existsSync(sessionPath)) {
+            fs.mkdirSync(sessionPath, { recursive: true });
+        }
+        
+        const filePath = path.join(sessionPath, file);
+        
+        // Security check: ensure the file is within the session directory
+        if (!filePath.startsWith(sessionPath)) {
+            return res.status(403).json({ error: 'Access denied' });
+        }
+        
+        // Write the file content
+        fs.writeFileSync(filePath, content, 'utf8');
+        
+        res.setHeader('Access-Control-Allow-Origin', '*');
+        res.json({ success: true, path: filePath });
+        
+    } catch (err) {
+        return next(err);
+    }
+});
+
+// Serve user files for jsbeeb loadBasic parameter
+app.get('/userfile/:sessionID/:filename', (req: Request, res: Response, next) => {
+    try {
+        const { sessionID, filename } = req.params;
+        const sessionPath = path.join(SESSION_ROOT, sessionID);
+        const filePath = path.join(sessionPath, filename);
+        
+        // Security check: ensure the file is within the session directory
+        if (!filePath.startsWith(sessionPath)) {
+            return res.status(403).send('Access denied');
+        }
+        
+        if (!fs.existsSync(filePath)) {
+            return res.status(404).send('File not found');
+        }
+        
+        // Set appropriate headers for BASIC files
+        res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+        res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+        res.setHeader('Access-Control-Allow-Origin', '*');
+        
+        // Stream the file
+        const fileStream = fs.createReadStream(filePath);
+        fileStream.pipe(res);
+        
     } catch (err) {
         return next(err);
     }

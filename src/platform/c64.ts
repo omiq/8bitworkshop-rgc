@@ -361,7 +361,28 @@ class C64ChipsPlatform implements Platform {
     const worker = (window as any).worker;
     if (worker && worker.postMessage) {
       console.log("C64ChipsPlatform: Triggering compilation via worker");
-      worker.postMessage({ type: 'compile' });
+      
+      // Get current project files
+      const project = (window as any).IDE?.getCurrentProject();
+      const files = project?.getFiles() || {};
+      
+      // Create proper worker message format
+      const mainFile = Object.keys(files)[0] || 'program.bas';
+      const message = {
+        updates: Object.entries(files).map(([path, data]) => ({
+          path: path,
+          data: typeof data === 'string' ? data : new TextDecoder().decode(data as Uint8Array)
+        })),
+        buildsteps: [{
+          path: mainFile,
+          files: [mainFile],
+          platform: 'c64',
+          tool: 'c64basic',
+          mainfile: true
+        }]
+      };
+      
+      worker.postMessage(message);
     } else {
       console.error("C64ChipsPlatform: Worker not available for compilation");
     }
