@@ -1231,7 +1231,7 @@
                                     setTimeout(() => {
                                         try {
                                             const basicStart = processor.readmem(0x12) | (processor.readmem(0x13) << 8);
-                                            const basicEnd = processor.readmem(0x14) | (processor.readmem(0x15) << 8);
+                                            const basicEnd = processor.readmem(0x02) | (processor.readmem(0x03) << 8);
                                             console.log("BBC iframe: BASIC program memory range:", basicStart, "to", basicEnd);
                                             
                                             // Read first few bytes of BASIC program
@@ -1249,7 +1249,7 @@
                                     setTimeout(() => {
                                         try {
                                             const basicStart = processor.readmem(0x12) | (processor.readmem(0x13) << 8);
-                                            const basicEnd = processor.readmem(0x14) | (processor.readmem(0x15) << 8);
+                                            const basicEnd = processor.readmem(0x02) | (processor.readmem(0x03) << 8);
                                             console.log("BBC iframe: BASIC program memory range (3s later):", basicStart, "to", basicEnd);
                                             
                                             if (basicStart === 0x8000 && basicEnd === 0x8000) {

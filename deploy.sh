@@ -157,6 +157,12 @@ rsync -avz --progress --no-times --delete $DRY_RUN_FLAG \
 
 RSYNC_EXIT_CODE=$?
 
+# Fix permissions on the server
+if [ $RSYNC_EXIT_CODE -eq 0 ] || [ $RSYNC_EXIT_CODE -eq 23 ]; then
+    echo "🔧 Fixing file permissions on server..."
+    ssh "$SERVER_HOST" "sudo chown -R ide:www-data $SERVER_PATH && sudo find $SERVER_PATH -type d -exec chmod 0755 {} \; && sudo find $SERVER_PATH -type f -exec chmod 0644 {} \;"
+fi
+
 # Clean up staging directory
 rm -rf "$STAGING_DIR"
 
@@ -183,4 +189,5 @@ echo "   - WASM compilation support"
 echo "   - BBC-specific configuration files"
 echo "   - jsbeeb emulator integration"
 echo "   - Download menu integration"
-echo "   - PHP endpoints for large BASIC program loading" 
+echo "   - PHP endpoints for large BASIC program loading"
+echo "   - Correct file permissions for web server access" 
