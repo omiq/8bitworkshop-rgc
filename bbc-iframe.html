@@ -1072,10 +1072,6 @@
             } else if (event.data && event.data.type === 'basic_program' && event.data.program) {
                 console.log("BBC iframe: Received BASIC program via postMessage:", event.data.program.length, "chars");
                 
-                // Store the BASIC program for potential reload after reset
-                lastCompiledProgram = event.data.program;
-                discLoaded = false; // Reset flag for new program
-                
                 // For BASIC programs, we need to pass them to jsbeeb using embedBasic
                 // We'll update the iframe URL to include the embedBasic parameter
                 const iframe = document.querySelector('iframe');

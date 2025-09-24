@@ -121,6 +121,7 @@ export class BBCMicroPlatform implements Platform {
             { id: 'bbc_labels.bas', name: 'Labels and Subroutines (BASIC)' },
             { id: 'bbc_input.bas', name: 'Keyboard Input and Movement (BASIC)' },
             { id: 'bbc_textformat.bas', name: 'Text Formatting (BASIC)' },
+            { id: 'cosmic.bas', name: 'Cosmic Invaders (BASIC)' },
             { id: 'bbc_hello.c', name: 'Hello World', category: 'C' },
             { id: 'bbc_os_test.c', name: 'Inline Assembly' },
         ];
@@ -192,8 +193,8 @@ export class BBCMicroPlatform implements Platform {
         const iframeURL = `bbc-iframe.html?embedBasic=${encodedBasic}&t=${Date.now()}${modelQuery}`;
         
         if (iframeURL.length > 1500) {
-          console.log("BBCMicroPlatform: BASIC program too long for URL, using postMessage approach");
-          // For long programs, use postMessage to send the BASIC text
+          console.log("BBCMicroPlatform: BASIC program too long for URL, sending plain BASIC via postMessage");
+          // For long programs, send the BASIC text and let the iframe pass it to jsbeeb
           const baseURL = `bbc-iframe.html?t=${Date.now()}${modelQuery}`;
           frame.src = baseURL;
           
