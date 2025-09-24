@@ -109,6 +109,9 @@ cp -r javatari.js "$STAGING_DIR/"
 cp *.wasm "$STAGING_DIR/" 2>/dev/null || true
 cp *.js "$STAGING_DIR/" 2>/dev/null || true
 
+# PHP files for BBC BASIC program loading
+cp *.php "$STAGING_DIR/" 2>/dev/null || true
+
 # Create .htaccess for proper MIME types
 cat > "$STAGING_DIR/.htaccess" << 'EOF'
 # 8bitworkshop .htaccess
@@ -179,4 +182,5 @@ echo "📝 Note: The BBC Micro platform is now fully deployed with:"
 echo "   - WASM compilation support"
 echo "   - BBC-specific configuration files"
 echo "   - jsbeeb emulator integration"
-echo "   - Download menu integration" 
+echo "   - Download menu integration"
+echo "   - PHP endpoints for large BASIC program loading" 
