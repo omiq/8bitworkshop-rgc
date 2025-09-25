@@ -151,10 +151,8 @@ EOF
 
 # Upload staged files
 echo "📤 Uploading files to server..."
-# Force ownership and safe perms on destination (dirs 0755, files 0644) without sudo
-rsync -avz --progress --no-times --delete \
-    --chown=ide:www-data \
-    --chmod=Du=rwx,Dg=rx,Do=rx,Fu=rw,Fg=r,Fo=r $DRY_RUN_FLAG \
+# Upload only; do not modify ownership or permissions
+rsync -avz --progress --no-times --delete $DRY_RUN_FLAG \
     "$STAGING_DIR/" \
     "$SERVER_HOST:$SERVER_PATH/"
 
@@ -187,4 +185,3 @@ echo "   - BBC-specific configuration files"
 echo "   - jsbeeb emulator integration"
 echo "   - Download menu integration"
 echo "   - PHP endpoints for large BASIC program loading"
-echo "   - Correct file permissions for web server access" 

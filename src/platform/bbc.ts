@@ -304,7 +304,7 @@ export class BBCMicroPlatform implements Platform {
       
       // Create the loadBasic URL using the PHP endpoint
       const loadBasicURL = `https://ide.retrogamecoders.com/userfile.php?session=${encodeURIComponent(sessionID)}&file=${encodeURIComponent(filename)}`;
-      const iframeURL = `bbc-iframe.html?loadBasic=${encodeURIComponent(loadBasicURL)}&autoboot&t=${Date.now()}${modelQuery}`;
+      const iframeURL = `bbc-iframe.html?loadBasic=${encodeURIComponent(loadBasicURL)}&autotype=RUN%0a&autoboot&t=${Date.now()}${modelQuery}`;
       
       frame.src = iframeURL;
       
