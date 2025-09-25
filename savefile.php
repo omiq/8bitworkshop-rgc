@@ -26,7 +26,7 @@ if (!preg_match('/^[a-zA-Z0-9_-]+$/', $session) || !preg_match('/^[a-zA-Z0-9_.-]
 }
 
 // Create userfiles directory if it doesn't exist
-$userfilesDir = __DIR__ . '/userfiles';
+$userfilesDir = '/tmp/userfiles';
 if (!is_dir($userfilesDir)) {
     mkdir($userfilesDir, 0755, true);
 }

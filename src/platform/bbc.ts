@@ -279,10 +279,11 @@ export class BBCMicroPlatform implements Platform {
 
 
   private async saveFileToServerAndLoad(basicText: string, frame: HTMLIFrameElement, modelQuery: string) {
+    // Generate a unique session ID for this file
+    const sessionID = 'user_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+    const filename = 'program.bas';
+    
     try {
-      // Generate a unique session ID for this file
-      const sessionID = 'user_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
-      const filename = 'program.bas';
       
       // Save the file to the PHP server
       const formData = new FormData();
@@ -308,22 +309,17 @@ export class BBCMicroPlatform implements Platform {
       frame.src = iframeURL;
       
     } catch (error) {
-      console.error("BBCMicroPlatform: Failed to save file to PHP server, falling back to postMessage:", error);
+      console.error("BBCMicroPlatform: Failed to save file to PHP server");
+      console.error("BBCMicroPlatform: Error details:", error);
+      console.error("BBCMicroPlatform: HTTP URL:", 'https://ide.retrogamecoders.com/savefile.php');
+      console.error("BBCMicroPlatform: Request parameters:");
+      console.error("  - content length:", basicText.length, "characters");
+      console.error("  - session:", sessionID);
+      console.error("  - file:", filename);
+      console.error("BBCMicroPlatform: Please check PHP endpoint configuration and server logs");
       
-      // Fallback to postMessage approach
-      const baseURL = `bbc-iframe.html?postMessage=true&t=${Date.now()}${modelQuery}`;
-      frame.src = baseURL;
-      
-      const onLoad = () => {
-        console.log("BBCMicroPlatform: iframe loaded, sending BASIC program via postMessage (fallback)");
-        frame.contentWindow!.postMessage({
-          type: 'basic_program',
-          program: basicText,
-          autoLoad: true
-        }, '*');
-        frame.removeEventListener('load', onLoad);
-      };
-      frame.addEventListener('load', onLoad);
+      // Don't fall back to postMessage - just fail and let user know
+      throw new Error(`Failed to save BASIC program to PHP server: ${error}`);
     }
   }
 
