@@ -31,6 +31,26 @@ WARNING: This version of the repo contains small amounts of `AI SLOP` because my
 
 Original README follows
 
+### BBC BASIC – Large Listings (Working Setup)
+
+This fork supports loading large BBC BASIC programs via jsbeeb's `loadBasic` using small PHP helpers.
+
+Workflow:
+
+- IDE posts BASIC text to `savefile.php` with fields: `content`, `session`, `file`.
+- IDE then opens `bbc-iframe.html?loadBasic=<URL>&autorun[&model=...]`.
+- `bbc-iframe.html` forwards `loadBasic` and `autorun` to the inner jsbeeb iframe.
+- jsbeeb fetches the BASIC text from `userfile.php?session=...&file=...` and auto-runs it.
+
+Operational notes:
+
+- For long listings use `autorun` (not `autotype`).
+- For manual commands without discs, `autotype=...` works; we skip default disc autoboot when only `autotype` is present.
+- Deploy script `deploy.sh` only rsyncs; permissions are managed once on the server.
+- Ensure php-fpm can traverse parents of the webroot and write to the configured userfiles directory (e.g. `/tmp/userfiles`).
+
+This configuration is confirmed working and should be the reference for future changes.
+
 --- 
 
 ![Build Status](https://github.com/sehugg/8bitworkshop/actions/workflows/node.js.yml/badge.svg)
