@@ -25,13 +25,13 @@
 220 GR$=CHR$(145) : GG$=CHR$(146) : GY$=CHR$(147) : GC$=CHR$(150)
 230 REM **** Space Invader A ****
 240 Alien0$(0)=">"+BL$+"m "+D$+B$+B$+B$+B$+"k/7 "+D$+B$+B$+B$+B$+"! "" "
-250 Alien0$(1)=">"+BL$+"m "+D$+B$+B$+B$+B$+"k/7 "+D$+B$+B$+B$+B$+" £  "
+250 Alien0$(1)=">"+BL$+"m "+D$+B$+B$+B$+B$+"k/7 "+D$+B$+B$+B$+B$+" `  "
 260 REM **** Space Invader B ****
 270 Alien1$(0)="ypv "+D$+B$+B$+B$+B$+"m"+BL$+"> "+D$+B$+B$+B$+B$+"! "" "
-280 Alien1$(1)="ypv "+D$+B$+B$+B$+B$+"m"+BL$+"> "+D$+B$+B$+B$+B$+" £  "
+280 Alien1$(1)="ypv "+D$+B$+B$+B$+B$+"m"+BL$+"> "+D$+B$+B$+B$+B$+" `  "
 290 REM **** Space Invader C ****
 300 Alien2$(0)="ypv "+D$+B$+B$+B$+B$+"m/> "+D$+B$+B$+B$+B$+"! "" "
-310 Alien2$(1)="ypv "+D$+B$+B$+B$+B$+"m/> "+D$+B$+B$+B$+B$+" £  "
+310 Alien2$(1)="ypv "+D$+B$+B$+B$+B$+"m/> "+D$+B$+B$+B$+B$+" `  "
 320 REM **** Blank Invader ****
 330 Blank1$="    "+D$+B$+B$+B$+B$+"    "+D$+B$+B$+B$+B$+"    "
 340 Blank2$="     "+D$+B$+B$+B$+B$+B$+"     "+D$+B$+B$+B$+B$+B$+"     "
