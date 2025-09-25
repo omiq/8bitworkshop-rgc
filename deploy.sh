@@ -151,17 +151,14 @@ EOF
 
 # Upload staged files
 echo "📤 Uploading files to server..."
-rsync -avz --progress --no-times --delete $DRY_RUN_FLAG \
+# Force ownership and safe perms on destination (dirs 0755, files 0644) without sudo
+rsync -avz --progress --no-times --delete \
+    --chown=ide:www-data \
+    --chmod=Du=rwx,Dg=rx,Do=rx,Fu=rw,Fg=r,Fo=r $DRY_RUN_FLAG \
     "$STAGING_DIR/" \
     "$SERVER_HOST:$SERVER_PATH/"
 
 RSYNC_EXIT_CODE=$?
-
-# Fix permissions on the server
-if [ $RSYNC_EXIT_CODE -eq 0 ] || [ $RSYNC_EXIT_CODE -eq 23 ]; then
-    echo "🔧 Fixing file permissions on server..."
-    ssh "$SERVER_HOST" "sudo chown -R ide:www-data $SERVER_PATH && sudo find $SERVER_PATH -type d -exec chmod 0755 {} \; && sudo find $SERVER_PATH -type f -exec chmod 0644 {} \;"
-fi
 
 # Clean up staging directory
 rm -rf "$STAGING_DIR"
