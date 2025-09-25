@@ -1,7 +1,10 @@
-10 REM ****    Cosmic Invaders ****
-20 REM ****        by          ****
-30 REM ****      M.N.Buckwell  ****
-40 REM ****        (C) 1984    ****
+1 REM ****    Cosmic Invaders ****
+2 REM ****        by          ****
+3 REM ****      M.N.Buckwell  ****
+4 REM ****        (C) 1984    ****
+5 REM **** 2025 Thanks to Colin Hoad
+6 REM **** https://github.com/colinhoad
+7 REM **** 
 50 DIM Scores%(9),Names$(9),Space%(7,5),Bombs%(10,1),Alien0$(1),Alien1$(1),Alien2$(1), Ch% 3
 60 MODE 7 : ON ERROR GOTO 3240
 70 VDU 23,1,0;0;0;0;

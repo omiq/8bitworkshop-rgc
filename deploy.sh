@@ -57,6 +57,7 @@ echo "📋 Copying production files..."
 cp index.html "$STAGING_DIR/"
 cp manifest.json "$STAGING_DIR/"
 cp config.js "$STAGING_DIR/"
+cp setperms.sh "$STAGING_DIR/"
 
 # Generated JavaScript bundles
 cp -r gen "$STAGING_DIR/"
@@ -160,6 +161,8 @@ RSYNC_EXIT_CODE=$?
 
 # Clean up staging directory
 rm -rf "$STAGING_DIR"
+
+ssh "$SERVER_HOST" "sh $SERVER_PATH/setperms.sh"
 
 if [ $RSYNC_EXIT_CODE -eq 0 ]; then
     echo ""

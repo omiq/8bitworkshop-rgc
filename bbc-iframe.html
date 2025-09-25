@@ -893,12 +893,14 @@
         function initBBCEmulator() {
             updateStatus("Loading jsbeeb emulator...");
             
-            // Check if we have an embedBasic, loadBasic, or postMessage parameter to pass through
+            // Check if we have an embedBasic, loadBasic, autotype, or postMessage parameter to pass through
             const urlParams = new URLSearchParams(window.location.search);
             const embedBasic = urlParams.get('embedBasic');
             const loadBasic = urlParams.get('loadBasic');
             const postMessage = urlParams.get('postMessage');
             const modelParam = urlParams.get('model');
+            const autoTypeParam = urlParams.get('autotype');
+            const autoRunParam = urlParams.get('autorun');
             
             // Create iframe to embed jsbeeb locally
             const iframe = document.createElement('iframe');
@@ -911,8 +913,11 @@
             }
             
             if (loadBasic) {
+                // Loadbasic requires autorun
+                iframeSrc += `&autorun`;
+                console.log("BBC iframe: Passing autorun to jsbeeb:)");
                 // Use loadBasic parameter for large programs served from our server
-                iframeSrc += `&loadBasic=${encodeURIComponent(loadBasic)}&autoboot&t=${Date.now()}`;
+                iframeSrc += `&loadBasic=${encodeURIComponent(loadBasic)}&t=${Date.now()}`;
                 console.log("BBC iframe: Passing loadBasic to jsbeeb:", loadBasic);
             } else if (embedBasic && embedBasic.length < 1000) {
                 // Only pass embedBasic if it's short enough to avoid URL length issues
@@ -924,11 +929,25 @@
                 console.log("BBC iframe: Using postMessage approach - no default disk to prevent interference");
                 // Explicitly add a parameter to prevent any default disk loading
                 iframeSrc += '&nodisc=true';
+            } else if (autoTypeParam) {
+                // If only autotype is provided, do not autoboot any disc so typing works at the prompt
+                console.log("BBC iframe: autotype present, skipping default disc autoboot");
             } else {
                 // Default: use local disc support and autoboot
                 iframeSrc += '&disc1=local:PROGRAM.ssd&autoboot';
             }
+
+            // Pass through autotype if present (e.g., RUN%0a)
+            if (autoTypeParam) {
+                // URLSearchParams decodes %0a to a newline; re-encode so jsbeeb receives %0A
+                const autoTypeEncoded = encodeURIComponent(autoTypeParam);
+                iframeSrc += `&autotype=${autoTypeEncoded}`;
+                console.log("BBC iframe: Passing autotype to jsbeeb:", autoTypeParam, "(encoded:", autoTypeEncoded, ")");
+            }
             
+
+            
+
             iframe.src = iframeSrc;
             iframe.style.width = '100%';
             iframe.style.height = '100%';
