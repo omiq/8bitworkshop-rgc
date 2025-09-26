@@ -223,6 +223,8 @@ class X86PCPlatform implements Platform {
             console.log("Emulator methods:", Object.getOwnPropertyNames(this.emulator));
             console.log("V86 methods:", Object.getOwnPropertyNames(this.v86));
             console.log("V86 prototype methods:", Object.getOwnPropertyNames(Object.getPrototypeOf(this.v86)));
+            console.log("FDC methods:", Object.getOwnPropertyNames(this.v86.cpu.devices.fdc));
+            console.log("FDC prototype methods:", Object.getOwnPropertyNames(Object.getPrototypeOf(this.v86.cpu.devices.fdc)));
             
             // Try different methods to insert the disk
             if (this.emulator.replace_floppy) {
@@ -237,6 +239,18 @@ class X86PCPlatform implements Platform {
             } else {
                 console.log("No floppy insertion method found, using direct assignment");
                 this.v86.cpu.devices.fdc.fdb_image = diskImage;
+                
+                // Try to notify the FDC that a new disk has been inserted
+                if (this.v86.cpu.devices.fdc.insert_disk) {
+                    console.log("Notifying FDC of disk insertion");
+                    this.v86.cpu.devices.fdc.insert_disk(1); // Drive B:
+                }
+                
+                // Also try to trigger a disk change event
+                if (this.v86.cpu.devices.fdc.disk_change) {
+                    console.log("Triggering disk change event");
+                    this.v86.cpu.devices.fdc.disk_change(1); // Drive B:
+                }
             }
             
             // Reset the emulator to trigger autoexec.bat
