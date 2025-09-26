@@ -106,6 +106,8 @@ class X86PCPlatform implements Platform {
             hda_image = this.v86.cpu.devices.hda.image;
         } else if (this.v86.hda_image) {
             hda_image = this.v86.hda_image;
+        } else if (this.emulator.disk_images && this.emulator.disk_images.hda) {
+            hda_image = this.emulator.disk_images.hda;
         }
         
         if (!this.v86 || !hda_image) {
@@ -198,7 +200,17 @@ class X86PCPlatform implements Platform {
                     console.log("Checking for hard drive...");
                     console.log("Full v86 structure:", this.v86);
                     console.log("CPU devices:", this.v86.cpu.devices);
+                    console.log("All device keys:", Object.keys(this.v86.cpu.devices));
                     console.log("IDE devices:", this.v86.cpu.devices.ide);
+                    
+                    // Check if there's an ide device with a different name
+                    const deviceKeys = Object.keys(this.v86.cpu.devices);
+                    console.log("Looking for IDE-related devices...");
+                    deviceKeys.forEach(key => {
+                        if (key.toLowerCase().includes('ide') || key.toLowerCase().includes('hda') || key.toLowerCase().includes('disk')) {
+                            console.log(`Found potential IDE device: ${key}`, this.v86.cpu.devices[key]);
+                        }
+                    });
                     
                     // Try different paths to find the hard drive
                     let hda_image = null;
@@ -208,6 +220,9 @@ class X86PCPlatform implements Platform {
                         hda_image = this.v86.cpu.devices.hda.image;
                     } else if (this.v86.hda_image) {
                         hda_image = this.v86.hda_image;
+                    } else if (this.emulator.disk_images && this.emulator.disk_images.hda) {
+                        hda_image = this.emulator.disk_images.hda;
+                        console.log("Found hard drive in emulator.disk_images.hda:", hda_image);
                     }
                     
                     if (hda_image) {
