@@ -216,20 +216,15 @@ class X86PCPlatform implements Platform {
             
             console.log(`Source code written to B:\\${filename} (${fileSize} bytes)`);
             
-            // Insert the new disk into drive B: using the correct method
+            // Insert the new disk into drive B: using the correct v86 API
             console.log("Inserting disk into drive B:");
-            console.log("Available v86 methods:", Object.getOwnPropertyNames(this.v86));
-            console.log("Available emulator methods:", Object.getOwnPropertyNames(this.emulator));
             
-            // Try different methods to insert the disk
-            if (this.emulator.insert_fdb) {
-                console.log("Using emulator.insert_fdb()");
-                this.emulator.insert_fdb(diskImage);
-            } else if (this.v86.cpu.devices.fdc.insert_fdb) {
-                console.log("Using v86.cpu.devices.fdc.insert_fdb()");
-                this.v86.cpu.devices.fdc.insert_fdb(diskImage);
+            // Use the replace_floppy method (1 = drive B:, 0 = drive A:)
+            if (this.emulator.replace_floppy) {
+                console.log("Using emulator.replace_floppy(1, diskImage)");
+                this.emulator.replace_floppy(1, diskImage.buffer);
             } else {
-                console.log("Using direct assignment to fdb_image");
+                console.log("replace_floppy not available, using direct assignment");
                 this.v86.cpu.devices.fdc.fdb_image = diskImage;
             }
             
