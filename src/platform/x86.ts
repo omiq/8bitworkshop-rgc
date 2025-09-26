@@ -130,11 +130,33 @@ class X86PCPlatform implements Platform {
                 console.log("emulator ready");
                 console.log(this.emulator);
                 this.v86 = this.emulator.v86;
-                // Use hard drive instead of floppy for MS-DOS 6.22
-                this.fda_image = this.v86.cpu.devices.ide.hda_image;
-                this.fda_driver = new FATFSArrayBufferDriver(this.fda_image.buffer);
-                this.fda_fs = fatfs.createFileSystem(this.fda_driver);
-                resolve();
+                
+                // Wait for hard drive to be available
+                let retryCount = 0;
+                const maxRetries = 50; // 5 seconds max
+                
+                const checkHDA = () => {
+                    console.log("Checking for hard drive availability, attempt:", retryCount + 1);
+                    console.log("IDE devices:", this.v86.cpu.devices.ide);
+                    
+                    if (this.v86.cpu.devices.ide && this.v86.cpu.devices.ide.hda_image) {
+                        console.log("Hard drive found, setting up file system");
+                        // Use hard drive for MS-DOS 6.22
+                        this.fda_image = this.v86.cpu.devices.ide.hda_image;
+                        this.fda_driver = new FATFSArrayBufferDriver(this.fda_image.buffer);
+                        this.fda_fs = fatfs.createFileSystem(this.fda_driver);
+                        resolve();
+                    } else if (retryCount < maxRetries) {
+                        retryCount++;
+                        // Retry after a short delay
+                        setTimeout(checkHDA, 100);
+                    } else {
+                        console.error("Hard drive not available after", maxRetries, "attempts");
+                        // Fallback: resolve anyway, file system might not be needed for basic operation
+                        resolve();
+                    }
+                };
+                checkHDA();
             });
         });
     }
