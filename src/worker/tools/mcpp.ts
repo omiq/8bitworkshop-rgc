@@ -83,7 +83,8 @@ int rename(const char *old, const char *new);
 #define SEEK_CUR 1
 #define SEEK_END 2
 
-#endif`,
+#endif
+`,
             'stdlib.h': `#ifndef _STDLIB_H
 #define _STDLIB_H
 
@@ -109,7 +110,8 @@ long labs(long x);
 void qsort(void *base, size_t num, size_t size, int (*compar)(const void*, const void*));
 void *bsearch(const void *key, const void *base, size_t num, size_t size, int (*compar)(const void*, const void*));
 
-#endif`,
+#endif
+`,
             'string.h': `#ifndef _STRING_H
 #define _STRING_H
 
@@ -135,7 +137,8 @@ size_t strcspn(const char *s, const char *reject);
 char *strpbrk(const char *s, const char *accept);
 char *strtok(char *str, const char *delim);
 
-#endif`,
+#endif
+`,
             'ctype.h': `#ifndef _CTYPE_H
 #define _CTYPE_H
 
@@ -153,7 +156,8 @@ int isxdigit(int c);
 int tolower(int c);
 int toupper(int c);
 
-#endif`,
+#endif
+`,
             'stddef.h': `#ifndef _STDDEF_H
 #define _STDDEF_H
 
@@ -164,7 +168,8 @@ typedef unsigned int wchar_t;
 
 #define offsetof(type, member) ((size_t)&(((type*)0)->member))
 
-#endif`,
+#endif
+`,
             'limits.h': `#ifndef _LIMITS_H
 #define _LIMITS_H
 
@@ -184,7 +189,8 @@ typedef unsigned int wchar_t;
 #define LONG_MAX 2147483647L
 #define ULONG_MAX 4294967295UL
 
-#endif`,
+#endif
+`,
             'float.h': `#ifndef _FLOAT_H
 #define _FLOAT_H
 
@@ -205,7 +211,8 @@ typedef unsigned int wchar_t;
 #define DBL_MAX 1.797693e+308
 #define DBL_EPSILON 2.220446e-16
 
-#endif`,
+#endif
+`,
             'assert.h': `#ifndef _ASSERT_H
 #define _ASSERT_H
 
@@ -217,7 +224,8 @@ typedef unsigned int wchar_t;
 
 void __assert_fail(const char *assertion, const char *file, unsigned int line, const char *function);
 
-#endif`,
+#endif
+`,
             'errno.h': `#ifndef _ERRNO_H
 #define _ERRNO_H
 
@@ -232,7 +240,8 @@ extern int errno;
 #define EISDIR 21
 #define EINVAL 22
 
-#endif`,
+#endif
+`,
             'math.h': `#ifndef _MATH_H
 #define _MATH_H
 
@@ -270,7 +279,8 @@ double floor(double x);
 double fabs(double x);
 double fmod(double x, double y);
 
-#endif`
+#endif
+`
         };
         
         for (var header in stdHeaders) {
