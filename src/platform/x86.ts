@@ -260,26 +260,43 @@ class X86PCPlatform implements Platform {
             
             // Try to access drive B: directly via keyboard input
             console.log("Testing drive B: accessibility");
-            console.log("Keyboard methods:", Object.getOwnPropertyNames(this.v86.keyboard));
-            console.log("Keyboard prototype methods:", Object.getOwnPropertyNames(Object.getPrototypeOf(this.v86.keyboard)));
+            console.log("V86 keyboard object:", this.v86.keyboard);
+            console.log("V86 keyboard_adapter:", this.emulator.keyboard_adapter);
+            
+            if (this.v86.keyboard) {
+                console.log("Keyboard methods:", Object.getOwnPropertyNames(this.v86.keyboard));
+                console.log("Keyboard prototype methods:", Object.getOwnPropertyNames(Object.getPrototypeOf(this.v86.keyboard)));
+            } else {
+                console.log("V86 keyboard is undefined");
+            }
+            
+            if (this.emulator.keyboard_adapter) {
+                console.log("Keyboard adapter methods:", Object.getOwnPropertyNames(this.emulator.keyboard_adapter));
+                console.log("Keyboard adapter prototype methods:", Object.getOwnPropertyNames(Object.getPrototypeOf(this.emulator.keyboard_adapter)));
+            } else {
+                console.log("Keyboard adapter is undefined");
+            }
             
             // Try different keyboard methods
-            if (this.v86.keyboard.send_key) {
+            const keyboard = this.v86.keyboard || this.emulator.keyboard_adapter;
+            
+            if (keyboard && keyboard.send_key) {
                 console.log("Using send_key method");
                 const command = "dir b:\\r\\n";
                 for (let i = 0; i < command.length; i++) {
                     const char = command.charCodeAt(i);
-                    this.v86.keyboard.send_key(char, true);
-                    this.v86.keyboard.send_key(char, false);
+                    keyboard.send_key(char, true);
+                    keyboard.send_key(char, false);
                 }
-            } else if (this.v86.keyboard.send_keys) {
+            } else if (keyboard && keyboard.send_keys) {
                 console.log("Using send_keys method");
-                this.v86.keyboard.send_keys("dir b:\\r\\n");
-            } else if (this.v86.keyboard.type) {
+                keyboard.send_keys("dir b:\\r\\n");
+            } else if (keyboard && keyboard.type) {
                 console.log("Using type method");
-                this.v86.keyboard.type("dir b:\\r\\n");
+                keyboard.type("dir b:\\r\\n");
             } else {
                 console.log("No keyboard input method found, drive B: should be accessible");
+                console.log("Drive B: has been initialized with FDC methods and should be ready");
             }
             
         } catch (error) {
