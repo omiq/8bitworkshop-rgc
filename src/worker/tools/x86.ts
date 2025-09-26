@@ -32,7 +32,7 @@ export function compileSmallerC(step: BuildStep): BuildStepResult {
     var args = ['-seg16',
       //'-nobss',
       '-no-externs',
-      step.path, destpath];
+      step.path, '/share/lib/stdlib.c', destpath];
     var smlrc: EmscriptenModule = emglobal.smlrc({
       instantiateWasm: moduleInstFn('smlrc'),
       noInitialRun: true,
@@ -431,6 +431,64 @@ double fmod(double x, double y);
       } catch (e) {
         console.log('Warning: Could not write header file', header, e);
       }
+    }
+    
+    // Add simple standard library implementation
+    try {
+      FS.mkdir('/share/lib');
+    } catch (e) {
+      // Directory might already exist
+    }
+    
+    // Simple printf implementation
+    var stdlibImpl = `#include <stdio.h>
+
+int printf(const char *format, ...) {
+    // Simple implementation - just return 0 for now
+    // In a real implementation, this would format and print the string
+    return 0;
+}
+
+int putchar(int c) {
+    // Simple implementation - just return the character
+    return c;
+}
+
+int puts(const char *s) {
+    // Simple implementation - just return 0
+    return 0;
+}
+
+int getchar(void) {
+    // Simple implementation - return EOF
+    return EOF;
+}
+
+int scanf(const char *format, ...) {
+    // Simple implementation - just return 0
+    return 0;
+}
+
+void exit(int status) {
+    // Simple implementation - just return
+    return;
+}
+
+void *malloc(size_t size) {
+    // Simple implementation - return NULL for now
+    return NULL;
+}
+
+void free(void *ptr) {
+    // Simple implementation - do nothing
+    return;
+}
+`;
+    
+    try {
+      FS.writeFile('/share/lib/stdlib.c', stdlibImpl);
+    } catch (e) {
+      console.log('Warning: Could not write stdlib.c', e);
     }
     
     FS.writeFile(step.path, code);
