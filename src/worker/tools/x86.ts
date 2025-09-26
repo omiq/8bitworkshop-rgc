@@ -434,19 +434,19 @@ double fmod(double x, double y);
       }
     }
     
-    // Add simple standard library implementation
+    // Add SmallerC DOS standard library
     try {
       FS.mkdir('/share/lib');
     } catch (e) {
       // Directory might already exist
     }
     
-    // Simple printf implementation (without includes to avoid circular dependencies)
+    // Add simple DOS-compatible standard library implementation
     var stdlibImpl = `
-// Standard library implementations
+// Simple DOS-compatible standard library implementations
 int printf(const char *format, ...) {
-    // Simple implementation - just return 0 for now
-    // In a real implementation, this would format and print the string
+    // For now, just return 0 - this prevents undefined symbol errors
+    // In a real implementation, this would use DOS interrupts to print
     return 0;
 }
 
@@ -471,7 +471,7 @@ int scanf(const char *format, ...) {
 }
 
 void exit(int status) {
-    // Simple implementation - just return
+    // Simple implementation - just return (don't actually exit)
     return;
 }
 
@@ -485,12 +485,6 @@ void free(void *ptr) {
     return;
 }
 `;
-    
-    try {
-      FS.writeFile('/share/lib/stdlib.c', stdlibImpl);
-    } catch (e) {
-      console.log('Warning: Could not write stdlib.c', e);
-    }
     
     // Append standard library implementation to the user's code
     var combinedCode = code + '\n\n// Standard library implementation\n' + stdlibImpl;
