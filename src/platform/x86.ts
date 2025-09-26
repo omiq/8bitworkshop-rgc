@@ -62,9 +62,7 @@ class X86PCPlatform implements Platform {
         this.mainElement = mainElement;
     }
     getToolForFilename(s: string): string {
-        // Disabled: SmallerC compiler is no longer used
-        // if (s.endsWith(".c")) return "smlrc";
-        if (s.endsWith(".c")) return "none"; // Disable SmallerC compilation
+        if (s.endsWith(".c")) return "smlrc";
         return "yasm";
     }
     getDefaultExtension(): string {
@@ -86,147 +84,10 @@ class X86PCPlatform implements Platform {
         return this.emulator.is_running();
     }
     loadROM(title: string, rom: any) {
-        // Disabled: Old SmallerC compiler output is no longer automatically executed
-        // This prevents "Invalid Opcode" and "undefined symbol" errors
-        console.log("loadROM called - old compiler output disabled");
-        console.log("Title:", title, "ROM size:", rom ? rom.length : 0);
-        console.log("Use window.compileWithTurboC() for native DOS compilation instead");
-        
-        // We no longer write to fda_fs or reset the emulator here
-        // The source code is now handled by copySourceToHardDriveAndLaunch for Turbo C
-    }
-    
-    // New method to create drive B: with source code and trigger auto-compilation
-    async copySourceToDriveBAndCompile(sourceCode: string, filename: string) {
-        if (!this.v86 || !this.fda_fs) {
-            console.error("File system not available");
-            return;
-        }
-        
-        try {
-            console.log(`Creating drive B: with ${filename} and triggering auto-compilation`);
-            
-            // Try a simpler approach - copy the existing FreeDOS floppy and modify it
-            console.log("Creating drive B: by copying FreeDOS floppy structure");
-            
-            // Get the existing FreeDOS floppy image as a template
-            const freedosImage = this.v86.cpu.devices.fdc.fda_image;
-            const diskImage = new Uint8Array(freedosImage.length);
-            
-            // Copy the entire FreeDOS floppy structure
-            for (let i = 0; i < freedosImage.length; i++) {
-                diskImage[i] = freedosImage[i];
-            }
-            
-            console.log(`Copied FreeDOS floppy structure (${diskImage.length} bytes)`);
-            
-            // Now we have a properly formatted FAT12 disk image
-            // We can try to add our file to it, but for now let's just use it as-is
-            // The important thing is that it's a valid FAT12 filesystem that DOS will recognize
-            
-            console.log(`Drive B: created with FreeDOS structure for ${filename}`);
-            
-            // Insert the new disk into drive B: using the correct v86 API
-            console.log("Inserting disk into drive B:");
-            
-            // Check all available methods on the emulator and v86 instances
-            console.log("Emulator methods:", Object.getOwnPropertyNames(this.emulator));
-            console.log("V86 methods:", Object.getOwnPropertyNames(this.v86));
-            console.log("V86 prototype methods:", Object.getOwnPropertyNames(Object.getPrototypeOf(this.v86)));
-            console.log("FDC methods:", Object.getOwnPropertyNames(this.v86.cpu.devices.fdc));
-            console.log("FDC prototype methods:", Object.getOwnPropertyNames(Object.getPrototypeOf(this.v86.cpu.devices.fdc)));
-            
-            // Try different methods to insert the disk
-            if (this.emulator.replace_floppy) {
-                console.log("Using emulator.replace_floppy(1, diskImage)");
-                this.emulator.replace_floppy(1, diskImage.buffer);
-            } else if (this.v86.replace_floppy) {
-                console.log("Using v86.replace_floppy(1, diskImage)");
-                this.v86.replace_floppy(1, diskImage.buffer);
-            } else if (this.v86.insert_floppy) {
-                console.log("Using v86.insert_floppy(1, diskImage)");
-                this.v86.insert_floppy(1, diskImage.buffer);
-            } else {
-                console.log("No floppy insertion method found, using direct assignment");
-                this.v86.cpu.devices.fdc.fdb_image = diskImage;
-                
-                // Try to properly initialize the drive B: using FDC methods
-                console.log("Initializing drive B: with FDC methods");
-                
-                // Set drive to B: (drive 1)
-                this.v86.cpu.devices.fdc.drive = 1;
-                
-                // Check drive status
-                this.v86.cpu.devices.fdc.check_drive_status();
-                
-                // Calibrate the drive
-                this.v86.cpu.devices.fdc.calibrate();
-                
-                // Raise an interrupt to notify the system
-                this.v86.cpu.devices.fdc.raise_irq();
-                
-                console.log("Drive B: initialized with FDC methods");
-            }
-            
-            // Try to access drive B: directly via keyboard input
-            console.log("Testing drive B: accessibility");
-            console.log("V86 keyboard object:", this.v86.keyboard);
-            console.log("V86 keyboard_adapter:", this.emulator.keyboard_adapter);
-            
-            if (this.v86.keyboard) {
-                console.log("Keyboard methods:", Object.getOwnPropertyNames(this.v86.keyboard));
-                console.log("Keyboard prototype methods:", Object.getOwnPropertyNames(Object.getPrototypeOf(this.v86.keyboard)));
-            } else {
-                console.log("V86 keyboard is undefined");
-            }
-            
-            if (this.emulator.keyboard_adapter) {
-                console.log("Keyboard adapter methods:", Object.getOwnPropertyNames(this.emulator.keyboard_adapter));
-                console.log("Keyboard adapter prototype methods:", Object.getOwnPropertyNames(Object.getPrototypeOf(this.emulator.keyboard_adapter)));
-            } else {
-                console.log("Keyboard adapter is undefined");
-            }
-            
-            // Try different keyboard methods
-            const keyboard = this.v86.keyboard || this.emulator.keyboard_adapter;
-            
-            if (keyboard && keyboard.simulate_char) {
-                console.log("Using simulate_char method");
-                const command = "dir b:\\r\\n";
-                for (let i = 0; i < command.length; i++) {
-                    const char = command[i];
-                    keyboard.simulate_char(char);
-                }
-            } else if (keyboard && keyboard.simulate_press) {
-                console.log("Using simulate_press method");
-                const command = "dir b:\\r\\n";
-                for (let i = 0; i < command.length; i++) {
-                    const char = command.charCodeAt(i);
-                    keyboard.simulate_press(char, true);
-                    keyboard.simulate_press(char, false);
-                }
-            } else if (keyboard && keyboard.send_key) {
-                console.log("Using send_key method");
-                const command = "dir b:\\r\\n";
-                for (let i = 0; i < command.length; i++) {
-                    const char = command.charCodeAt(i);
-                    keyboard.send_key(char, true);
-                    keyboard.send_key(char, false);
-                }
-            } else if (keyboard && keyboard.send_keys) {
-                console.log("Using send_keys method");
-                keyboard.send_keys("dir b:\\r\\n");
-            } else if (keyboard && keyboard.type) {
-                console.log("Using type method");
-                keyboard.type("dir b:\\r\\n");
-            } else {
-                console.log("No keyboard input method found, drive B: should be accessible");
-                console.log("Drive B: has been initialized with FDC methods and should be ready");
-            }
-            
-        } catch (error) {
-            console.error("Error setting up drive B compilation:", error);
-        }
+        this.fda_fs.writeFile('main.exe', rom, {encoding:'binary'}, (e) => {
+            if (e) throw e;
+            else this.reset();
+        });
     }
     async start() {
         await loadScript('./lib/libv86.js');
@@ -242,7 +103,6 @@ class X86PCPlatform implements Platform {
         this.console_div = div;
         this.resize(); // set font size
 
-        console.log("Creating V86Starter with MS-DOS 6.22 hard drive...");
         this.emulator = new V86Starter({
             memory_size: 2 * 1024 * 1024,
             vga_memory_size: 1 * 1024 * 1024,
@@ -257,18 +117,12 @@ class X86PCPlatform implements Platform {
                 url: "./res/freedos722.img",
                 size: 737280,
             },
-            fdb: {
-                // Drive B: will be created dynamically with source code
-                size: 737280,
-                // Initialize with empty disk image
-                buffer: new ArrayBuffer(737280),
-            },
-            // Add hard drive as secondary device (MS-DOS 6.22)
-            hda: {
-                url: "./res/msdos622.img",  // Complete MS-DOS 6.22 disk image
-                size: 64 * 1024 * 1024,    // 64MB hard drive
-            },
-            boot_order: 0x321,  // Boot from floppy first, then hard drive (BOOT_ORDER_FD_FIRST)
+            // TODO: Add hard drive support for DOS compiler
+            // hda: {
+            //     url: "./res/msdos622.img",  // Complete MS-DOS 6.22 disk image
+            //     size: 64 * 1024 * 1024,    // 64MB hard drive
+            // },
+            // boot_order: 0x312,  // Boot from hard drive first, then floppy
             autostart: true,
         });
         return new Promise<void>( (resolve, reject) => {
@@ -276,62 +130,9 @@ class X86PCPlatform implements Platform {
                 console.log("emulator ready");
                 console.log(this.emulator);
                 this.v86 = this.emulator.v86;
-                
-                // Use floppy disk file system (which we know works)
                 this.fda_image = this.v86.cpu.devices.fdc.fda_image;
                 this.fda_driver = new FATFSArrayBufferDriver(this.fda_image.buffer);
                 this.fda_fs = fatfs.createFileSystem(this.fda_driver);
-                
-                console.log("Setting up hard drive detection...");
-                
-                // Also check for hard drive availability (for future use)
-                const checkHDA = () => {
-                    console.log("Checking for hard drive...");
-                    console.log("Full v86 structure:", this.v86);
-                    console.log("CPU devices:", this.v86.cpu.devices);
-                    console.log("All device keys:", Object.keys(this.v86.cpu.devices));
-                    console.log("IDE devices:", this.v86.cpu.devices.ide);
-                    
-                    // Check if there's an ide device with a different name
-                    const deviceKeys = Object.keys(this.v86.cpu.devices);
-                    console.log("Looking for IDE-related devices...");
-                    deviceKeys.forEach(key => {
-                        if (key.toLowerCase().includes('ide') || key.toLowerCase().includes('hda') || key.toLowerCase().includes('disk')) {
-                            console.log(`Found potential IDE device: ${key}`, this.v86.cpu.devices[key]);
-                        }
-                    });
-                    
-                    // Try different paths to find the hard drive
-                    let hda_image = null;
-                    if (this.v86.cpu.devices.ide && this.v86.cpu.devices.ide.hda_image) {
-                        hda_image = this.v86.cpu.devices.ide.hda_image;
-                    } else if (this.v86.cpu.devices.hda && this.v86.cpu.devices.hda.image) {
-                        hda_image = this.v86.cpu.devices.hda.image;
-                    } else if (this.v86.hda_image) {
-                        hda_image = this.v86.hda_image;
-                    } else if (this.emulator.disk_images && this.emulator.disk_images.hda) {
-                        hda_image = this.emulator.disk_images.hda;
-                        console.log("Found hard drive in emulator.disk_images.hda:", hda_image);
-                    }
-                    
-                    if (hda_image) {
-                        console.log("Hard drive found via alternative path:", hda_image);
-                        
-                        // Expose the Turbo C compilation method globally
-                        (window as any).compileWithTurboC = (sourceCode: string, filename: string) => {
-                            this.copySourceToDriveBAndCompile(sourceCode, filename);
-                        };
-                        console.log("Turbo C compilation method exposed as window.compileWithTurboC()");
-                    } else {
-                        console.log("Hard drive not yet available, retrying...");
-                        // Retry after another second
-                        setTimeout(checkHDA, 1000);
-                    }
-                };
-                
-                console.log("Starting hard drive detection timer...");
-                setTimeout(checkHDA, 1000); // Check after 1 second
-                
                 resolve();
             });
         });
