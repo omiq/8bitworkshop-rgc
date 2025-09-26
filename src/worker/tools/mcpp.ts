@@ -46,8 +46,42 @@ export function preprocessMCPP(step: BuildStep, filesys: string) {
         
         // Add standard C library headers
         var stdHeaders = {
-            'stdio.h': `#ifndef _STDIO_H
-#define _STDIO_H
+            'stdarg.h': `#ifndef __STDARG_H
+#define __STDARG_H
+
+typedef char* va_list;
+
+#define va_start(ap, param) (ap = (va_list)&param + sizeof(param))
+#define va_arg(ap, type) (*(type*)((ap += sizeof(type)) - sizeof(type)))
+#define va_end(ap) (ap = (va_list)0)
+
+#endif
+`,
+            'stdio.h': `#ifndef __STDIO_H
+#define __STDIO_H
+
+#include <stdarg.h>
+
+#ifndef NULL
+#define NULL 0
+#endif
+
+#ifndef __SIZE_T_DEF
+#define __SIZE_T_DEF
+typedef unsigned size_t;
+#endif
+
+#define EOF (-1)
+
+#ifndef SEEK_SET
+#define SEEK_SET 0
+#endif
+#ifndef SEEK_CUR
+#define SEEK_CUR 1
+#endif
+#ifndef SEEK_END
+#define SEEK_END 2
+#endif
 
 typedef struct FILE FILE;
 extern FILE *stdin, *stdout, *stderr;
@@ -71,17 +105,12 @@ int fclose(FILE *stream);
 int fflush(FILE *stream);
 int feof(FILE *stream);
 int ferror(FILE *stream);
-long ftell(FILE *stream);
-int fseek(FILE *stream, long offset, int whence);
+long ftell(FILE*);
+int fseek(FILE*, long, int);
 size_t fread(void *ptr, size_t size, size_t count, FILE *stream);
 size_t fwrite(const void *ptr, size_t size, size_t count, FILE *stream);
 int remove(const char *filename);
 int rename(const char *old, const char *new);
-
-#define EOF (-1)
-#define SEEK_SET 0
-#define SEEK_CUR 1
-#define SEEK_END 2
 
 #endif
 `,
