@@ -284,7 +284,7 @@ class X86PCPlatform implements Platform {
                 console.log("Using simulate_char method");
                 const command = "dir b:\\r\\n";
                 for (let i = 0; i < command.length; i++) {
-                    const char = command.charCodeAt(i);
+                    const char = command[i];
                     keyboard.simulate_char(char);
                 }
             } else if (keyboard && keyboard.simulate_press) {
