@@ -441,9 +441,54 @@ double fmod(double x, double y);
       // Directory might already exist
     }
     
-    // For now, just use the user's code without any standard library implementation
-    // This will help us debug if the issue is with the stdlib or the basic compilation
-    FS.writeFile(step.path, code);
+    // Add simple standard library implementation that works with bin format
+    var stdlibImpl = `
+// Simple standard library implementations for x86 FreeDOS
+int printf(const char *format, ...) {
+    // Simple implementation - just return 0 for now
+    // In a real implementation, this would use DOS interrupts to print
+    return 0;
+}
+
+int putchar(int c) {
+    // Simple implementation - just return the character
+    return c;
+}
+
+int puts(const char *s) {
+    // Simple implementation - just return 0
+    return 0;
+}
+
+int getchar(void) {
+    // Simple implementation - return EOF (-1)
+    return -1;
+}
+
+int scanf(const char *format, ...) {
+    // Simple implementation - just return 0
+    return 0;
+}
+
+void exit(int status) {
+    // Simple implementation - just return (don't actually exit)
+    return;
+}
+
+void *malloc(unsigned size) {
+    // Simple implementation - return NULL for now
+    return 0;
+}
+
+void free(void *ptr) {
+    // Simple implementation - do nothing
+    return;
+}
+`;
+    
+    // Append standard library implementation to the user's code
+    var combinedCode = code + '\n\n// Standard library implementation\n' + stdlibImpl;
+    FS.writeFile(step.path, combinedCode);
     fixParamsWithDefines(step.path, params);
     if (params.extra_compile_args) {
       args.unshift.apply(args, params.extra_compile_args);
