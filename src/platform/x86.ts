@@ -258,9 +258,16 @@ class X86PCPlatform implements Platform {
                 console.log("Drive B: initialized with FDC methods");
             }
             
-            // Reset the emulator to trigger autoexec.bat
-            console.log("Resetting emulator to trigger auto-compilation");
-            this.reset();
+            // Try to access drive B: directly via keyboard input
+            console.log("Testing drive B: accessibility");
+            
+            // Send "dir b:" command to test if drive B: is accessible
+            const command = "dir b:\\r\\n";
+            for (let i = 0; i < command.length; i++) {
+                const char = command.charCodeAt(i);
+                this.v86.keyboard.send_key(char, true);
+                this.v86.keyboard.send_key(char, false);
+            }
             
         } catch (error) {
             console.error("Error setting up drive B compilation:", error);
