@@ -117,12 +117,12 @@ class X86PCPlatform implements Platform {
                 url: "./res/freedos722.img",
                 size: 737280,
             },
-            // Hard drive with MS-DOS 6.22
-            hda: {
-                url: "./res/msdos622.img",  // Complete MS-DOS 6.22 disk image
-                size: 64 * 1024 * 1024,    // 64MB hard drive
-            },
-            boot_order: 0x31,  // Boot from hard drive first, then floppy
+            // TODO: Add hard drive support for DOS compiler
+            // hda: {
+            //     url: "./res/msdos622.img",  // Complete MS-DOS 6.22 disk image
+            //     size: 64 * 1024 * 1024,    // 64MB hard drive
+            // },
+            // boot_order: 0x312,  // Boot from hard drive first, then floppy
             autostart: true,
         });
         return new Promise<void>( (resolve, reject) => {
