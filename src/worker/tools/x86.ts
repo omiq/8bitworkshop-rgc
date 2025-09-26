@@ -29,9 +29,7 @@ export function compileSmallerC(step: BuildStep): BuildStepResult {
   gatherFiles(step, { mainFilePath: "main.c" });
   var destpath = step.prefix + '.asm';
   if (staleFiles(step, [destpath])) {
-    var args = ['-seg16',
-      //'-nobss',
-      '-no-externs',
+    var args = [
       '-I/share/include',
       step.path, destpath];
     var smlrc: EmscriptenModule = emglobal.smlrc({
