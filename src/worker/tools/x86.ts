@@ -29,7 +29,9 @@ export function compileSmallerC(step: BuildStep): BuildStepResult {
   gatherFiles(step, { mainFilePath: "main.c" });
   var destpath = step.prefix + '.asm';
   if (staleFiles(step, [destpath])) {
-    var args = [
+    var args = ['-seg16',
+      //'-nobss',
+      '-no-externs',
       '-I/share/include',
       step.path, destpath];
     var smlrc: EmscriptenModule = emglobal.smlrc({
@@ -41,11 +43,12 @@ export function compileSmallerC(step: BuildStep): BuildStepResult {
     });
     // load source file and preprocess
     var code = getWorkFileAsString(step.path);
-    var preproc = preprocessMCPP(step, null);
-    if (preproc.errors) {
-      return { errors: preproc.errors };
-    }
-    else code = preproc.code;
+    // Temporarily bypass MCPP preprocessing to test
+    // var preproc = preprocessMCPP(step, null);
+    // if (preproc.errors) {
+    //   return { errors: preproc.errors };
+    // }
+    // else code = preproc.code;
     // set up filesystem
     var FS = smlrc.FS;
     //setupFS(FS, '65-'+getRootBasePlatform(step.platform));
