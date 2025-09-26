@@ -32,6 +32,8 @@ export function compileSmallerC(step: BuildStep): BuildStepResult {
     var args = ['-seg16',
       //'-nobss',
       '-no-externs',
+      '-L/share/lib',  // Add library search path
+      '-lcds',         // Link with the DOS standard library
       step.path, destpath];
     var smlrc: EmscriptenModule = emglobal.smlrc({
       instantiateWasm: moduleInstFn('smlrc'),
@@ -441,61 +443,18 @@ double fmod(double x, double y);
       // Directory might already exist
     }
     
-    // Add simple standard library implementation that works with bin format
-    var stdlibImpl = `
-// Simple standard library implementations for x86 FreeDOS
-int printf(const char *format, ...) {
-    // Simple implementation that prints the format string directly
-    // This is a basic version that doesn't handle format specifiers
-    const char *p = format;
-    while (*p) {
-        putchar(*p);
-        p++;
+    // Copy the official SmallerC DOS library to the file system
+    try {
+      // Read the library file from the local filesystem
+      var fs = require('fs');
+      var libData = fs.readFileSync('/tmp/lcds.a');
+      FS.writeFile('/share/lib/lcds.a', libData);
+    } catch (e) {
+      console.log('Warning: Could not copy lcds.a library', e);
     }
-    return 0;
-}
-
-int putchar(int c) {
-    // Simple implementation that just returns the character
-    // For now, we'll use a basic approach that doesn't require inline assembly
-    // In a real implementation, this would use DOS interrupts
-    return c;
-}
-
-int puts(const char *s) {
-    // Simple implementation - just return 0
-    return 0;
-}
-
-int getchar(void) {
-    // Simple implementation - return EOF (-1)
-    return -1;
-}
-
-int scanf(const char *format, ...) {
-    // Simple implementation - just return 0
-    return 0;
-}
-
-void exit(int status) {
-    // Simple implementation - just return (don't actually exit)
-    return;
-}
-
-void *malloc(unsigned size) {
-    // Simple implementation - return NULL for now
-    return 0;
-}
-
-void free(void *ptr) {
-    // Simple implementation - do nothing
-    return;
-}
-`;
     
-    // Append standard library implementation to the user's code
-    var combinedCode = code + '\n\n// Standard library implementation\n' + stdlibImpl;
-    FS.writeFile(step.path, combinedCode);
+    // Use the user's code and let SmallerC link with the official library
+    FS.writeFile(step.path, code);
     fixParamsWithDefines(step.path, params);
     if (params.extra_compile_args) {
       args.unshift.apply(args, params.extra_compile_args);
