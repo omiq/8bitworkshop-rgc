@@ -119,6 +119,14 @@ class X86DOSBoxPlatform implements Platform {
                     await this.fs.createFile(filename, sourceCode);
                     console.log(`✅ Source code written to ${filename}`);
                     
+                    // Sync the file system to make files visible in DOSBox
+                    try {
+                        await this.fs.syncfs();
+                        console.log(`✅ File system synced - file should now be visible in DOSBox`);
+                    } catch (syncError) {
+                        console.error("❌ Error syncing file system:", syncError);
+                    }
+                    
                     // Verify the file was created by trying to read it back
                     try {
                         const fileContent = await this.fs.fs.readFile(filename);
@@ -181,16 +189,24 @@ class X86DOSBoxPlatform implements Platform {
 
     pause() {
         // js-dos doesn't have a direct pause method
-        // The emulator can be paused by stopping the main loop
-        if (this.dosInstance) {
-            this.dosInstance.pause();
+        // We can pause by stopping the main loop or using the API
+        if (this.dosInstance && this.dosInstance.api) {
+            try {
+                this.dosInstance.api.pauseMainLoop();
+            } catch (error) {
+                console.log("Pause not available in this js-dos version");
+            }
         }
     }
 
     resume() {
         // js-dos resumes automatically when commands are sent
-        if (this.dosInstance) {
-            this.dosInstance.resume();
+        if (this.dosInstance && this.dosInstance.api) {
+            try {
+                this.dosInstance.api.resumeMainLoop();
+            } catch (error) {
+                console.log("Resume not available in this js-dos version");
+            }
         }
     }
 
