@@ -32,7 +32,6 @@ export function compileSmallerC(step: BuildStep): BuildStepResult {
     var args = ['-seg16',
       //'-nobss',
       '-no-externs',
-      '-nodebug',  // Try to disable debug information that might generate int1
       step.path, destpath];
     var smlrc: EmscriptenModule = emglobal.smlrc({
       instantiateWasm: moduleInstFn('smlrc'),
@@ -476,6 +475,7 @@ export function assembleYASM(step: BuildStep): BuildStepResult {
       '-D', 'freedos',
       //'-g', 'dwarf2',
       //'-I/share/asminc',
+      '--no-debug',  // Try to disable debug information in YASM
       '-o', objpath, '-l', lstpath, '--mapfile=' + mappath,
       step.path];
     // return yasm/*.ready*/
