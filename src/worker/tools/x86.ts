@@ -32,7 +32,6 @@ export function compileSmallerC(step: BuildStep): BuildStepResult {
     var args = ['-seg16',
       //'-nobss',
       '-no-externs',
-      '-I/share/include',
       step.path, destpath];
     var smlrc: EmscriptenModule = emglobal.smlrc({
       instantiateWasm: moduleInstFn('smlrc'),
@@ -43,12 +42,11 @@ export function compileSmallerC(step: BuildStep): BuildStepResult {
     });
     // load source file and preprocess
     var code = getWorkFileAsString(step.path);
-    // Temporarily bypass MCPP preprocessing to test
-    // var preproc = preprocessMCPP(step, null);
-    // if (preproc.errors) {
-    //   return { errors: preproc.errors };
-    // }
-    // else code = preproc.code;
+    var preproc = preprocessMCPP(step, null);
+    if (preproc.errors) {
+      return { errors: preproc.errors };
+    }
+    else code = preproc.code;
     // set up filesystem
     var FS = smlrc.FS;
     //setupFS(FS, '65-'+getRootBasePlatform(step.platform));
@@ -58,6 +56,9 @@ export function compileSmallerC(step: BuildStep): BuildStepResult {
     try {
       FS.mkdir('/share');
       FS.mkdir('/share/include');
+      // Also try the default include location
+      FS.mkdir('/usr');
+      FS.mkdir('/usr/include');
     } catch (e) {
       // Directory might already exist
     }
@@ -303,7 +304,9 @@ double fmod(double x, double y);
     
     for (var header in stdHeaders) {
       try {
+        // Write to both locations to be safe
         FS.writeFile('/share/include/' + header, stdHeaders[header]);
+        FS.writeFile('/usr/include/' + header, stdHeaders[header]);
       } catch (e) {
         console.log('Warning: Could not write header file', header, e);
       }
