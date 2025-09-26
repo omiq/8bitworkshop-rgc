@@ -327,8 +327,6 @@ export var PLATFORM_PARAMS = {
     },
     'x86': {    
       arch: 'x86',
-      extra_link_files: ['lcds.a'],
-      extra_link_args: ['-lcds'],
     },
     'zx': {
       arch: 'z80',

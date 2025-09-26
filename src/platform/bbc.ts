@@ -124,6 +124,7 @@ export class BBCMicroPlatform implements Platform {
             { id: 'bbc_drop_shadows.bas', name: 'Drop Shadows (BASIC)' },
             { id: 'mode7_blocks.bas', name: 'Mode 7 Blocks (BASIC)' },
             { id: 'bbc_big_text.bas', name: 'Big Text (BASIC)' },
+            { id: 'bbc_startrek.bas', name: 'Star Trek (BASIC)' },
             { id: 'cosmic.bas', name: 'Cosmic Invaders (BASIC)' },
             { id: 'bbc_hello.c', name: 'Hello World', category: 'C' },
             { id: 'bbc_os_test.c', name: 'Inline Assembly' },

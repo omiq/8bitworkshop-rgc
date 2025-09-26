@@ -258,8 +258,10 @@ export class CodeProject {
 
   okToSend():boolean {
     // Check if auto-compile is enabled (access global variable from ui.ts)
+    // Allow initial compilation even when auto-compile is disabled
     const autoCompileEnabled = (window as any).autoCompileEnabled !== false;
-    return this.pendingWorkerMessages++ == 0 && this.mainPath != null && autoCompileEnabled;
+    const isInitialCompilation = this.pendingWorkerMessages === 0;
+    return this.pendingWorkerMessages++ == 0 && this.mainPath != null && (autoCompileEnabled || isInitialCompilation);
   }
 
   updateFileInStore(path:string, text:FileData) {
