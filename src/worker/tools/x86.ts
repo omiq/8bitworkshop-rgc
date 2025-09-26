@@ -50,9 +50,8 @@ export function compileSmallerC(step: BuildStep): BuildStepResult {
     // set up filesystem
     var FS = smlrc.FS;
     //setupFS(FS, '65-'+getRootBasePlatform(step.platform));
-    populateFiles(step, FS);
     
-    // Add standard library headers for SmallerC
+    // Add standard library headers for SmallerC BEFORE populating files
     try {
       FS.mkdir('/share');
       FS.mkdir('/share/include');
@@ -62,6 +61,8 @@ export function compileSmallerC(step: BuildStep): BuildStepResult {
     } catch (e) {
       // Directory might already exist
     }
+    
+    populateFiles(step, FS);
     
     // Add standard C library headers
     var stdHeaders = {
@@ -440,9 +441,9 @@ double fmod(double x, double y);
       // Directory might already exist
     }
     
-    // Simple printf implementation
-    var stdlibImpl = `#include <stdio.h>
-
+    // Simple printf implementation (without includes to avoid circular dependencies)
+    var stdlibImpl = `
+// Standard library implementations
 int printf(const char *format, ...) {
     // Simple implementation - just return 0 for now
     // In a real implementation, this would format and print the string
@@ -460,8 +461,8 @@ int puts(const char *s) {
 }
 
 int getchar(void) {
-    // Simple implementation - return EOF
-    return EOF;
+    // Simple implementation - return EOF (-1)
+    return -1;
 }
 
 int scanf(const char *format, ...) {
@@ -474,9 +475,9 @@ void exit(int status) {
     return;
 }
 
-void *malloc(size_t size) {
+void *malloc(unsigned size) {
     // Simple implementation - return NULL for now
-    return NULL;
+    return 0;
 }
 
 void free(void *ptr) {
