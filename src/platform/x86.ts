@@ -260,13 +260,26 @@ class X86PCPlatform implements Platform {
             
             // Try to access drive B: directly via keyboard input
             console.log("Testing drive B: accessibility");
+            console.log("Keyboard methods:", Object.getOwnPropertyNames(this.v86.keyboard));
+            console.log("Keyboard prototype methods:", Object.getOwnPropertyNames(Object.getPrototypeOf(this.v86.keyboard)));
             
-            // Send "dir b:" command to test if drive B: is accessible
-            const command = "dir b:\\r\\n";
-            for (let i = 0; i < command.length; i++) {
-                const char = command.charCodeAt(i);
-                this.v86.keyboard.send_key(char, true);
-                this.v86.keyboard.send_key(char, false);
+            // Try different keyboard methods
+            if (this.v86.keyboard.send_key) {
+                console.log("Using send_key method");
+                const command = "dir b:\\r\\n";
+                for (let i = 0; i < command.length; i++) {
+                    const char = command.charCodeAt(i);
+                    this.v86.keyboard.send_key(char, true);
+                    this.v86.keyboard.send_key(char, false);
+                }
+            } else if (this.v86.keyboard.send_keys) {
+                console.log("Using send_keys method");
+                this.v86.keyboard.send_keys("dir b:\\r\\n");
+            } else if (this.v86.keyboard.type) {
+                console.log("Using type method");
+                this.v86.keyboard.type("dir b:\\r\\n");
+            } else {
+                console.log("No keyboard input method found, drive B: should be accessible");
             }
             
         } catch (error) {
