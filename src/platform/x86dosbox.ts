@@ -140,7 +140,16 @@ class X86DOSBoxPlatform implements Platform {
     loadROM(title: string, rom: any) {
         // For DOSBox, we don't load ROMs in the traditional sense
         // Instead, we compile and run the program
-        console.log("loadROM called - this should trigger compilation instead", title);
+        console.log("loadROM called - triggering compilation in DOSBox", title);
+        
+        if (this.ci && title.endsWith('.c')) {
+            // Get the source code from the current project
+            const sourceCode = new TextDecoder().decode(rom);
+            const filename = title.split('/').pop() || title;
+            
+            // Compile and run the C program
+            this.compileWithTurboC(sourceCode, filename);
+        }
     }
 
     isRunning(): boolean {
@@ -148,9 +157,10 @@ class X86DOSBoxPlatform implements Platform {
     }
 
     getToolForFilename(filename: string): string {
-        // For C files, use Turbo C compiler
+        // For C files, we don't use the traditional build system
+        // Instead, we compile directly in DOSBox using Turbo C
         if (filename.endsWith('.c')) {
-            return 'tcc';
+            return 'none'; // Don't use build system, compile in DOSBox instead
         }
         return 'none';
     }
