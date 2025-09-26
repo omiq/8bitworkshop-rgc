@@ -280,7 +280,22 @@ class X86PCPlatform implements Platform {
             // Try different keyboard methods
             const keyboard = this.v86.keyboard || this.emulator.keyboard_adapter;
             
-            if (keyboard && keyboard.send_key) {
+            if (keyboard && keyboard.simulate_char) {
+                console.log("Using simulate_char method");
+                const command = "dir b:\\r\\n";
+                for (let i = 0; i < command.length; i++) {
+                    const char = command.charCodeAt(i);
+                    keyboard.simulate_char(char);
+                }
+            } else if (keyboard && keyboard.simulate_press) {
+                console.log("Using simulate_press method");
+                const command = "dir b:\\r\\n";
+                for (let i = 0; i < command.length; i++) {
+                    const char = command.charCodeAt(i);
+                    keyboard.simulate_press(char, true);
+                    keyboard.simulate_press(char, false);
+                }
+            } else if (keyboard && keyboard.send_key) {
                 console.log("Using send_key method");
                 const command = "dir b:\\r\\n";
                 for (let i = 0; i < command.length; i++) {
