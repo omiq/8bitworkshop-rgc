@@ -151,6 +151,7 @@ const X86DOSBOX_PRESETS = [
 ];
 
 // Register the platform
+console.log("Registering x86dosbox platform...");
 PLATFORMS['x86dosbox'] = class extends X86DOSBoxPlatform {
     getPresets() { return X86DOSBOX_PRESETS; }
     getDefaultExtension() { return '.c'; }
@@ -161,5 +162,6 @@ PLATFORMS['x86dosbox'] = class extends X86DOSBoxPlatform {
         return ".exe";
     }
 };
+console.log("x86dosbox platform registered:", PLATFORMS['x86dosbox']);
 
 export { X86DOSBoxPlatform };
