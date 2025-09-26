@@ -132,20 +132,23 @@ class X86DOSBoxPlatform implements Platform {
             
             // Use the CI API to run commands
             try {
-                // Try using the CI API for command execution
-                if (this.ci.api && this.ci.api.shell) {
-                    console.log("Using CI API for command execution");
-                    await this.ci.api.shell(compileCommand);
-                    console.log("Compilation completed");
+                // Try using the CI API send method for command execution
+                if (this.ci.api && this.ci.api.send) {
+                    console.log("Using CI API send method for command execution");
+                    await this.ci.api.send(compileCommand + '\r');
+                    console.log("Compilation command sent");
+                    
+                    // Wait a bit for compilation
+                    await new Promise(resolve => setTimeout(resolve, 3000));
                     
                     // Try to run the executable
                     const executableName = filename.replace('.c', '.exe');
                     console.log(`Running: ${executableName}`);
                     
-                    await this.ci.api.shell(executableName);
-                    console.log("Program execution completed");
+                    await this.ci.api.send(executableName + '\r');
+                    console.log("Program execution command sent");
                 } else {
-                    console.log("CI API not available, trying alternative approach");
+                    console.log("CI API send not available, trying shell input queue");
                     // Fallback: try to send commands through the shell input queue
                     if (this.ci.shellInputQueue) {
                         this.ci.shellInputQueue.push(compileCommand + '\r');
