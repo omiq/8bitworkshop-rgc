@@ -65,6 +65,7 @@ export function importPlatform(name: string) : Promise<any> {
       case "williams-defender": return import("../platform/williams");
       case "williams-z80": return import("../platform/williams");
       case "x86": return import("../platform/x86");
+      case "x86dosbox": return import("../platform/x86dosbox");
       case "zmachine": return import("../platform/zmachine");
       case "zx": return import("../platform/zx");
       case 'bbc':
