@@ -137,10 +137,10 @@ class X86DOSBoxPlatform implements Platform {
         // js-dos resumes automatically when commands are sent
     }
 
-    loadROM(data: Uint8Array) {
+    loadROM(title: string, rom: any) {
         // For DOSBox, we don't load ROMs in the traditional sense
         // Instead, we compile and run the program
-        console.log("loadROM called - this should trigger compilation instead");
+        console.log("loadROM called - this should trigger compilation instead", title);
     }
 }
 
