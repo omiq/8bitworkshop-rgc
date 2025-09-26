@@ -219,12 +219,23 @@ class X86PCPlatform implements Platform {
             // Insert the new disk into drive B: using the correct v86 API
             console.log("Inserting disk into drive B:");
             
-            // Use the replace_floppy method (1 = drive B:, 0 = drive A:)
+            // Check all available methods on the emulator and v86 instances
+            console.log("Emulator methods:", Object.getOwnPropertyNames(this.emulator));
+            console.log("V86 methods:", Object.getOwnPropertyNames(this.v86));
+            console.log("V86 prototype methods:", Object.getOwnPropertyNames(Object.getPrototypeOf(this.v86)));
+            
+            // Try different methods to insert the disk
             if (this.emulator.replace_floppy) {
                 console.log("Using emulator.replace_floppy(1, diskImage)");
                 this.emulator.replace_floppy(1, diskImage.buffer);
+            } else if (this.v86.replace_floppy) {
+                console.log("Using v86.replace_floppy(1, diskImage)");
+                this.v86.replace_floppy(1, diskImage.buffer);
+            } else if (this.v86.insert_floppy) {
+                console.log("Using v86.insert_floppy(1, diskImage)");
+                this.v86.insert_floppy(1, diskImage.buffer);
             } else {
-                console.log("replace_floppy not available, using direct assignment");
+                console.log("No floppy insertion method found, using direct assignment");
                 this.v86.cpu.devices.fdc.fdb_image = diskImage;
             }
             
