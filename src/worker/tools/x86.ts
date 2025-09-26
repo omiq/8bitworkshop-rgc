@@ -76,7 +76,11 @@ typedef char* va_list;
 
 #endif
 `,
-      'stdio.h': `#ifndef __STDIO_H
+      'stdio.h': `/*
+  Copyright (c) 2014, Alexey Frunze
+  2-clause BSD license.
+*/
+#ifndef __STDIO_H
 #define __STDIO_H
 
 #include <stdarg.h>
@@ -102,34 +106,109 @@ typedef unsigned size_t;
 #define SEEK_END 2
 #endif
 
-typedef struct FILE FILE;
-extern FILE *stdin, *stdout, *stderr;
+#ifndef __FPOS_T_DEF
+#define __FPOS_T_DEF
+typedef struct
+{
+  unsigned short halves[2];
+} fpos_t;
+#endif
 
-int printf(const char *format, ...);
-int sprintf(char *str, const char *format, ...);
-int scanf(const char *format, ...);
-int sscanf(const char *str, const char *format, ...);
+typedef struct __stream FILE;
+
+extern FILE *__stdin, *__stdout, *__stderr;
+#define stdin  __stdin
+#define stdout __stdout
+#define stderr __stderr
+
+#define _IOFBF 01
+#define _IONBF 02
+#define _IOLBF 04
+
+#define BUFSIZ 1024
+
+#ifdef _DOS
+#define FOPEN_MAX 20
+#define FILENAME_MAX 80
+#define L_tmpnam 80
+#define TMP_MAX 10000
+#endif
+
+#ifdef _WINDOWS
+#define FOPEN_MAX 20
+#define FILENAME_MAX 260
+#define L_tmpnam 260
+#define TMP_MAX 10000
+#endif
+
+#ifdef _LINUX
+#define FOPEN_MAX 20
+#define FILENAME_MAX 4096
+#define L_tmpnam 20
+#define TMP_MAX 10000
+#endif
+
+#ifdef _MACOS
+#define FOPEN_MAX 20
+#define FILENAME_MAX 4096
+#define L_tmpnam 20
+#define TMP_MAX 10000
+#endif
+
+FILE* fopen(char*, char*);
+FILE* freopen(char*, char*, FILE*);
+int fflush(FILE*);
+int fclose(FILE*);
+int remove(char*);
+int rename(char*, char*);
+size_t fread(void*, size_t, size_t, FILE*);
+int fgetc(FILE*);
+int getc(FILE*);
 int getchar(void);
-int putchar(int c);
-int puts(const char *s);
-char *gets(char *s);
-int fgetc(FILE *stream);
-int fputc(int c, FILE *stream);
-int fputs(const char *s, FILE *stream);
-char *fgets(char *s, int size, FILE *stream);
-int fprintf(FILE *stream, const char *format, ...);
-int fscanf(FILE *stream, const char *format, ...);
-FILE *fopen(const char *filename, const char *mode);
-int fclose(FILE *stream);
-int fflush(FILE *stream);
-int feof(FILE *stream);
-int ferror(FILE *stream);
+char* fgets(char*, int, FILE*);
+char* gets(char*);
+int ungetc(int, FILE*);
+size_t fwrite(void*, size_t, size_t, FILE*);
+int fputc(int, FILE*);
+int putc(int, FILE*);
+int putchar(int);
+int fputs(char*, FILE*);
+int puts(char*);
+void perror(char*);
+#ifdef __SMALLER_C_32__
 long ftell(FILE*);
 int fseek(FILE*, long, int);
-size_t fread(void *ptr, size_t size, size_t count, FILE *stream);
-size_t fwrite(const void *ptr, size_t size, size_t count, FILE *stream);
-int remove(const char *filename);
-int rename(const char *old, const char *new);
+#endif
+int/*0 on success,-1 on failure*/ __ftell(FILE*, fpos_t*/*position out*/);
+int __fseek(FILE*, fpos_t*/*position in*/, int/*whence*/);
+void rewind(FILE*);
+int fgetpos(FILE*, fpos_t*);
+int fsetpos(FILE*, fpos_t*);
+void clearerr(FILE*);
+int ferror(FILE*);
+int feof(FILE*);
+int setvbuf(FILE*, char*, int, size_t);
+void setbuf(FILE*, char*);
+int __fileno(FILE*);
+int fileno(FILE*);
+char* tmpnam(char*);
+FILE* tmpfile(void);
+
+int vfprintf(FILE*, char*, va_list);
+int fprintf(FILE*, char*, ...);
+int vprintf(char*, va_list);
+int printf(char*, ...);
+int vsprintf(char*, char*, va_list);
+int sprintf(char*, char*, ...);
+int vsnprintf(char*, size_t, char*, va_list);
+int snprintf(char*, size_t, char*, ...);
+
+int vfscanf(FILE*, char*, va_list);
+int fscanf(FILE*, char*, ...);
+int vscanf(char*, va_list);
+int scanf(char*, ...);
+int vsscanf(char*, char*, va_list);
+int sscanf(char*, char*, ...);
 
 #endif
 `,
