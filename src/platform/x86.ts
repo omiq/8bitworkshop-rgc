@@ -113,16 +113,16 @@ class X86PCPlatform implements Platform {
             vga_bios: {
                 url: "./res/vgabios.bin",
             },
-            fda: {
-                url: "./res/freedos722.img",
-                size: 737280,
-            },
-            // TODO: Add hard drive support for DOS compiler
-            // hda: {
-            //     url: "./res/msdos622.img",  // Complete MS-DOS 6.22 disk image
-            //     size: 64 * 1024 * 1024,    // 64MB hard drive
+            // fda: {
+            //     url: "./res/freedos722.img",
+            //     size: 737280,
             // },
-            // boot_order: 0x312,  // Boot from hard drive first, then floppy
+            // Hard drive with MS-DOS 6.22 (like copy.sh v86 profile)
+            hda: {
+                url: "./res/msdos622.img",  // Complete MS-DOS 6.22 disk image
+                size: 64 * 1024 * 1024,    // 64MB hard drive
+            },
+            boot_order: 0x31,  // Boot from hard drive only (like copy.sh)
             autostart: true,
         });
         return new Promise<void>( (resolve, reject) => {
@@ -130,7 +130,8 @@ class X86PCPlatform implements Platform {
                 console.log("emulator ready");
                 console.log(this.emulator);
                 this.v86 = this.emulator.v86;
-                this.fda_image = this.v86.cpu.devices.fdc.fda_image;
+                // Use hard drive instead of floppy for MS-DOS 6.22
+                this.fda_image = this.v86.cpu.devices.ide.hda_image;
                 this.fda_driver = new FATFSArrayBufferDriver(this.fda_image.buffer);
                 this.fda_fs = fatfs.createFileSystem(this.fda_driver);
                 resolve();
