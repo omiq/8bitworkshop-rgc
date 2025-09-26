@@ -107,6 +107,15 @@ class X86DOSBoxPlatform implements Platform {
             if (this.fs) {
                 console.log(`Attempting to create file: ${filename}`);
                 try {
+                    // Try to delete the file first if it exists to avoid conflicts
+                    try {
+                        await this.fs.fs.unlink(filename);
+                        console.log(`Deleted existing file: ${filename}`);
+                    } catch (unlinkError) {
+                        // File doesn't exist, that's fine
+                        console.log(`File ${filename} doesn't exist, creating new one`);
+                    }
+                    
                     await this.fs.createFile(filename, sourceCode);
                     console.log(`✅ Source code written to ${filename}`);
                     
@@ -130,13 +139,13 @@ class X86DOSBoxPlatform implements Platform {
             const compileCommand = `tc\\tcc.exe ${filename}`;
             console.log(`Running: ${compileCommand}`);
             
-            // Use the CI API to run commands
+            // Use the shell input queue for command execution
             try {
-                // Try using the CI API send method for command execution
-                if (this.ci.api && this.ci.api.send) {
-                    console.log("Using CI API send method for command execution");
-                    await this.ci.api.send(compileCommand + '\r');
-                    console.log("Compilation command sent");
+                console.log("Using shell input queue for command execution");
+                if (this.ci.shellInputQueue) {
+                    // Send compilation command
+                    this.ci.shellInputQueue.push(compileCommand + '\r');
+                    console.log("Compilation command queued");
                     
                     // Wait a bit for compilation
                     await new Promise(resolve => setTimeout(resolve, 3000));
@@ -145,24 +154,10 @@ class X86DOSBoxPlatform implements Platform {
                     const executableName = filename.replace('.c', '.exe');
                     console.log(`Running: ${executableName}`);
                     
-                    await this.ci.api.send(executableName + '\r');
-                    console.log("Program execution command sent");
+                    this.ci.shellInputQueue.push(executableName + '\r');
+                    console.log("Execution command queued");
                 } else {
-                    console.log("CI API send not available, trying shell input queue");
-                    // Fallback: try to send commands through the shell input queue
-                    if (this.ci.shellInputQueue) {
-                        this.ci.shellInputQueue.push(compileCommand + '\r');
-                        console.log("Compilation command queued");
-                        
-                        // Wait a bit for compilation
-                        await new Promise(resolve => setTimeout(resolve, 3000));
-                        
-                        const executableName = filename.replace('.c', '.exe');
-                        this.ci.shellInputQueue.push(executableName + '\r');
-                        console.log("Execution command queued");
-                    } else {
-                        console.error("No command execution method available");
-                    }
+                    console.error("Shell input queue not available");
                 }
             } catch (commandError) {
                 console.error("Error running command:", commandError);
