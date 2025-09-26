@@ -92,7 +92,10 @@ class X86DOSBoxPlatform implements Platform {
 
     async compileWithTurboC( sourceCode: string, filename: string) {
         
-        await this.fs.createFile("\\TC\\"+filename, sourceCode);
+        // Convert line endings to DOS format (CRLF)
+        const dosSourceCode = sourceCode.replace(/\n/g, '\r\n');
+        
+        await this.fs.createFile("\\TC\\"+filename, dosSourceCode);
         await this.ci.shell('z:rescan');
         await this.ci.shell('cd c:\\tc');
         await this.ci.shell('tcc -IC:\\TC\\INCLUDE -LC:\\TC\\LIB '+ ' c:\\tc\\' + filename);
