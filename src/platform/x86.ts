@@ -119,8 +119,8 @@ class X86PCPlatform implements Platform {
             },
             // Hard drive with MS-DOS 6.22
             hda: {
-                url: "./res/msdos622.img",  // Combined MS-DOS 6.22 disk image
-                size: 50 * 1024 * 1024,    // 50MB hard drive
+                url: "./res/msdos622.img",  // Complete MS-DOS 6.22 disk image
+                size: 64 * 1024 * 1024,    // 64MB hard drive
             },
             boot_order: 0x31,  // Boot from hard drive first, then floppy
             autostart: true,
