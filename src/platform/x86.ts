@@ -216,9 +216,22 @@ class X86PCPlatform implements Platform {
             
             console.log(`Source code written to B:\\${filename} (${fileSize} bytes)`);
             
-            // Insert the new disk into drive B: using the emulator's method
+            // Insert the new disk into drive B: using the correct method
             console.log("Inserting disk into drive B:");
-            this.v86.insert_fdb(diskImage);
+            console.log("Available v86 methods:", Object.getOwnPropertyNames(this.v86));
+            console.log("Available emulator methods:", Object.getOwnPropertyNames(this.emulator));
+            
+            // Try different methods to insert the disk
+            if (this.emulator.insert_fdb) {
+                console.log("Using emulator.insert_fdb()");
+                this.emulator.insert_fdb(diskImage);
+            } else if (this.v86.cpu.devices.fdc.insert_fdb) {
+                console.log("Using v86.cpu.devices.fdc.insert_fdb()");
+                this.v86.cpu.devices.fdc.insert_fdb(diskImage);
+            } else {
+                console.log("Using direct assignment to fdb_image");
+                this.v86.cpu.devices.fdc.fdb_image = diskImage;
+            }
             
             // Reset the emulator to trigger autoexec.bat
             console.log("Resetting emulator to trigger auto-compilation");
