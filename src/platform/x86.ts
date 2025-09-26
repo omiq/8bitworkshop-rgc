@@ -216,8 +216,9 @@ class X86PCPlatform implements Platform {
             
             console.log(`Source code written to B:\\${filename} (${fileSize} bytes)`);
             
-            // Insert the new disk into drive B:
-            this.v86.cpu.devices.fdc.fdb_image = diskImage;
+            // Insert the new disk into drive B: using the emulator's method
+            console.log("Inserting disk into drive B:");
+            this.v86.insert_fdb(diskImage);
             
             // Reset the emulator to trigger autoexec.bat
             console.log("Resetting emulator to trigger auto-compilation");
