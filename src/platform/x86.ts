@@ -181,8 +181,13 @@ class X86PCPlatform implements Platform {
                 this.fda_driver = new FATFSArrayBufferDriver(this.fda_image.buffer);
                 this.fda_fs = fatfs.createFileSystem(this.fda_driver);
                 
+                console.log("Setting up hard drive detection...");
+                
                 // Also check for hard drive availability (for future use)
                 const checkHDA = () => {
+                    console.log("Checking for hard drive...");
+                    console.log("IDE devices:", this.v86.cpu.devices.ide);
+                    
                     if (this.v86.cpu.devices.ide && this.v86.cpu.devices.ide.hda_image) {
                         console.log("Hard drive also available:", this.v86.cpu.devices.ide.hda_image);
                         
@@ -191,8 +196,14 @@ class X86PCPlatform implements Platform {
                             this.copySourceToHardDriveAndLaunch(sourceCode, filename);
                         };
                         console.log("Turbo C compilation method exposed as window.compileWithTurboC()");
+                    } else {
+                        console.log("Hard drive not yet available, retrying...");
+                        // Retry after another second
+                        setTimeout(checkHDA, 1000);
                     }
                 };
+                
+                console.log("Starting hard drive detection timer...");
                 setTimeout(checkHDA, 1000); // Check after 1 second
                 
                 resolve();
