@@ -62,7 +62,9 @@ class X86PCPlatform implements Platform {
         this.mainElement = mainElement;
     }
     getToolForFilename(s: string): string {
-        if (s.endsWith(".c")) return "smlrc";
+        // Disabled: SmallerC compiler is no longer used
+        // if (s.endsWith(".c")) return "smlrc";
+        if (s.endsWith(".c")) return "none"; // Disable SmallerC compilation
         return "yasm";
     }
     getDefaultExtension(): string {
