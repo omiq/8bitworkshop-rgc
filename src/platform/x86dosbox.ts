@@ -98,6 +98,9 @@ class X86DOSBoxPlatform implements Platform {
             console.log(`FS methods:`, this.fs ? Object.getOwnPropertyNames(this.fs) : "N/A");
             console.log(`CI object available: ${!!this.ci}`);
             console.log(`CI methods:`, this.ci ? Object.getOwnPropertyNames(this.ci) : "N/A");
+            if (this.ci && this.ci.api) {
+                console.log(`CI API methods:`, Object.getOwnPropertyNames(this.ci.api));
+            }
             
             // Write source code to a file in DOSBox using the file system API
             // According to js-dos docs, we need to use the fs object from the ready callback
@@ -127,17 +130,37 @@ class X86DOSBoxPlatform implements Platform {
             const compileCommand = `tc\\tcc.exe ${filename}`;
             console.log(`Running: ${compileCommand}`);
             
-            // Use the main function to run commands
+            // Use the CI API to run commands
             try {
-                await this.main(["-c", compileCommand]);
-                console.log("Compilation completed");
-                
-                // Try to run the executable
-                const executableName = filename.replace('.c', '.exe');
-                console.log(`Running: ${executableName}`);
-                
-                await this.main(["-c", executableName]);
-                console.log("Program execution completed");
+                // Try using the CI API for command execution
+                if (this.ci.api && this.ci.api.shell) {
+                    console.log("Using CI API for command execution");
+                    await this.ci.api.shell(compileCommand);
+                    console.log("Compilation completed");
+                    
+                    // Try to run the executable
+                    const executableName = filename.replace('.c', '.exe');
+                    console.log(`Running: ${executableName}`);
+                    
+                    await this.ci.api.shell(executableName);
+                    console.log("Program execution completed");
+                } else {
+                    console.log("CI API not available, trying alternative approach");
+                    // Fallback: try to send commands through the shell input queue
+                    if (this.ci.shellInputQueue) {
+                        this.ci.shellInputQueue.push(compileCommand + '\r');
+                        console.log("Compilation command queued");
+                        
+                        // Wait a bit for compilation
+                        await new Promise(resolve => setTimeout(resolve, 3000));
+                        
+                        const executableName = filename.replace('.c', '.exe');
+                        this.ci.shellInputQueue.push(executableName + '\r');
+                        console.log("Execution command queued");
+                    } else {
+                        console.error("No command execution method available");
+                    }
+                }
             } catch (commandError) {
                 console.error("Error running command:", commandError);
             }
