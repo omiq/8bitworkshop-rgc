@@ -84,6 +84,10 @@ class X86PCPlatform implements Platform {
         return this.emulator.is_running();
     }
     loadROM(title: string, rom: any) {
+        if (!this.fda_fs) {
+            console.error("File system not available, cannot load ROM");
+            return;
+        }
         this.fda_fs.writeFile('main.exe', rom, {encoding:'binary'}, (e) => {
             if (e) throw e;
             else this.reset();
@@ -103,6 +107,7 @@ class X86PCPlatform implements Platform {
         this.console_div = div;
         this.resize(); // set font size
 
+        console.log("Creating V86Starter with MS-DOS 6.22 hard drive...");
         this.emulator = new V86Starter({
             memory_size: 2 * 1024 * 1024,
             vga_memory_size: 1 * 1024 * 1024,
@@ -113,16 +118,16 @@ class X86PCPlatform implements Platform {
             vga_bios: {
                 url: "./res/vgabios.bin",
             },
-            // fda: {
-            //     url: "./res/freedos722.img",
-            //     size: 737280,
-            // },
-            // Hard drive with MS-DOS 6.22 (like copy.sh v86 profile)
+            fda: {
+                url: "./res/freedos722.img",
+                size: 737280,
+            },
+            // Add hard drive as secondary device (MS-DOS 6.22)
             hda: {
                 url: "./res/msdos622.img",  // Complete MS-DOS 6.22 disk image
                 size: 64 * 1024 * 1024,    // 64MB hard drive
             },
-            boot_order: 0x312,  // Boot from hard drive first (BOOT_ORDER_HD_FIRST)
+            boot_order: 0x321,  // Boot from floppy first, then hard drive (BOOT_ORDER_FD_FIRST)
             autostart: true,
         });
         return new Promise<void>( (resolve, reject) => {
@@ -131,32 +136,20 @@ class X86PCPlatform implements Platform {
                 console.log(this.emulator);
                 this.v86 = this.emulator.v86;
                 
-                // Wait for hard drive to be available
-                let retryCount = 0;
-                const maxRetries = 50; // 5 seconds max
+                // Use floppy disk file system (which we know works)
+                this.fda_image = this.v86.cpu.devices.fdc.fda_image;
+                this.fda_driver = new FATFSArrayBufferDriver(this.fda_image.buffer);
+                this.fda_fs = fatfs.createFileSystem(this.fda_driver);
                 
+                // Also check for hard drive availability (for future use)
                 const checkHDA = () => {
-                    console.log("Checking for hard drive availability, attempt:", retryCount + 1);
-                    console.log("IDE devices:", this.v86.cpu.devices.ide);
-                    
                     if (this.v86.cpu.devices.ide && this.v86.cpu.devices.ide.hda_image) {
-                        console.log("Hard drive found, setting up file system");
-                        // Use hard drive for MS-DOS 6.22
-                        this.fda_image = this.v86.cpu.devices.ide.hda_image;
-                        this.fda_driver = new FATFSArrayBufferDriver(this.fda_image.buffer);
-                        this.fda_fs = fatfs.createFileSystem(this.fda_driver);
-                        resolve();
-                    } else if (retryCount < maxRetries) {
-                        retryCount++;
-                        // Retry after a short delay
-                        setTimeout(checkHDA, 100);
-                    } else {
-                        console.error("Hard drive not available after", maxRetries, "attempts");
-                        // Fallback: resolve anyway, file system might not be needed for basic operation
-                        resolve();
+                        console.log("Hard drive also available:", this.v86.cpu.devices.ide.hda_image);
                     }
                 };
-                checkHDA();
+                setTimeout(checkHDA, 1000); // Check after 1 second
+                
+                resolve();
             });
         });
     }
