@@ -23,26 +23,21 @@ class X86DOSBoxPlatform implements Platform {
         // Load js-dos library
         await loadScript('https://js-dos.com/6.22/current/js-dos.js');
 
-        this.video = new RasterVideo(this.mainElement, 640, 480, { overscan: false });
-        this.video.create();
-
-        var div = document.createElement('div');
-        div.classList.add('pc-console');
-        div.classList.add('emuvideo');
-        this.mainElement.appendChild(div);
-        this.console_div = div;
-        this.resize(); // set font size
+        // Clear the main element and create the DOSBox canvas directly
+        this.mainElement.innerHTML = '';
+        
+        // Create a canvas element for js-dos that fills the main element
+        const canvas = document.createElement('canvas');
+        canvas.id = 'jsdos';
+        canvas.style.width = '100%';
+        canvas.style.height = '100%';
+        canvas.style.display = 'block';
+        this.mainElement.appendChild(canvas);
 
         console.log("Creating js-dos DOSBox instance...");
         
         return new Promise<void>((resolve, reject) => {
             try {
-                // Create a canvas element for js-dos
-                const canvas = document.createElement('canvas');
-                canvas.id = 'jsdos';
-                canvas.style.width = '100%';
-                canvas.style.height = '100%';
-                this.console_div.appendChild(canvas);
 
                 this.dosInstance = window.Dos(canvas, {
                     wdosboxUrl: "https://js-dos.com/6.22/current/wdosbox.js",
@@ -115,9 +110,8 @@ class X86DOSBoxPlatform implements Platform {
     }
 
     resize() {
-        if (this.console_div) {
-            this.console_div.style.fontSize = Math.max(8, Math.min(24, this.mainElement.clientWidth / 80)) + "px";
-        }
+        // DOSBox canvas automatically resizes to fill the container
+        // No manual resizing needed
     }
 
     reset() {
