@@ -98,14 +98,24 @@ class X86PCPlatform implements Platform {
     
     // New method to copy source code to hard drive and launch Turbo C
     async copySourceToHardDriveAndLaunch(sourceCode: string, filename: string) {
-        if (!this.v86 || !this.v86.cpu.devices.ide || !this.v86.cpu.devices.ide.hda_image) {
+        // Try different paths to find the hard drive
+        let hda_image = null;
+        if (this.v86.cpu.devices.ide && this.v86.cpu.devices.ide.hda_image) {
+            hda_image = this.v86.cpu.devices.ide.hda_image;
+        } else if (this.v86.cpu.devices.hda && this.v86.cpu.devices.hda.image) {
+            hda_image = this.v86.cpu.devices.hda.image;
+        } else if (this.v86.hda_image) {
+            hda_image = this.v86.hda_image;
+        }
+        
+        if (!this.v86 || !hda_image) {
             console.error("Hard drive not available");
             return;
         }
         
         try {
             // Create hard drive file system
-            const hda_driver = new FATFSArrayBufferDriver(this.v86.cpu.devices.ide.hda_image.buffer);
+            const hda_driver = new FATFSArrayBufferDriver(hda_image.buffer);
             const hda_fs = fatfs.createFileSystem(hda_driver);
             
             // Write source code to hard drive
@@ -186,10 +196,22 @@ class X86PCPlatform implements Platform {
                 // Also check for hard drive availability (for future use)
                 const checkHDA = () => {
                     console.log("Checking for hard drive...");
+                    console.log("Full v86 structure:", this.v86);
+                    console.log("CPU devices:", this.v86.cpu.devices);
                     console.log("IDE devices:", this.v86.cpu.devices.ide);
                     
+                    // Try different paths to find the hard drive
+                    let hda_image = null;
                     if (this.v86.cpu.devices.ide && this.v86.cpu.devices.ide.hda_image) {
-                        console.log("Hard drive also available:", this.v86.cpu.devices.ide.hda_image);
+                        hda_image = this.v86.cpu.devices.ide.hda_image;
+                    } else if (this.v86.cpu.devices.hda && this.v86.cpu.devices.hda.image) {
+                        hda_image = this.v86.cpu.devices.hda.image;
+                    } else if (this.v86.hda_image) {
+                        hda_image = this.v86.hda_image;
+                    }
+                    
+                    if (hda_image) {
+                        console.log("Hard drive found via alternative path:", hda_image);
                         
                         // Expose the Turbo C compilation method globally
                         (window as any).compileWithTurboC = (sourceCode: string, filename: string) => {
