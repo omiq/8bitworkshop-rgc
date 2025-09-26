@@ -142,6 +142,22 @@ class X86DOSBoxPlatform implements Platform {
         // Instead, we compile and run the program
         console.log("loadROM called - this should trigger compilation instead", title);
     }
+
+    isRunning(): boolean {
+        return this.ci !== undefined;
+    }
+
+    getToolForFilename(filename: string): string {
+        // For C files, use Turbo C compiler
+        if (filename.endsWith('.c')) {
+            return 'tcc';
+        }
+        return 'none';
+    }
+
+    getDefaultExtension(): string {
+        return '.c';
+    }
 }
 
 const X86DOSBOX_PRESETS = [
