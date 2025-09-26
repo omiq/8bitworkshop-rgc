@@ -32,7 +32,7 @@ export function compileSmallerC(step: BuildStep): BuildStepResult {
     var args = ['-seg16',
       //'-nobss',
       '-no-externs',
-      step.path, '/share/lib/stdlib.c', destpath];
+      step.path, destpath];
     var smlrc: EmscriptenModule = emglobal.smlrc({
       instantiateWasm: moduleInstFn('smlrc'),
       noInitialRun: true,
@@ -491,7 +491,9 @@ void free(void *ptr) {
       console.log('Warning: Could not write stdlib.c', e);
     }
     
-    FS.writeFile(step.path, code);
+    // Append standard library implementation to the user's code
+    var combinedCode = code + '\n\n// Standard library implementation\n' + stdlibImpl;
+    FS.writeFile(step.path, combinedCode);
     fixParamsWithDefines(step.path, params);
     if (params.extra_compile_args) {
       args.unshift.apply(args, params.extra_compile_args);
