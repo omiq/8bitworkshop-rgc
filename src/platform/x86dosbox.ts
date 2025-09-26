@@ -1,6 +1,6 @@
-import { Platform } from "./platform";
+import { Platform } from "../common/baseplatform";
 import { RasterVideo, PLATFORMS } from "../common/emu";
-import { loadScript } from "../common/loadscript";
+import { loadScript } from "../common/util";
 
 declare global {
     interface Window {
