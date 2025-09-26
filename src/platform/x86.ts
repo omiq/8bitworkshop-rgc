@@ -96,57 +96,55 @@ class X86PCPlatform implements Platform {
         // The source code is now handled by copySourceToHardDriveAndLaunch for Turbo C
     }
     
-    // New method to copy source code to hard drive and launch Turbo C
-    async copySourceToHardDriveAndLaunch(sourceCode: string, filename: string) {
-        // Try different paths to find the hard drive
-        let hda_image = null;
-        if (this.v86.cpu.devices.ide && this.v86.cpu.devices.ide.hda_image) {
-            hda_image = this.v86.cpu.devices.ide.hda_image;
-        } else if (this.v86.cpu.devices.hda && this.v86.cpu.devices.hda.image) {
-            hda_image = this.v86.cpu.devices.hda.image;
-        } else if (this.v86.hda_image) {
-            hda_image = this.v86.hda_image;
-        } else if (this.emulator.disk_images && this.emulator.disk_images.hda) {
-            hda_image = this.emulator.disk_images.hda;
-        }
-        
-        if (!this.v86 || !hda_image) {
-            console.error("Hard drive not available");
+    // New method to create drive B: with source code and trigger auto-compilation
+    async copySourceToDriveBAndCompile(sourceCode: string, filename: string) {
+        if (!this.v86 || !this.fda_fs) {
+            console.error("File system not available");
             return;
         }
         
         try {
-            // Use keyboard input to create file and launch Turbo C
-            console.log(`Creating ${filename} and launching Turbo C via keyboard input`);
+            console.log(`Creating drive B: with ${filename} and triggering auto-compilation`);
             
-            // Switch to C: drive first
-            this.v86.keyboard_send_text("C:\r");
+            // Create a new disk image for drive B: with the source code
+            const diskSize = 737280; // Same size as FreeDOS floppy
+            const diskImage = new Uint8Array(diskSize);
+            diskImage.fill(0);
             
-            // Wait a moment, then create the file using echo
-            setTimeout(() => {
-                // Escape the source code for DOS echo command
-                const escapedCode = sourceCode
-                    .replace(/\\/g, '\\\\')  // Escape backslashes
-                    .replace(/"/g, '\\"')    // Escape quotes
-                    .replace(/\n/g, '\\n');  // Convert newlines to literal \n
+            // Create a simple FAT12 filesystem for drive B:
+            // This is a simplified approach - we'll create a basic disk structure
+            const sourceBytes = new TextEncoder().encode(sourceCode);
+            
+            // Write the source file to the disk image
+            // For now, we'll use a simple approach: write to the beginning of the disk
+            // In a real implementation, we'd need proper FAT12 formatting
+            for (let i = 0; i < sourceBytes.length && i < diskSize - 512; i++) {
+                diskImage[512 + i] = sourceBytes[i]; // Start after boot sector
+            }
+            
+            // Create a new floppy disk image for drive B:
+            const fdb_driver = new FATFSArrayBufferDriver(diskImage.buffer);
+            const fdb_fs = fatfs.createFileSystem(fdb_driver);
+            
+            // Write the source file to drive B:
+            fdb_fs.writeFile(filename, sourceCode, {encoding:'utf8'}, (e) => {
+                if (e) {
+                    console.error("Error writing to drive B:", e);
+                    return;
+                }
                 
-                // Create the file using echo
-                const echoCommand = `echo ${escapedCode} > ${filename}\r`;
-                console.log("Creating file with command:", echoCommand);
-                this.v86.keyboard_send_text(echoCommand);
+                console.log(`Source code written to B:\\${filename}`);
                 
-                // Wait a moment, then launch Turbo C
-                setTimeout(() => {
-                    const tccPath = "C:\\DEV\\TC\\TCC.EXE";
-                    const command = `${tccPath} ${filename}`;
-                    console.log(`Launching: ${command}`);
-                    this.v86.keyboard_send_text(command + "\r");
-                }, 1000);
+                // Insert the new disk into drive B:
+                this.v86.cpu.devices.fdc.fdb_image = diskImage;
                 
-            }, 500);
+                // Reset the emulator to trigger autoexec.bat
+                console.log("Resetting emulator to trigger auto-compilation");
+                this.reset();
+            });
             
         } catch (error) {
-            console.error("Error setting up hard drive compilation:", error);
+            console.error("Error setting up drive B compilation:", error);
         }
     }
     async start() {
@@ -176,6 +174,10 @@ class X86PCPlatform implements Platform {
             },
             fda: {
                 url: "./res/freedos722.img",
+                size: 737280,
+            },
+            fdb: {
+                // Drive B: will be created dynamically with source code
                 size: 737280,
             },
             // Add hard drive as secondary device (MS-DOS 6.22)
@@ -234,7 +236,7 @@ class X86PCPlatform implements Platform {
                         
                         // Expose the Turbo C compilation method globally
                         (window as any).compileWithTurboC = (sourceCode: string, filename: string) => {
-                            this.copySourceToHardDriveAndLaunch(sourceCode, filename);
+                            this.copySourceToDriveBAndCompile(sourceCode, filename);
                         };
                         console.log("Turbo C compilation method exposed as window.compileWithTurboC()");
                     } else {
