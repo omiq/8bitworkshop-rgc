@@ -119,12 +119,14 @@ class X86DOSBoxPlatform implements Platform {
                     await this.fs.createFile(filename, sourceCode);
                     console.log(`✅ Source code written to ${filename}`);
                     
-                    // Sync the file system to make files visible in DOSBox
+                    // Remount C: drive to make files visible in DOSBox
                     try {
-                        await this.fs.syncfs();
-                        console.log(`✅ File system synced - file should now be visible in DOSBox`);
-                    } catch (syncError) {
-                        console.error("❌ Error syncing file system:", syncError);
+                        if (this.ci.shellInputQueue) {
+                            this.ci.shellInputQueue.push("mount c .\r");
+                            console.log(`✅ C: drive remounted - file should now be visible in DOSBox`);
+                        }
+                    } catch (remountError) {
+                        console.error("❌ Error remounting C: drive:", remountError);
                     }
                     
                     // Verify the file was created by trying to read it back
