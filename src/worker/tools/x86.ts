@@ -445,13 +445,27 @@ double fmod(double x, double y);
     var stdlibImpl = `
 // Simple standard library implementations for x86 FreeDOS
 int printf(const char *format, ...) {
-    // Simple implementation - just return 0 for now
-    // In a real implementation, this would use DOS interrupts to print
+    // Simple implementation that prints the format string directly
+    // This is a basic version that doesn't handle format specifiers
+    const char *p = format;
+    while (*p) {
+        putchar(*p);
+        p++;
+    }
     return 0;
 }
 
 int putchar(int c) {
-    // Simple implementation - just return the character
+    // Use DOS interrupt 21h, function 02h to output character to console
+    // This is a simple inline assembly approach
+    __asm__ volatile (
+        "movb %0, %%dl\n\t"     // Load character into DL register
+        "movb $0x02, %%ah\n\t"  // DOS function 02h (output character)
+        "int $0x21\n\t"         // Call DOS interrupt
+        :
+        : "r" (c)
+        : "ah", "dl"
+    );
     return c;
 }
 
