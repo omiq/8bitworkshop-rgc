@@ -32,6 +32,7 @@ export function compileSmallerC(step: BuildStep): BuildStepResult {
     var args = ['-seg16',
       //'-nobss',
       '-no-externs',
+      '-nodebug',  // Try to disable debug information that might generate int1
       step.path, destpath];
     var smlrc: EmscriptenModule = emglobal.smlrc({
       instantiateWasm: moduleInstFn('smlrc'),
