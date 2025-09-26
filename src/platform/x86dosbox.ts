@@ -85,20 +85,37 @@ class X86DOSBoxPlatform implements Platform {
 
     async compileWithTurboC(sourceCode: string, filename: string) {
         if (!this.ci) {
-            console.error("DOSBox not ready");
+            console.error("DOSBox not ready - CI not available");
             return;
         }
 
         try {
             console.log(`Compiling ${filename} with Turbo C...`);
+            console.log(`Source code length: ${sourceCode.length}`);
+            console.log(`FS object available: ${!!this.fs}`);
+            console.log(`FS methods:`, this.fs ? Object.getOwnPropertyNames(this.fs) : "N/A");
             
             // Write source code to a file in DOSBox using the file system API
             // According to js-dos docs, we need to use the fs object from the ready callback
             if (this.fs) {
-                await this.fs.createFile(filename, sourceCode);
-                console.log(`Source code written to ${filename}`);
+                console.log(`Attempting to create file: ${filename}`);
+                try {
+                    await this.fs.createFile(filename, sourceCode);
+                    console.log(`✅ Source code written to ${filename}`);
+                    
+                    // Verify the file was created by trying to read it back
+                    try {
+                        const fileContent = await this.fs.readFile(filename);
+                        console.log(`✅ File verification: ${fileContent.length} bytes read back`);
+                    } catch (readError) {
+                        console.error("❌ Could not read back the file:", readError);
+                    }
+                } catch (createError) {
+                    console.error("❌ Error creating file:", createError);
+                    return;
+                }
             } else {
-                console.error("File system not available");
+                console.error("❌ File system not available");
                 return;
             }
             
@@ -151,14 +168,22 @@ class X86DOSBoxPlatform implements Platform {
         // For DOSBox, we don't load ROMs in the traditional sense
         // Instead, we compile and run the program
         console.log("loadROM called - triggering compilation in DOSBox", title);
+        console.log("ROM data type:", typeof rom, "ROM length:", rom ? rom.length : "null");
+        console.log("CI available:", !!this.ci, "FS available:", !!this.fs);
         
         if (this.ci && title.endsWith('.c')) {
             // Get the source code from the current project
             const sourceCode = new TextDecoder().decode(rom);
             const filename = title.split('/').pop() || title;
             
+            console.log("Source code length:", sourceCode.length);
+            console.log("Filename:", filename);
+            console.log("First 100 chars of source:", sourceCode.substring(0, 100));
+            
             // Compile and run the C program
             this.compileWithTurboC(sourceCode, filename);
+        } else {
+            console.log("loadROM conditions not met - ci:", !!this.ci, "endsWith .c:", title.endsWith('.c'));
         }
     }
 
