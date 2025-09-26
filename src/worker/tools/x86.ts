@@ -475,7 +475,7 @@ export function assembleYASM(step: BuildStep): BuildStepResult {
   var mappath = step.prefix + ".map";
   if (staleFiles(step, [objpath])) {
     var args = ['-X', 'vc',
-      '-a', 'x86', '-f', 'dosexe', '-p', 'nasm',
+      '-a', 'x86', '-f', 'bin', '-p', 'nasm',  // Try 'bin' format instead of 'dosexe'
       '-D', 'freedos',
       //'-g', 'dwarf2',
       //'-I/share/asminc',
