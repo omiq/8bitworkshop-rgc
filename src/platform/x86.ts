@@ -84,16 +84,14 @@ class X86PCPlatform implements Platform {
         return this.emulator.is_running();
     }
     loadROM(title: string, rom: any) {
-        if (!this.fda_fs) {
-            console.error("File system not available, cannot load ROM");
-            return;
-        }
+        // Disabled: Old SmallerC compiler output is no longer automatically executed
+        // This prevents "Invalid Opcode" and "undefined symbol" errors
+        console.log("loadROM called - old compiler output disabled");
+        console.log("Title:", title, "ROM size:", rom ? rom.length : 0);
+        console.log("Use window.compileWithTurboC() for native DOS compilation instead");
         
-        // Write to floppy (A:) for FreeDOS compilation
-        this.fda_fs.writeFile('main.exe', rom, {encoding:'binary'}, (e) => {
-            if (e) throw e;
-            else this.reset();
-        });
+        // We no longer write to fda_fs or reset the emulator here
+        // The source code is now handled by copySourceToHardDriveAndLaunch for Turbo C
     }
     
     // New method to copy source code to hard drive and launch Turbo C
