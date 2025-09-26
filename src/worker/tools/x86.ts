@@ -452,6 +452,10 @@ double fmod(double x, double y);
     if (errors.length)
       return { errors: errors };
     var asmout = FS.readFile(destpath, { encoding: 'utf8' });
+    
+    // Post-process assembly to remove int1 instructions that libv86.js doesn't support
+    asmout = asmout.replace(/\s+int1\s*/g, ' ; int1 removed for libv86.js compatibility\n');
+    
     putWorkFile(destpath, asmout);
   }
   return {
@@ -475,7 +479,6 @@ export function assembleYASM(step: BuildStep): BuildStepResult {
       '-D', 'freedos',
       //'-g', 'dwarf2',
       //'-I/share/asminc',
-      '--no-debug',  // Try to disable debug information in YASM
       '-o', objpath, '-l', lstpath, '--mapfile=' + mappath,
       step.path];
     // return yasm/*.ready*/
