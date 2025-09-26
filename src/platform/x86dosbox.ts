@@ -171,10 +171,24 @@ class X86DOSBoxPlatform implements Platform {
         console.log("ROM data type:", typeof rom, "ROM length:", rom ? rom.length : "null");
         console.log("CI available:", !!this.ci, "FS available:", !!this.fs);
         
-        if (this.ci && title.endsWith('.c')) {
+        if (this.ci && rom && rom.length > 0) {
             // Get the source code from the current project
             const sourceCode = new TextDecoder().decode(rom);
-            const filename = title.split('/').pop() || title;
+            
+            // Extract filename from title - handle both "snake.c" and "Snake Game (C)" formats
+            let filename = title.split('/').pop() || title;
+            
+            // If title doesn't end with .c, try to get the actual filename from the current project
+            if (!filename.endsWith('.c')) {
+                // Try to get the current main filename from the global IDE state
+                const currentMainFile = (window as any).IDE?.getCurrentMainFilename?.();
+                if (currentMainFile && currentMainFile.endsWith('.c')) {
+                    filename = currentMainFile.split('/').pop() || currentMainFile;
+                } else {
+                    // Fallback: use a default name
+                    filename = 'main.c';
+                }
+            }
             
             console.log("Source code length:", sourceCode.length);
             console.log("Filename:", filename);
@@ -183,7 +197,7 @@ class X86DOSBoxPlatform implements Platform {
             // Compile and run the C program
             this.compileWithTurboC(sourceCode, filename);
         } else {
-            console.log("loadROM conditions not met - ci:", !!this.ci, "endsWith .c:", title.endsWith('.c'));
+            console.log("loadROM conditions not met - ci:", !!this.ci, "rom length:", rom ? rom.length : "null");
         }
     }
 
