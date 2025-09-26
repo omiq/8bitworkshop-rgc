@@ -32,7 +32,7 @@ export function compileSmallerC(step: BuildStep): BuildStepResult {
     var args = ['-seg16',
       //'-nobss',
       '-no-externs',
-      '-I/usr/include',
+      '-I/share/include',
       step.path, destpath];
     var smlrc: EmscriptenModule = emglobal.smlrc({
       instantiateWasm: moduleInstFn('smlrc'),
@@ -55,7 +55,8 @@ export function compileSmallerC(step: BuildStep): BuildStepResult {
     
     // Add standard library headers for SmallerC
     try {
-      FS.mkdir('/usr/include');
+      FS.mkdir('/share');
+      FS.mkdir('/share/include');
     } catch (e) {
       // Directory might already exist
     }
@@ -291,7 +292,7 @@ double fmod(double x, double y);
     
     for (var header in stdHeaders) {
       try {
-        FS.writeFile('/usr/include/' + header, stdHeaders[header]);
+        FS.writeFile('/share/include/' + header, stdHeaders[header]);
       } catch (e) {
         console.log('Warning: Could not write header file', header, e);
       }
