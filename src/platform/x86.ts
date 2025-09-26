@@ -122,7 +122,7 @@ class X86PCPlatform implements Platform {
                 url: "./res/msdos622.img",  // Complete MS-DOS 6.22 disk image
                 size: 64 * 1024 * 1024,    // 64MB hard drive
             },
-            boot_order: 0x31,  // Boot from hard drive only (like copy.sh)
+            boot_order: 0x312,  // Boot from hard drive first (BOOT_ORDER_HD_FIRST)
             autostart: true,
         });
         return new Promise<void>( (resolve, reject) => {
