@@ -14,6 +14,7 @@ class X86DOSBoxPlatform implements Platform {
     console_div: HTMLElement;
     dosInstance: any;
     ci: any; // Command interface
+    fs: any; // File system
 
     constructor(mainElement: HTMLElement) {
         this.mainElement = mainElement;
@@ -32,6 +33,8 @@ class X86DOSBoxPlatform implements Platform {
         canvas.style.width = '100%';
         canvas.style.height = '100%';
         canvas.style.display = 'block';
+        canvas.style.border = 'none';
+        canvas.style.outline = 'none';
         this.mainElement.appendChild(canvas);
 
         console.log("Creating js-dos DOSBox instance...");
@@ -45,6 +48,9 @@ class X86DOSBoxPlatform implements Platform {
 
                 this.dosInstance.ready((fs: any, main: any) => {
                     console.log("js-dos ready, extracting Turbo C...");
+                    
+                    // Store the file system object
+                    this.fs = fs;
                     
                     // Extract Turbo C from the zip file
                     fs.extract("res/tc.zip").then(() => {
@@ -86,9 +92,15 @@ class X86DOSBoxPlatform implements Platform {
         try {
             console.log(`Compiling ${filename} with Turbo C...`);
             
-            // Write source code to a file in DOSBox
-            await this.ci.writeFile(filename, sourceCode);
-            console.log(`Source code written to ${filename}`);
+            // Write source code to a file in DOSBox using the file system API
+            // According to js-dos docs, we need to use the fs object from the ready callback
+            if (this.fs) {
+                await this.fs.createFile(filename, sourceCode);
+                console.log(`Source code written to ${filename}`);
+            } else {
+                console.error("File system not available");
+                return;
+            }
             
             // Compile with Turbo C
             const compileCommand = `tc\\tcc.exe ${filename}`;
@@ -121,14 +133,18 @@ class X86DOSBoxPlatform implements Platform {
     }
 
     pause() {
-        // js-dos doesn't have a direct pause method, but we can stop execution
-        if (this.ci) {
-            this.ci.run("pause");
+        // js-dos doesn't have a direct pause method
+        // The emulator can be paused by stopping the main loop
+        if (this.dosInstance) {
+            this.dosInstance.pause();
         }
     }
 
     resume() {
         // js-dos resumes automatically when commands are sent
+        if (this.dosInstance) {
+            this.dosInstance.resume();
+        }
     }
 
     loadROM(title: string, rom: any) {

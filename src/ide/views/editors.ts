@@ -40,6 +40,7 @@ const MODEDEFS = {
   fastbasic: { noGutters: true },
   basic: { noLineNumbers: true, noGutters: true }, // TODO: not used?
   ecs: { theme: 'mbo', isAsm: true },
+  c: { theme: 'mbo' }, // C syntax highlighting
 }
 
 export var textMapFunctions = {

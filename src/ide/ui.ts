@@ -147,6 +147,7 @@ const TOOL_TO_SOURCE_STYLE = {
   'c64basic': 'c64basic',
   'silice': 'verilog',
   'wiz': 'text/x-wiz',
+  'none': 'text/x-csrc', // For platforms that don't use build system but need C syntax highlighting
   'vasmarm': 'vasm',
   'armips': 'vasm',
   'ecs': 'ecs',

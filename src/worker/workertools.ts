@@ -60,6 +60,10 @@ export const TOOLS = {
   'oscar64': oscar64.compileOscar64,
   'c64basic': c64basic.compileC64Basic,
   'bbcbasic': bbcbasic.compileBbcBasic,
+  'none': async (step: any) => {
+    // No-op tool for platforms that handle compilation themselves
+    return { success: true, output: [] };
+  },
 }
 
 export const TOOL_PRELOADFS = {
