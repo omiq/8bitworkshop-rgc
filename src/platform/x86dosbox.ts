@@ -52,7 +52,7 @@ class X86DOSBoxPlatform implements Platform {
                     console.log("js-dos ready, extracting Turbo C...");
                     
                     // Extract Turbo C from the zip file
-                    fs.extract("tc.zip").then(() => {
+                    fs.extract("res/tc.zip").then(() => {
                         console.log("Turbo C extracted, starting DOS...");
                         
                         // Start DOS and get command interface
