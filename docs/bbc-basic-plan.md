@@ -64,9 +64,16 @@
 - Applied across all platforms (BBC, C64, VCS, Atari 8-bit)
 
 ### SSD Generation
-- Uses the exact `AcornDFSdisc` class from owlet-editor for compatibility
+- Uses the exact `AcornDFSdisc` class for compatibility
 - Generates proper SSD disc images with correct catalog structure
-- Includes !BOOT file for automatic program execution
+- Includes `!BOOT` file for automatic `CHAIN"PROGRAM"`
+- Implementation details:
+  - Tokenized BASIC is read from the emulator memory, not re-tokenized
+  - Start (PAGE) is obtained from `&18/&19` but aligned to page boundary (`addr & 0xFF00`), with fallback swap; default `0x1900`
+  - End (VARTOP) is read from `&12/&13`
+  - The memory slice `[PAGE..VARTOP)` is saved as `PROGRAM` with load/exec = `PAGE`
+  - Volume title updated (e.g., `RETRO`), catalog count and sectors set by `AcornDFSdisc`
+  - If memory extract is unavailable, SSD export is blocked to avoid creating invalid images
 
 ### Example Presets
 - Added BASIC examples under `presets/bbc/` and registered in the BBC platform presets menu:

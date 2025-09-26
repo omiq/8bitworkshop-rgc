@@ -239,7 +239,7 @@ def main():
         ssd_data = create_ssd_disc(
             input_data['binary_data'],
             input_data.get('filename', 'PROGRAM'),
-            input_data.get('title', '8BITWORKSHOP'),
+            input_data.get('title', 'RETROIDE'),
             input_data.get('boot_option', 'run')
         )
         

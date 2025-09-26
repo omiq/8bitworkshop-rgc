@@ -1415,20 +1415,16 @@ function manualBuildAndRun() {
 }
 
 function updateAutoCompileUI() {
-  const toggleBtn = document.getElementById('auto_compile_toggle') as HTMLElement;
+  const toggleCheckbox = document.getElementById('auto_compile_checkbox') as HTMLInputElement;
+  const toggleContainer = document.getElementById('auto_compile_toggle') as HTMLElement;
   const manualBtn = document.getElementById('manual_build_btn') as HTMLElement;
   const statusLabel = document.getElementById('auto_compile_status') as HTMLElement;
   
-  if (toggleBtn) {
-    if (autoCompileEnabled) {
-      toggleBtn.classList.remove('btn-default');
-      toggleBtn.classList.add('btn-success');
-      toggleBtn.title = 'Auto-Compile Enabled (Ctrl+Alt+C)';
-    } else {
-      toggleBtn.classList.remove('btn-success');
-      toggleBtn.classList.add('btn-default');
-      toggleBtn.title = 'Auto-Compile Disabled (Ctrl+Alt+C)';
-    }
+  if (toggleCheckbox) {
+    toggleCheckbox.checked = !!autoCompileEnabled;
+  }
+  if (toggleContainer) {
+    toggleContainer.setAttribute('title', autoCompileEnabled ? 'Auto-Compile Enabled (Ctrl+Alt+C)' : 'Auto-Compile Disabled (Ctrl+Alt+C)');
   }
   
   if (statusLabel) {
@@ -1437,7 +1433,7 @@ function updateAutoCompileUI() {
       statusLabel.style.color = '#5cb85c'; // Green color
     } else {
       statusLabel.textContent = 'Auto-Compile: OFF';
-      statusLabel.style.color = '#d9534f'; // Red color
+      statusLabel.style.color = '#b0b0b0'; // Light grey color for better readability
     }
   }
   
@@ -1462,8 +1458,14 @@ function setupDebugControls() {
   }
   uitoolbar.newGroup();
   uitoolbar.grp.prop('id','compile_bar');
-  // Add auto-compile toggle
-  uitoolbar.add('ctrl+alt+c', 'Toggle Auto-Compile', 'glyphicon-flash', toggleAutoCompile).prop('id','auto_compile_toggle');
+  // Bind hotkey for auto-compile toggle (no button)
+  uitoolbar.add('ctrl+alt+c', 'Toggle Auto-Compile', null, toggleAutoCompile);
+  // Add switch-style auto-compile toggle control
+  const toggleWrap = $('<span id="auto_compile_toggle" class="auto-compile-switch" />').appendTo(uitoolbar.grp);
+  const toggleLabel = $('<label class="switch" />').appendTo(toggleWrap);
+  const toggleInput = $('<input type="checkbox" id="auto_compile_checkbox" />').appendTo(toggleLabel);
+  const toggleSlider = $('<span class="slider round"></span>').appendTo(toggleLabel);
+  toggleInput.on('change', () => { toggleAutoCompile(); });
   // Add auto-compile status label
   const statusLabel = $('<span class="auto-compile-status">Auto-Compile: ON</span>').appendTo(uitoolbar.grp);
   statusLabel.prop('id', 'auto_compile_status');

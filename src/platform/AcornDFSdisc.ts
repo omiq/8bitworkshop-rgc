@@ -26,8 +26,8 @@ export class AcornDFSdisc {
         };
 
         // Apply Acorn DFS format catalog
-        (this.image as any).write(0x0000, "BBCMICRO"); // DFS volume title
-        (this.image as any).write(0x0100, "BOT\0");
+        (this.image as any).write(0x0000, "RETRO"); // DFS volume title (8 chars)
+        (this.image as any).write(0x0100, "IDE\0");
         (this.image as any).write(0x0104, 0, 1); // BCD catalog cycle number
         (this.image as any).write(0x0105, 0, 1); // Number of files << 3
         (this.image as any).write(0x0106, 0b00110000, 1); // *EXEC boot

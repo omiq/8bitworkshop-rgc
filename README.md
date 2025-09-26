@@ -31,7 +31,7 @@ WARNING: This version of the repo contains small amounts of `AI SLOP` because my
 
 Original README follows
 
-### BBC BASIC – Large Listings (Working Setup)
+### BBC BASIC – Large Listings & SSD Export (Working Setup)
 
 This fork supports loading large BBC BASIC programs via jsbeeb's `loadBasic` using small PHP helpers.
 
@@ -50,6 +50,15 @@ Operational notes:
 - Ensure php-fpm can traverse parents of the webroot and write to the configured userfiles directory (e.g. `/tmp/userfiles`).
 
 This configuration is confirmed working and should be the reference for future changes.
+
+#### Download Program (.ssd) for BBC BASIC
+
+- The IDE extracts tokenized BASIC directly from the running emulator memory.
+- PAGE is read from `&18/&19`, page-aligned (`addr & 0xFF00`). If needed, byte order is swapped; final fallback is `0x1900`.
+- VARTOP is read from `&12/&13`.
+- The memory slice `[PAGE..VARTOP)` is written as `PROGRAM` with load/exec = PAGE using the `AcornDFSdisc` class.
+- A `!BOOT` file is included so the disk `CHAIN"PROGRAM"` automatically.
+- If tokenized memory is not available, SSD export is blocked to avoid invalid images.
 
 --- 
 

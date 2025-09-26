@@ -121,6 +121,9 @@ export class BBCMicroPlatform implements Platform {
             { id: 'bbc_labels.bas', name: 'Labels and Subroutines (BASIC)' },
             { id: 'bbc_input.bas', name: 'Keyboard Input and Movement (BASIC)' },
             { id: 'bbc_textformat.bas', name: 'Text Formatting (BASIC)' },
+            { id: 'bbc_drop_shadows.bas', name: 'Drop Shadows (BASIC)' },
+            { id: 'mode7_blocks.bas', name: 'Mode 7 Blocks (BASIC)' },
+            { id: 'bbc_big_text.bas', name: 'Big Text (BASIC)' },
             { id: 'cosmic.bas', name: 'Cosmic Invaders (BASIC)' },
             { id: 'bbc_hello.c', name: 'Hello World', category: 'C' },
             { id: 'bbc_os_test.c', name: 'Inline Assembly' },
@@ -425,33 +428,22 @@ export class BBCMicroPlatform implements Platform {
     const filename = currentFile.replace(/\.(bas|BAS)$/, '').toUpperCase().substring(0, 7); // Max 7 chars for DFS
     
     // Try to extract tokenized BASIC from emulator memory first
-    const tokenizedBasic = this.extractTokenizedBasicFromEmulator();
-    if (tokenizedBasic) {
+    const extracted = this.extractTokenizedBasicFromEmulator();
+    if (extracted && extracted.data && extracted.data.length > 0) {
       console.log('BBCMicroPlatform: Using tokenized BASIC from emulator memory');
-      // Check if the extracted BASIC is complete by looking for the program terminator
-      if (tokenizedBasic[tokenizedBasic.length - 1] === 0xFF) {
-        console.log('BBCMicroPlatform: Extracted BASIC appears complete (ends with 0xFF)');
-        const ssdData = this.createProperSSDWithTokenizedBasic(tokenizedBasic, filename);
-        return {
-          extension: '.ssd',
-          blob: new Blob([ssdData.buffer as ArrayBuffer], { type: 'application/octet-stream' })
-        };
-      } else {
-        console.log('BBCMicroPlatform: Extracted BASIC appears incomplete, falling back to custom tokenizer');
-      }
+      const ssdData = this.createProperSSDWithTokenizedBasic(extracted.data, filename, extracted.page);
+      return {
+        extension: '.ssd',
+        blob: new Blob([ssdData.buffer as ArrayBuffer], { type: 'application/octet-stream' })
+      };
     }
     
-    // Fallback to our tokenization
-    console.log('BBCMicroPlatform: Using fallback tokenization');
-    const ssdData = this.createProperSSD(basicText, filename);
-    
-    return {
-      extension: '.ssd',
-      blob: new Blob([ssdData.buffer as ArrayBuffer], { type: 'application/octet-stream' })
-    };
+    // If we cannot read tokenized BASIC from emulator memory, don't emit a disk
+    console.error('BBCMicroPlatform: No tokenized BASIC found in emulator memory; refusing to create SSD to avoid Bad program');
+    return undefined as any;
   }
 
-  private extractTokenizedBasicFromEmulator(): Uint8Array | null {
+  private extractTokenizedBasicFromEmulator(): { data: Uint8Array, page: number } | null {
     try {
       // Access the jsbeeb emulator through the iframe
       const iframe = document.querySelector('iframe');
@@ -503,19 +495,29 @@ export class BBCMicroPlatform implements Platform {
       }
       
       // Read the BASIC program from memory
-      // The program is stored starting at the page indicated by 0x18
-      const page = processor.readmem(0x18) << 8;
-      const top = (processor.readmem(0x02) | (processor.readmem(0x03) << 8));
+      // The program starts at PAGE; jsbeeb exposes &18/&19 but order differs.
+      // Read raw bytes then construct an aligned 256-byte page address.
+      const rawPageLo = processor.readmem(0x18);
+      const rawPageHi = processor.readmem(0x19);
+      // Some builds return bytes reversed; build address as hi:lo then align to page boundary (..00)
+      let page = ((rawPageLo << 8) | rawPageHi) & 0xFF00; // yields 0x1900 for default 0x19/0x00
+      if (page === 0 || page > 0xFE00) {
+        // Try swapped order as fallback
+        page = ((rawPageHi << 8) | rawPageLo) & 0xFF00;
+      }
+      if (page === 0) page = 0x1900; // final safety default
+      // Program end is at VARTOP (0x12 low / 0x13 high)
+      const top = (processor.readmem(0x12) | (processor.readmem(0x13) << 8));
       console.log(`BBCMicroPlatform: Memory page: 0x${page.toString(16)}, top: 0x${top.toString(16)}`);
       
-      if (page === 0 || top === 0) {
+      if (!page || !top) {
         console.log('BBCMicroPlatform: No BASIC program in memory');
         return null;
       }
       
       const programLength = top - page;
       console.log(`BBCMicroPlatform: Program length: ${programLength} bytes`);
-      if (programLength <= 0 || programLength > 8000) {
+      if (programLength <= 0 || programLength > 65535) {
         console.log('BBCMicroPlatform: Invalid program length:', programLength);
         return null;
       }
@@ -529,7 +531,7 @@ export class BBCMicroPlatform implements Platform {
     console.log(`BBCMicroPlatform: Extracted ${programLength} bytes of tokenized BASIC from emulator memory`);
     console.log('BBCMicroPlatform: First 20 bytes of extracted BASIC:', Array.from(tokenizedBasic.slice(0, 20)).map(b => b.toString(16).padStart(2, '0')).join(' '));
     console.log('BBCMicroPlatform: Last 20 bytes of extracted BASIC:', Array.from(tokenizedBasic.slice(-20)).map(b => b.toString(16).padStart(2, '0')).join(' '));
-    return tokenizedBasic;
+    return { data: tokenizedBasic, page };
       
     } catch (error) {
       console.log('BBCMicroPlatform: Error extracting tokenized BASIC:', error);
@@ -537,25 +539,27 @@ export class BBCMicroPlatform implements Platform {
     }
   }
 
-  private createProperSSDWithTokenizedBasic(tokenizedBasic: Uint8Array, filename: string): Uint8Array {
+  private createProperSSDWithTokenizedBasic(tokenizedBasic: Uint8Array, filename: string, loadExecAddress: number): Uint8Array {
     // Use the exact same AcornDFSdisc class as owlet-editor
     console.log(`BBCMicroPlatform: Creating SSD with ${tokenizedBasic.length} bytes of tokenized BASIC using AcornDFSdisc`);
     
     const disc = new AcornDFSdisc();
     
     // Add files in the same order as owlet-editor
-    disc.save("README", "Created by BBC BASIC\r", 0x0000, 0x0000);
+    disc.save("README", "Created in BBC BASIC\r", 0x0000, 0x0000);
+    // Use actual PAGE (load/exec) so BASIC sees a valid program location
+    //    disc.save("PROGRAM", tokenizedBasic, loadExecAddress, loadExecAddress);
     disc.save("PROGRAM", tokenizedBasic, 0x1900, 0x1900);
-    disc.save("SCREEN", new Uint8Array(0x5000), 0xffff3000, 0x0000); // Empty screen dump
+    // Keep SCREEN as a small placeholder with sane addresses
+    disc.save("SCREEN", new Uint8Array(0x50), 0x3000, 0x0000);
     disc.save("!BOOT", 'CHAIN"PROGRAM"\r', 0x1900, 0x1900);
     
     return disc.image;
   }
   private createProperSSD(basicText: string, filename: string): Uint8Array {
-    // Create a proper Acorn DFS SSD disk image following the owlet-editor format
-    // Convert BASIC text to tokenized BBC BASIC format
-    const basicBytes = this.tokenizeBasicProgram(basicText);
-    console.log(`BBCMicroPlatform: Tokenized ${basicText.length} chars to ${basicBytes.length} bytes`);
+    // Kept for reference; prefer tokenizeBasicToMemoryImage above
+    const basicBytes = this.tokenizeBasicToMemoryImage(basicText, 0x1900);
+    console.log(`BBCMicroPlatform: Tokenized ${basicText.length} chars to ${basicBytes.length} bytes (memory image)`);
     console.log(`BBCMicroPlatform: First 20 bytes:`, Array.from(basicBytes.slice(0, 20)).map(b => '0x' + b.toString(16).padStart(2, '0')).join(' '));
     
     // Create a 200KB disk image (80 tracks * 10 sectors * 256 bytes)
@@ -647,75 +651,44 @@ export class BBCMicroPlatform implements Platform {
     return disk;
   }
 
-  private tokenizeBasicProgram(basicText: string): Uint8Array {
-    // Simple BBC BASIC tokenization
-    // This is a basic implementation - for production use, consider using a proper tokenizer
-    
-    const lines = basicText.split('\n');
-    const tokenizedLines: Uint8Array[] = [];
-    
-    for (const line of lines) {
-      if (line.trim() === '') continue;
-      
-      const tokenizedLine = this.tokenizeLine(line.trim());
-      if (tokenizedLine.length > 0) {
-        tokenizedLines.push(tokenizedLine);
-      }
+  private tokenizeBasicToMemoryImage(basicText: string, loadAddress: number): Uint8Array {
+    // Build a valid BBC BASIC in-memory image: [linkLo linkHi lineLo lineHi bytes... 0x00] ... last line has link=0x0000
+    const lines = basicText.split('\n').map(l => l.replace(/\r$/, '')).filter(l => l.trim().length > 0);
+    type LineRec = { lineNumber: number, data: Uint8Array };
+    const parsed: LineRec[] = [];
+    for (const raw of lines) {
+      const m = raw.match(/^(\d+)\s+(.*)$/);
+      if (!m) continue; // skip non-numbered lines
+      const ln = Math.max(0, Math.min(65535, parseInt(m[1], 10)));
+      const content = m[2];
+      const tokenBytes = this.tokenizeContent(content);
+      // Append 0x00 terminator for the line body
+      const body = new Uint8Array(tokenBytes.length + 1);
+      body.set(tokenBytes, 0); body[tokenBytes.length] = 0x00;
+      parsed.push({ lineNumber: ln, data: body });
     }
-    
-    // Combine all tokenized lines
-    const totalLength = tokenizedLines.reduce((sum, line) => sum + line.length, 0) + 1; // +1 for program terminator
-    const result = new Uint8Array(totalLength);
+    // Compute total size: for each line 2 bytes link + 2 bytes number + body length
+    const total = parsed.reduce((s, r) => s + 4 + r.data.length, 0);
+    const out = new Uint8Array(total);
     let offset = 0;
-    
-    for (const line of tokenizedLines) {
-      result.set(line, offset);
-      offset += line.length;
+    for (let i = 0; i < parsed.length; i++) {
+      const nextAddr = i < parsed.length - 1 ? (loadAddress + (offset + 4 + parsed[i].data.length)) : 0;
+      // link pointer (little-endian)
+      out[offset + 0] = nextAddr & 0xFF;
+      out[offset + 1] = (nextAddr >> 8) & 0xFF;
+      // line number (little-endian)
+      out[offset + 2] = parsed[i].lineNumber & 0xFF;
+      out[offset + 3] = (parsed[i].lineNumber >> 8) & 0xFF;
+      // body
+      out.set(parsed[i].data, offset + 4);
+      offset += 4 + parsed[i].data.length;
     }
-    
-    // Add program terminator (0xFF)
-    result[offset] = 0xFF;
-    
-    return result;
+    return out;
   }
 
+  // tokenizeLine is no longer used for disk image; kept for potential UI helpers
   private tokenizeLine(line: string): Uint8Array {
-    // BBC BASIC line tokenization
-    // Format: [0x0D][line_number_low][line_number_high][line_length][tokenized_content]
-    
-    // Extract line number
-    const match = line.match(/^(\d+)\s+(.*)$/);
-    if (!match) return new Uint8Array(0);
-    
-    const lineNumber = parseInt(match[1]);
-    const content = match[2];
-    
-    // Tokenize the content (basic keyword replacement)
-    const tokenizedContent = this.tokenizeContent(content);
-    
-    // Calculate line length (content length)
-    const lineLength = tokenizedContent.length;
-    
-    // Create the tokenized line
-    const result = new Uint8Array(4 + lineLength);
-    let offset = 0;
-    
-    // Line terminator (0x0D)
-    result[offset++] = 0x0D;
-    
-    // Line number (2 bytes, big-endian)
-    result[offset++] = (lineNumber >> 8) & 0xFF;
-    result[offset++] = lineNumber & 0xFF;
-    
-    // Line length (1 byte)
-    result[offset++] = lineLength;
-    
-    // Tokenized content
-    for (let i = 0; i < tokenizedContent.length; i++) {
-      result[offset++] = tokenizedContent[i];
-    }
-    
-    return result;
+    return new Uint8Array(0);
   }
 
   private tokenizeContent(content: string): Uint8Array {
