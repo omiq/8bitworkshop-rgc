@@ -106,42 +106,122 @@ class X86PCPlatform implements Platform {
         try {
             console.log(`Creating drive B: with ${filename} and triggering auto-compilation`);
             
-            // Create a new disk image for drive B: with the source code
+            // Create a properly formatted FAT12 disk image
             const diskSize = 737280; // Same size as FreeDOS floppy
             const diskImage = new Uint8Array(diskSize);
             diskImage.fill(0);
             
-            // Create a simple FAT12 filesystem for drive B:
-            // This is a simplified approach - we'll create a basic disk structure
-            const sourceBytes = new TextEncoder().encode(sourceCode);
+            // Create a minimal FAT12 boot sector and filesystem
+            // Boot sector (first 512 bytes)
+            const bootSector = new Uint8Array(512);
+            bootSector.fill(0);
             
-            // Write the source file to the disk image
-            // For now, we'll use a simple approach: write to the beginning of the disk
-            // In a real implementation, we'd need proper FAT12 formatting
-            for (let i = 0; i < sourceBytes.length && i < diskSize - 512; i++) {
-                diskImage[512 + i] = sourceBytes[i]; // Start after boot sector
+            // Boot sector signature
+            bootSector[0] = 0xEB; // JMP instruction
+            bootSector[1] = 0x3C; // Jump offset
+            bootSector[2] = 0x90; // NOP
+            
+            // OEM name
+            const oemName = "MSDOS5.0";
+            for (let i = 0; i < oemName.length; i++) {
+                bootSector[3 + i] = oemName.charCodeAt(i);
             }
             
-            // Create a new floppy disk image for drive B:
-            const fdb_driver = new FATFSArrayBufferDriver(diskImage.buffer);
-            const fdb_fs = fatfs.createFileSystem(fdb_driver);
+            // Bytes per sector (512)
+            bootSector[11] = 0x00;
+            bootSector[12] = 0x02;
             
-            // Write the source file to drive B:
-            fdb_fs.writeFile(filename, sourceCode, {encoding:'utf8'}, (e) => {
-                if (e) {
-                    console.error("Error writing to drive B:", e);
-                    return;
-                }
-                
-                console.log(`Source code written to B:\\${filename}`);
-                
-                // Insert the new disk into drive B:
-                this.v86.cpu.devices.fdc.fdb_image = diskImage;
-                
-                // Reset the emulator to trigger autoexec.bat
-                console.log("Resetting emulator to trigger auto-compilation");
-                this.reset();
-            });
+            // Sectors per cluster (1)
+            bootSector[13] = 0x01;
+            
+            // Reserved sectors (1)
+            bootSector[14] = 0x01;
+            bootSector[15] = 0x00;
+            
+            // Number of FATs (2)
+            bootSector[16] = 0x02;
+            
+            // Root directory entries (224)
+            bootSector[17] = 0xE0;
+            bootSector[18] = 0x00;
+            
+            // Total sectors (1440 for 720KB)
+            bootSector[19] = 0x80;
+            bootSector[20] = 0x05;
+            
+            // Media descriptor (0xF0 for 1.44MB)
+            bootSector[21] = 0xF0;
+            
+            // Sectors per FAT (9)
+            bootSector[22] = 0x09;
+            bootSector[23] = 0x00;
+            
+            // Boot signature (0xAA55)
+            bootSector[510] = 0x55;
+            bootSector[511] = 0xAA;
+            
+            // Copy boot sector to disk image
+            for (let i = 0; i < 512; i++) {
+                diskImage[i] = bootSector[i];
+            }
+            
+            // Create FAT tables (simplified - just mark clusters as free)
+            const fatStart = 512;
+            const fatSize = 9 * 512; // 9 sectors per FAT
+            
+            // First FAT
+            for (let i = 0; i < fatSize; i++) {
+                diskImage[fatStart + i] = 0x00;
+            }
+            // Mark first cluster as end of file
+            diskImage[fatStart] = 0xF8;
+            diskImage[fatStart + 1] = 0xFF;
+            
+            // Second FAT (copy of first)
+            for (let i = 0; i < fatSize; i++) {
+                diskImage[fatStart + fatSize + i] = diskImage[fatStart + i];
+            }
+            
+            // Root directory (starts after both FATs)
+            const rootDirStart = fatStart + (2 * fatSize);
+            
+            // Create a simple file entry for our source file
+            const fileName = filename.toUpperCase().padEnd(8, ' ');
+            const fileExt = filename.includes('.') ? filename.split('.').pop().toUpperCase().padEnd(3, ' ') : '   ';
+            
+            // File entry (32 bytes)
+            for (let i = 0; i < 8; i++) {
+                diskImage[rootDirStart + i] = fileName.charCodeAt(i);
+            }
+            for (let i = 0; i < 3; i++) {
+                diskImage[rootDirStart + 8 + i] = fileExt.charCodeAt(i);
+            }
+            
+            // File attributes (0x20 = archive)
+            diskImage[rootDirStart + 11] = 0x20;
+            
+            // File size
+            const fileSize = sourceCode.length;
+            diskImage[rootDirStart + 28] = fileSize & 0xFF;
+            diskImage[rootDirStart + 29] = (fileSize >> 8) & 0xFF;
+            diskImage[rootDirStart + 30] = (fileSize >> 16) & 0xFF;
+            diskImage[rootDirStart + 31] = (fileSize >> 24) & 0xFF;
+            
+            // Write source code to data area (after root directory)
+            const dataStart = rootDirStart + (224 * 32); // 224 root directory entries
+            const sourceBytes = new TextEncoder().encode(sourceCode);
+            for (let i = 0; i < sourceBytes.length && i < diskSize - dataStart; i++) {
+                diskImage[dataStart + i] = sourceBytes[i];
+            }
+            
+            console.log(`Source code written to B:\\${filename} (${fileSize} bytes)`);
+            
+            // Insert the new disk into drive B:
+            this.v86.cpu.devices.fdc.fdb_image = diskImage;
+            
+            // Reset the emulator to trigger autoexec.bat
+            console.log("Resetting emulator to trigger auto-compilation");
+            this.reset();
             
         } catch (error) {
             console.error("Error setting up drive B compilation:", error);
