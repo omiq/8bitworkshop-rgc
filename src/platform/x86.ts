@@ -279,6 +279,8 @@ class X86PCPlatform implements Platform {
             fdb: {
                 // Drive B: will be created dynamically with source code
                 size: 737280,
+                // Initialize with empty disk image
+                buffer: new ArrayBuffer(737280),
             },
             // Add hard drive as secondary device (MS-DOS 6.22)
             hda: {
