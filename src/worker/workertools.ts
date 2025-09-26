@@ -62,7 +62,13 @@ export const TOOLS = {
   'bbcbasic': bbcbasic.compileBbcBasic,
   'none': async (step: any) => {
     // No-op tool for platforms that handle compilation themselves
-    return { success: true, output: [] };
+    // Return the source code as output so loadROM gets called
+    const { getWorkFileAsString } = await import('./builder');
+    const sourceCode = getWorkFileAsString(step.path);
+    return { 
+      success: true, 
+      output: sourceCode ? new TextEncoder().encode(sourceCode) : new Uint8Array(0)
+    };
   },
 }
 
