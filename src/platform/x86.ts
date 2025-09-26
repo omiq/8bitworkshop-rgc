@@ -116,30 +116,35 @@ class X86PCPlatform implements Platform {
         }
         
         try {
-            // Create hard drive file system
-            const hda_driver = new FATFSArrayBufferDriver(hda_image.buffer);
-            const hda_fs = fatfs.createFileSystem(hda_driver);
+            // Use emulator's native file system instead of FATFS
+            console.log(`Writing source code to C:\\${filename} using emulator file system`);
             
-            // Write source code to hard drive
-            const sourcePath = `C:\\${filename}`;
-            console.log(`Writing source code to ${sourcePath}`);
-            
-            hda_fs.writeFile(sourcePath, sourceCode, {encoding:'utf8'}, (e) => {
-                if (e) {
-                    console.error("Error writing to hard drive:", e);
-                    return;
-                }
-                
-                console.log(`Source code written to ${sourcePath}`);
-                
-                // Launch Turbo C compiler
-                const tccPath = "C:\\DEV\\TC\\TCC.EXE";
-                const command = `${tccPath} ${filename}`;
-                console.log(`Launching: ${command}`);
-                
-                // Send command to emulator
-                this.v86.keyboard_send_text(command + "\r");
-            });
+            // Create the file using the emulator's file system
+            this.v86.create_file(`C:\\${filename}`, new TextEncoder().encode(sourceCode))
+                .then(() => {
+                    console.log(`Source code written to C:\\${filename}`);
+                    
+                    // Launch Turbo C compiler
+                    const tccPath = "C:\\DEV\\TC\\TCC.EXE";
+                    const command = `${tccPath} ${filename}`;
+                    console.log(`Launching: ${command}`);
+                    
+                    // Send command to emulator
+                    this.v86.keyboard_send_text(command + "\r");
+                })
+                .catch((error) => {
+                    console.error("Error writing to hard drive:", error);
+                    
+                    // Fallback: try to create file manually via keyboard input
+                    console.log("Trying fallback method - manual file creation");
+                    this.v86.keyboard_send_text(`echo ${sourceCode.replace(/\n/g, '\\n')} > C:\\${filename}\r`);
+                    setTimeout(() => {
+                        const tccPath = "C:\\DEV\\TC\\TCC.EXE";
+                        const command = `${tccPath} ${filename}`;
+                        console.log(`Launching: ${command}`);
+                        this.v86.keyboard_send_text(command + "\r");
+                    }, 1000);
+                });
             
         } catch (error) {
             console.error("Error setting up hard drive compilation:", error);
