@@ -5,6 +5,8 @@ import { loadScript } from "../common/util";
 declare global {
     interface Window {
         Dos: any;
+        disk: any;
+       
     }
 }
 
@@ -39,6 +41,9 @@ class X86DOSBoxPlatform implements Platform {
         this.mainElement.appendChild(canvas);
 
         console.log("Creating js-dos DOSBox instance...");
+
+
+        
         
         return new Promise<void>((resolve, reject) => {
             try {
@@ -85,97 +90,17 @@ class X86DOSBoxPlatform implements Platform {
         });
     }
 
-    async compileWithTurboC(sourceCode: string, filename: string) {
-        if (!this.ci) {
-            console.error("DOSBox not ready - CI not available");
-            return;
-        }
+    async compileWithTurboC( sourceCode: string, filename: string) {
+        
+        await this.fs.createFile("\\TC\\"+filename, sourceCode);
+        await this.ci.shell('z:rescan');
+        await this.ci.shell('cd c:\\tc');
+        await this.ci.shell('tcc -IC:\\TC\\INCLUDE -LC:\\TC\\LIB '+ ' c:\\tc\\' + filename);
+        await this.ci.shell('c:\\tc\\' + filename.replace('.c', ''));
+        
 
-        try {
-            console.log(`Compiling ${filename} with Turbo C...`);
-            console.log(`Source code length: ${sourceCode.length}`);
-            console.log(`FS object available: ${!!this.fs}`);
-            console.log(`FS methods:`, this.fs ? Object.getOwnPropertyNames(this.fs) : "N/A");
-            console.log(`CI object available: ${!!this.ci}`);
-            console.log(`CI methods:`, this.ci ? Object.getOwnPropertyNames(this.ci) : "N/A");
-            if (this.ci && this.ci.api) {
-                console.log(`CI API methods:`, Object.getOwnPropertyNames(this.ci.api));
-            }
-            
-            // Write source code to a file in DOSBox using the file system API
-            // According to js-dos docs, we need to use the fs object from the ready callback
-            if (this.fs) {
-                console.log(`Attempting to create file: ${filename}`);
-                try {
-                    // Try to delete the file first if it exists to avoid conflicts
-                    try {
-                        await this.fs.fs.unlink(filename);
-                        console.log(`Deleted existing file: ${filename}`);
-                    } catch (unlinkError) {
-                        // File doesn't exist, that's fine
-                        console.log(`File ${filename} doesn't exist, creating new one`);
-                    }
-                    
-                    await this.fs.createFile(filename, sourceCode);
-                    console.log(`✅ Source code written to ${filename}`);
-                    
-                    // Remount C: drive to make files visible in DOSBox
-                    try {
-                        if (this.ci.shellInputQueue) {
-                            this.ci.shellInputQueue.push("mount c .\r");
-                            console.log(`✅ C: drive remounted - file should now be visible in DOSBox`);
-                        }
-                    } catch (remountError) {
-                        console.error("❌ Error remounting C: drive:", remountError);
-                    }
-                    
-                    // Verify the file was created by trying to read it back
-                    try {
-                        const fileContent = await this.fs.fs.readFile(filename);
-                        console.log(`✅ File verification: ${fileContent.length} bytes read back`);
-                    } catch (readError) {
-                        console.error("❌ Could not read back the file:", readError);
-                    }
-                } catch (createError) {
-                    console.error("❌ Error creating file:", createError);
-                    return;
-                }
-            } else {
-                console.error("❌ File system not available");
-                return;
-            }
-            
-            // Compile with Turbo C
-            const compileCommand = `tc\\tcc.exe ${filename}`;
-            console.log(`Running: ${compileCommand}`);
-            
-            // Use the shell input queue for command execution
-            try {
-                console.log("Using shell input queue for command execution");
-                if (this.ci.shellInputQueue) {
-                    // Send compilation command
-                    this.ci.shellInputQueue.push(compileCommand + '\r');
-                    console.log("Compilation command queued");
-                    
-                    // Wait a bit for compilation
-                    await new Promise(resolve => setTimeout(resolve, 3000));
-                    
-                    // Try to run the executable
-                    const executableName = filename.replace('.c', '.exe');
-                    console.log(`Running: ${executableName}`);
-                    
-                    this.ci.shellInputQueue.push(executableName + '\r');
-                    console.log("Execution command queued");
-                } else {
-                    console.error("Shell input queue not available");
-                }
-            } catch (commandError) {
-                console.error("Error running command:", commandError);
-            }
-            
-        } catch (error) {
-            console.error("Error during compilation:", error);
-        }
+
+        
     }
 
     resize() {
