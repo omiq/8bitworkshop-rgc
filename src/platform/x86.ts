@@ -88,10 +88,50 @@ class X86PCPlatform implements Platform {
             console.error("File system not available, cannot load ROM");
             return;
         }
+        
+        // Write to floppy (A:) for FreeDOS compilation
         this.fda_fs.writeFile('main.exe', rom, {encoding:'binary'}, (e) => {
             if (e) throw e;
             else this.reset();
         });
+    }
+    
+    // New method to copy source code to hard drive and launch Turbo C
+    async copySourceToHardDriveAndLaunch(sourceCode: string, filename: string) {
+        if (!this.v86 || !this.v86.cpu.devices.ide || !this.v86.cpu.devices.ide.hda_image) {
+            console.error("Hard drive not available");
+            return;
+        }
+        
+        try {
+            // Create hard drive file system
+            const hda_driver = new FATFSArrayBufferDriver(this.v86.cpu.devices.ide.hda_image.buffer);
+            const hda_fs = fatfs.createFileSystem(hda_driver);
+            
+            // Write source code to hard drive
+            const sourcePath = `C:\\${filename}`;
+            console.log(`Writing source code to ${sourcePath}`);
+            
+            hda_fs.writeFile(sourcePath, sourceCode, {encoding:'utf8'}, (e) => {
+                if (e) {
+                    console.error("Error writing to hard drive:", e);
+                    return;
+                }
+                
+                console.log(`Source code written to ${sourcePath}`);
+                
+                // Launch Turbo C compiler
+                const tccPath = "C:\\DEV\\TC\\TCC.EXE";
+                const command = `${tccPath} ${filename}`;
+                console.log(`Launching: ${command}`);
+                
+                // Send command to emulator
+                this.v86.keyboard_send_text(command + "\r");
+            });
+            
+        } catch (error) {
+            console.error("Error setting up hard drive compilation:", error);
+        }
     }
     async start() {
         await loadScript('./lib/libv86.js');
@@ -145,6 +185,12 @@ class X86PCPlatform implements Platform {
                 const checkHDA = () => {
                     if (this.v86.cpu.devices.ide && this.v86.cpu.devices.ide.hda_image) {
                         console.log("Hard drive also available:", this.v86.cpu.devices.ide.hda_image);
+                        
+                        // Expose the Turbo C compilation method globally
+                        (window as any).compileWithTurboC = (sourceCode: string, filename: string) => {
+                            this.copySourceToHardDriveAndLaunch(sourceCode, filename);
+                        };
+                        console.log("Turbo C compilation method exposed as window.compileWithTurboC()");
                     }
                 };
                 setTimeout(checkHDA, 1000); // Check after 1 second
