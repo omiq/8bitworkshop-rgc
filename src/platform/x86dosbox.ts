@@ -15,6 +15,7 @@ class X86DOSBoxPlatform implements Platform {
     dosInstance: any;
     ci: any; // Command interface
     fs: any; // File system
+    main: any; // Main function for running commands
 
     constructor(mainElement: HTMLElement) {
         this.mainElement = mainElement;
@@ -59,6 +60,7 @@ class X86DOSBoxPlatform implements Platform {
                         // Start DOS and get command interface
                         main(["-c", "cd\\"]).then((ci: any) => {
                             this.ci = ci;
+                            this.main = main; // Store the main function for running commands
                             console.log("DOSBox ready with Turbo C available");
                             
                             // Expose the compilation method globally
@@ -94,6 +96,8 @@ class X86DOSBoxPlatform implements Platform {
             console.log(`Source code length: ${sourceCode.length}`);
             console.log(`FS object available: ${!!this.fs}`);
             console.log(`FS methods:`, this.fs ? Object.getOwnPropertyNames(this.fs) : "N/A");
+            console.log(`CI object available: ${!!this.ci}`);
+            console.log(`CI methods:`, this.ci ? Object.getOwnPropertyNames(this.ci) : "N/A");
             
             // Write source code to a file in DOSBox using the file system API
             // According to js-dos docs, we need to use the fs object from the ready callback
@@ -105,7 +109,7 @@ class X86DOSBoxPlatform implements Platform {
                     
                     // Verify the file was created by trying to read it back
                     try {
-                        const fileContent = await this.fs.readFile(filename);
+                        const fileContent = await this.fs.fs.readFile(filename);
                         console.log(`✅ File verification: ${fileContent.length} bytes read back`);
                     } catch (readError) {
                         console.error("❌ Could not read back the file:", readError);
@@ -123,15 +127,20 @@ class X86DOSBoxPlatform implements Platform {
             const compileCommand = `tc\\tcc.exe ${filename}`;
             console.log(`Running: ${compileCommand}`);
             
-            await this.ci.run(compileCommand);
-            console.log("Compilation completed");
-            
-            // Try to run the executable
-            const executableName = filename.replace('.c', '.exe');
-            console.log(`Running: ${executableName}`);
-            
-            await this.ci.run(executableName);
-            console.log("Program executed");
+            // Use the main function to run commands
+            try {
+                await this.main(["-c", compileCommand]);
+                console.log("Compilation completed");
+                
+                // Try to run the executable
+                const executableName = filename.replace('.c', '.exe');
+                console.log(`Running: ${executableName}`);
+                
+                await this.main(["-c", executableName]);
+                console.log("Program execution completed");
+            } catch (commandError) {
+                console.error("Error running command:", commandError);
+            }
             
         } catch (error) {
             console.error("Error during compilation:", error);
