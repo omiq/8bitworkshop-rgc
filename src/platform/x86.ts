@@ -240,17 +240,22 @@ class X86PCPlatform implements Platform {
                 console.log("No floppy insertion method found, using direct assignment");
                 this.v86.cpu.devices.fdc.fdb_image = diskImage;
                 
-                // Try to notify the FDC that a new disk has been inserted
-                if (this.v86.cpu.devices.fdc.insert_disk) {
-                    console.log("Notifying FDC of disk insertion");
-                    this.v86.cpu.devices.fdc.insert_disk(1); // Drive B:
-                }
+                // Try to properly initialize the drive B: using FDC methods
+                console.log("Initializing drive B: with FDC methods");
                 
-                // Also try to trigger a disk change event
-                if (this.v86.cpu.devices.fdc.disk_change) {
-                    console.log("Triggering disk change event");
-                    this.v86.cpu.devices.fdc.disk_change(1); // Drive B:
-                }
+                // Set drive to B: (drive 1)
+                this.v86.cpu.devices.fdc.drive = 1;
+                
+                // Check drive status
+                this.v86.cpu.devices.fdc.check_drive_status();
+                
+                // Calibrate the drive
+                this.v86.cpu.devices.fdc.calibrate();
+                
+                // Raise an interrupt to notify the system
+                this.v86.cpu.devices.fdc.raise_irq();
+                
+                console.log("Drive B: initialized with FDC methods");
             }
             
             // Reset the emulator to trigger autoexec.bat
