@@ -74,6 +74,7 @@ cp -r bootstrap "$STAGING_DIR/"
 cp bbc-iframe.html "$STAGING_DIR/"
 cp c64-iframe.html "$STAGING_DIR/"
 cp vic20-iframe.html "$STAGING_DIR/"
+cp x86dosbox-iframe.html "$STAGING_DIR/"
 
 # Presets (essential for platform functionality)
 cp -r presets "$STAGING_DIR/"
@@ -109,6 +110,10 @@ cp -r javatari.js "$STAGING_DIR/"
 # WASM files in root (if any)
 cp *.wasm "$STAGING_DIR/" 2>/dev/null || true
 cp *.js "$STAGING_DIR/" 2>/dev/null || true
+
+# x86 DOSBox platform files
+cp js-dos.js "$STAGING_DIR/" 2>/dev/null || true
+cp wdosbox.js "$STAGING_DIR/" 2>/dev/null || true
 
 # PHP files for BBC BASIC program loading
 cp *.php "$STAGING_DIR/" 2>/dev/null || true
@@ -182,9 +187,8 @@ fi
 
 echo ""
 echo "🎉 Deployment complete!"
-echo "📝 Note: The BBC Micro platform is now fully deployed with:"
-echo "   - WASM compilation support"
-echo "   - BBC-specific configuration files"
-echo "   - jsbeeb emulator integration"
+echo "📝 Note: The platforms are now fully deployed with:"
+echo "   - BBC Micro: WASM compilation support, jsbeeb emulator integration"
+echo "   - x86 DOSBox: Turbo C compiler, DOSBox emulation, BGI graphics support"
 echo "   - Download menu integration"
 echo "   - PHP endpoints for large BASIC program loading"
