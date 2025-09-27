@@ -192,6 +192,8 @@ class X86DOSBoxPlatform implements Platform {
         });
     }
 
+    
+
     async compileWithTurboC( sourceCode: string, filename: string) {
         
         // Convert line endings to DOS format (CRLF)
@@ -202,18 +204,10 @@ class X86DOSBoxPlatform implements Platform {
             await new Promise(resolve => setTimeout(resolve, 100));
             
             // Try to delete the file first if it exists
-            const filePath = `TC\\${filename}`;
+            const filePath = `\\TC\\${filename}`;
             console.log(`Creating/overwriting file: ${filePath}`);
-            
-            try {
-                // Try to delete existing file first
-                await this.fs.fs.unlink(filePath);
-                console.log(`Deleted existing file: ${filePath}`);
-            } catch (unlinkError) {
-                // File doesn't exist, that's fine
-                console.log(`File ${filePath} doesn't exist, will create new one`);
-            }
-            
+            await this.ci.shell('DEL ' + filePath);
+
             // Now create the file
             await this.fs.createFile(filePath, dosSourceCode);
             console.log(`✅ File created successfully: ${filePath}`);
