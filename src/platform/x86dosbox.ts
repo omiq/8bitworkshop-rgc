@@ -145,7 +145,7 @@ class X86DOSBoxPlatform implements Platform {
     getPresets(): any[] {
         return [
             { id: 'hellodos.c', name: 'Hello World (C)' },
-            { id: 'graphics.c', name: 'Graphics Demo (C)' },
+            { id: 'graphics.c', name: 'BGI Graphics Demo (C)' },
         ];
     }
 
