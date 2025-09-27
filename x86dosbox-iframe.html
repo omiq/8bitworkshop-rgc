@@ -77,6 +77,14 @@
                             isInitialized = true;
                             console.log("DOSBox ready with Turbo C available");
                             
+                            // Make important objects available globally for debugging
+                            window.ci = ci;
+                            window.dosInstance = dosInstance;
+                            window.fs = fs;
+                            window.main = main;
+                            
+                            console.log("Global objects available: window.ci, window.dosInstance, window.fs, window.main");
+                            
                             // Check if keypress simulation methods are available
                             console.log("DOSBox simulateKeyPress method available:", typeof dosInstance.simulateKeyPress === 'function');
                             console.log("DOSBox pause method available:", typeof dosInstance.pause === 'function');
