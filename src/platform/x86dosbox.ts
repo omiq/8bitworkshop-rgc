@@ -51,30 +51,26 @@ class X86DOSBoxPlatform implements Platform {
         
         // Add a global keyboard event listener to prevent DOSBox from capturing keys when it shouldn't
         document.addEventListener('keydown', (e) => {
-            if (!dosBoxHasFocus) {
-                // If DOSBox doesn't have focus, ensure it doesn't capture keyboard events
-                if (canvas.contains(document.activeElement)) {
-                    canvas.blur();
-                }
-                // Also try to pause the DOSBox instance to prevent it from processing keyboard input
-                if (self.dosInstance && self.dosInstance.api) {
-                    try {
-                        self.dosInstance.api.pauseMainLoop();
-                    } catch (error) {
-                        // Ignore errors
-                    }
-                }
-            } else {
-                // If DOSBox should have focus, make sure it's running
-                if (self.dosInstance && self.dosInstance.api) {
-                    try {
-                        self.dosInstance.api.resumeMainLoop();
-                    } catch (error) {
-                        // Ignore errors
-                    }
-                }
+            // Check if the editor is focused (CodeMirror editor)
+            const editor = document.querySelector('.CodeMirror-focused') || 
+                          document.querySelector('.CodeMirror') ||
+                          document.activeElement?.closest('.CodeMirror');
+            
+            if (!dosBoxHasFocus && editor) {
+                // If editor is focused and DOSBox doesn't have focus, block the event
+                e.stopPropagation();
+                e.preventDefault();
+                console.log("Blocked keyboard event from reaching DOSBox - editor has focus");
+                return;
             }
-        });
+            
+            if (!dosBoxHasFocus) {
+                // If DOSBox doesn't have focus, stop the event from reaching it
+                e.stopPropagation();
+                e.preventDefault();
+                console.log("Blocked keyboard event from reaching DOSBox");
+            }
+        }, true); // Use capture phase to intercept before js-dos
         
         // Add click handler to focus canvas only when clicked
         canvas.addEventListener('click', () => {
