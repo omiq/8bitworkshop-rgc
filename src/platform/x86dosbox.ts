@@ -38,6 +38,32 @@ class X86DOSBoxPlatform implements Platform {
         canvas.style.display = 'block';
         canvas.style.border = 'none';
         canvas.style.outline = 'none';
+        
+        // Prevent canvas from capturing focus automatically
+        canvas.tabIndex = -1;
+        canvas.style.pointerEvents = 'auto';
+        
+        // Add click handler to focus canvas only when clicked
+        canvas.addEventListener('click', () => {
+            canvas.focus();
+        });
+        
+        // Prevent canvas from stealing focus on page load
+        canvas.addEventListener('focus', (e) => {
+            // Only allow focus if canvas was explicitly clicked
+            if (!canvas.dataset.clicked) {
+                e.preventDefault();
+                canvas.blur();
+            }
+        });
+        
+        canvas.addEventListener('mousedown', () => {
+            canvas.dataset.clicked = 'true';
+            setTimeout(() => {
+                delete canvas.dataset.clicked;
+            }, 100);
+        });
+        
         this.mainElement.appendChild(canvas);
 
         console.log("Creating js-dos DOSBox instance...");
@@ -101,8 +127,11 @@ class X86DOSBoxPlatform implements Platform {
         await this.ci.shell('tcc -IC:\\TC\\INCLUDE -LC:\\TC\\LIB '+ ' c:\\tc\\' + filename);
         await this.ci.shell('c:\\tc\\' + filename.replace('.c', ''));
         
-
-
+        // Focus the canvas after compilation so user can interact with the running program
+        const canvas = document.getElementById('jsdos') as HTMLCanvasElement;
+        if (canvas) {
+            canvas.focus();
+        }
         
     }
 
@@ -196,9 +225,9 @@ class X86DOSBoxPlatform implements Platform {
 }
 
 const X86DOSBOX_PRESETS = [
-    {id:'hello.c', name:'Hello World (C)'},
+    {id:'hellodos.c', name:'Hello World (C)'},
     {id:'snake.c', name:'Snake Game (C)'},
-    {id:'mandelbrot.c', name:'Mandelbrot (C)'},
+   
 ];
 
 // Register the platform
