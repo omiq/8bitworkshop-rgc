@@ -46,6 +46,16 @@ class X86DOSBoxPlatform implements Platform {
         // Track whether DOSBox should accept keyboard input
         let dosBoxHasFocus = false;
         
+        // Add a global keyboard event listener to prevent DOSBox from capturing keys when it shouldn't
+        document.addEventListener('keydown', (e) => {
+            if (!dosBoxHasFocus) {
+                // If DOSBox doesn't have focus, ensure it doesn't capture keyboard events
+                if (canvas.contains(document.activeElement)) {
+                    canvas.blur();
+                }
+            }
+        });
+        
         // Add click handler to focus canvas only when clicked
         canvas.addEventListener('click', () => {
             canvas.focus();
@@ -167,17 +177,30 @@ class X86DOSBoxPlatform implements Platform {
         // Convert line endings to DOS format (CRLF)
         const dosSourceCode = sourceCode.replace(/\n/g, '\r\n');
         
-        await this.fs.createFile("\\TC\\"+filename, dosSourceCode);
-        await this.ci.shell('z:rescan');
-        await this.ci.shell('cd c:\\tc');
-        await this.ci.shell('tcc -IC:\\TC\\INCLUDE -LC:\\TC\\LIB '+ ' c:\\tc\\' + filename);
-        await this.ci.shell('c:\\tc\\' + filename.replace('.c', ''));
-        
-        // Focus the canvas after compilation so user can interact with the running program
-        const canvas = document.getElementById('jsdos') as HTMLCanvasElement;
-        if (canvas && (canvas as any).setDosBoxFocus) {
-            (canvas as any).setDosBoxFocus(true);
-            console.log("DOSBox focused after compilation - ready for user interaction");
+        try {
+            // Try to delete the file first if it exists to avoid conflicts
+            try {
+                await this.fs.fs.unlink("\\TC\\" + filename);
+                console.log(`Deleted existing file: \\TC\\${filename}`);
+            } catch (unlinkError) {
+                // File doesn't exist, that's fine
+                console.log(`File \\TC\\${filename} doesn't exist, creating new one`);
+            }
+            
+            await this.fs.createFile("\\TC\\"+filename, dosSourceCode);
+            await this.ci.shell('z:rescan');
+            await this.ci.shell('cd c:\\tc');
+            await this.ci.shell('tcc -IC:\\TC\\INCLUDE -LC:\\TC\\LIB '+ ' c:\\tc\\' + filename);
+            await this.ci.shell('c:\\tc\\' + filename.replace('.c', ''));
+            
+            // Focus the canvas after compilation so user can interact with the running program
+            const canvas = document.getElementById('jsdos') as HTMLCanvasElement;
+            if (canvas && (canvas as any).setDosBoxFocus) {
+                (canvas as any).setDosBoxFocus(true);
+                console.log("DOSBox focused after compilation - ready for user interaction");
+            }
+        } catch (error) {
+            console.error("Error during compilation:", error);
         }
         
     }
