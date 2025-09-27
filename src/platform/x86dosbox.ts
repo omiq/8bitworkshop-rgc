@@ -201,18 +201,22 @@ class X86DOSBoxPlatform implements Platform {
             // Add a small delay to ensure file system is ready
             await new Promise(resolve => setTimeout(resolve, 100));
             
-            // Try different file path formats
+            // Try to delete the file first if it exists
             const filePath = `TC\\${filename}`;
             console.log(`Creating/overwriting file: ${filePath}`);
             
             try {
-                await this.fs.createFile(filePath, dosSourceCode);
-                console.log(`✅ File created successfully: ${filePath}`);
-            } catch (createError) {
-                console.log(`Failed with TC/ path, trying \\TC\\ path`);
-                await this.fs.createFile("\\TC\\"+filename, dosSourceCode);
-                console.log(`✅ File created successfully: \\TC\\${filename}`);
+                // Try to delete existing file first
+                await this.fs.fs.unlink(filePath);
+                console.log(`Deleted existing file: ${filePath}`);
+            } catch (unlinkError) {
+                // File doesn't exist, that's fine
+                console.log(`File ${filePath} doesn't exist, will create new one`);
             }
+            
+            // Now create the file
+            await this.fs.createFile(filePath, dosSourceCode);
+            console.log(`✅ File created successfully: ${filePath}`);
             
             await this.ci.shell('z:rescan');
             await this.ci.shell('cd c:\\tc');
