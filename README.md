@@ -9,12 +9,43 @@ Hope you enjoy my version of the 8bitworkshop IDE!
 The main changes I have made are to attempt to add more target platforms, and to add more features. Most notable currently are the addition of the Commodore Vic20, the BBC Micro, and C64 BASIC.
 
 ### Recent Features
+- **x86 DOSBox Platform** - Full x86 DOS development environment with Turbo C compiler
 - **Auto-compile toggle** - Toggle automatic compilation on/off for smoother editing experience
 - **Manual build control** - Build and run programs on-demand when auto-compile is disabled
 - **Visual status indicator** - Clear "Auto-Compile: ON/OFF" caption with color coding
 - **Keyboard shortcuts** - Quick access via `Ctrl+Alt+C` (toggle) and `Ctrl+Alt+M` (manual build)
 
 Some elements are removed such as the Github integration, and the open source C64 ROMs were replaced with the original ones.
+
+## x86 DOSBox Platform
+
+The x86 DOSBox platform provides a complete DOS development environment within the 8bitworkshop IDE:
+
+### Features
+- **Turbo C Compiler** - Full Turbo C 2.01 development environment
+- **DOSBox Emulation** - Complete DOS 6.22 environment with file system
+- **Graphics Support** - BGI (Borland Graphics Interface) for graphics programming
+- **Auto-compilation** - Automatic compilation on file changes (toggleable)
+- **Real-time Execution** - Run compiled programs directly in the emulated DOS environment
+- **Debug Support** - Global access to js-dos objects for debugging
+
+### Usage
+1. Select "x86 (DOSBox)" platform from the platform dropdown
+2. Write C code using standard C libraries and BGI graphics functions
+3. Use the auto-compile toggle to control compilation behavior
+4. Run programs directly in the DOSBox environment
+5. Access debugging objects via browser console: `window.ci`, `window.dosInstance`, `window.fs`, `window.main`
+
+### Example Programs
+- **Hello World** (`hellodos.c`) - Basic console output
+- **Graphics Demo** (`graphics.c`) - BGI graphics programming examples
+
+### Technical Details
+- Uses js-dos for DOSBox emulation in an iframe
+- Turbo C compiler with full standard library support
+- BGI graphics library for DOS graphics programming
+- Cross-iframe communication for compilation and execution
+- Reliable stop/reset functionality via iframe reload
 
 --- 
 
@@ -134,6 +165,7 @@ unless a different license is explicitly stated within the specific code sample.
 * https://github.com/curiousdannii/ifvms.js/
 * https://6502ts.github.io/typedoc/stellerator-embedded/
 * https://github.com/yhzmr442/jspce
+* https://js-dos.com/ (DOSBox emulation for x86 platform)
 
 ### Compilers
 
@@ -149,6 +181,7 @@ unless a different license is explicitly stated within the specific code sample.
 * https://github.com/sylefeb/Silice
 * https://github.com/steux/cc7800
 * https://bellard.org/tcc/
+* Turbo C 2.01 (for x86 DOSBox platform)
 
 ### Assemblers/Linkers
 
