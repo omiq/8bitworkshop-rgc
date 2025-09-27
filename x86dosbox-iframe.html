@@ -103,9 +103,6 @@
                             }, '*');
                             
                             // Check if keypress simulation methods are available
-                            console.log("DOSBox simulateKeyPress method available:", typeof dosInstance.simulateKeyPress === 'function');
-                            console.log("DOSBox pause method available:", typeof dosInstance.pause === 'function');
-                            console.log("DOSBox resume method available:", typeof dosInstance.resume === 'function');
                             console.log("CI simulateKeyEvent method available:", typeof ci.simulateKeyEvent === 'function');
                             console.log("CI sendKeyPress method available:", typeof ci.sendKeyPress === 'function');
                             
@@ -244,39 +241,9 @@
                     break;
                     
                 case 'pause':
-                    if (ci && ci.simulateKeyEvent) {
-                        try {
-                            // Send ALT-PAUSE keypress to pause DOSBox (DOSBox special key)
-                            // Using correct SDL scancodes: LALT=226, PAUSE=72
-                            ci.simulateKeyEvent(226, true);  // SDL_SCANCODE_LALT down
-                            ci.simulateKeyEvent(72, true);   // SDL_SCANCODE_PAUSE down
-                            ci.simulateKeyEvent(72, false);  // SDL_SCANCODE_PAUSE up
-                            ci.simulateKeyEvent(226, false); // SDL_SCANCODE_LALT up
-                            console.log("DOSBox pause keypress sent (ALT-PAUSE) via ci.simulateKeyEvent with SDL scancodes");
-                        } catch (error) {
-                            console.error("Error sending pause keypress:", error);
-                        }
-                    } else {
-                        console.log("ci.simulateKeyEvent method not available");
-                    }
-                    break;
-                    
                 case 'resume':
-                    if (ci && ci.simulateKeyEvent) {
-                        try {
-                            // Send ALT-PAUSE keypress again to resume DOSBox (same key toggles pause/resume)
-                            // Using correct SDL scancodes: LALT=226, PAUSE=72
-                            ci.simulateKeyEvent(226, true);  // SDL_SCANCODE_LALT down
-                            ci.simulateKeyEvent(72, true);   // SDL_SCANCODE_PAUSE down
-                            ci.simulateKeyEvent(72, false);  // SDL_SCANCODE_PAUSE up
-                            ci.simulateKeyEvent(226, false); // SDL_SCANCODE_LALT up
-                            console.log("DOSBox resume keypress sent (ALT-PAUSE) via ci.simulateKeyEvent with SDL scancodes");
-                        } catch (error) {
-                            console.error("Error sending resume keypress:", error);
-                        }
-                    } else {
-                        console.log("ci.simulateKeyEvent method not available");
-                    }
+                    // Pause/resume functionality disabled for now - not essential
+                    console.log("Pause/Resume functionality disabled");
                     break;
                     
                 case 'stop':

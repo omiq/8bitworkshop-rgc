@@ -100,33 +100,13 @@ class X86DOSBoxPlatform implements Platform {
     }
 
     pause(): void {
-        if (!this.pauseResumeSupported) {
-            console.log("X86DOSBoxPlatform: Pause not supported by emulator");
-            return;
-        }
-        
-        console.log("X86DOSBoxPlatform pause() called");
-        // Send pause command to iframe emulator
-        const frame = document.getElementById("x86dosbox-iframe") as HTMLIFrameElement;
-        if (frame && frame.contentWindow) {
-            frame.contentWindow.postMessage({ type: 'pause' }, '*');
-            console.log("X86DOSBoxPlatform: Sent pause command to iframe");
-        }
+        // Pause functionality disabled for now - not essential
+        console.log("X86DOSBoxPlatform: Pause functionality disabled");
     }
 
     resume(): void {
-        if (!this.pauseResumeSupported) {
-            console.log("X86DOSBoxPlatform: Resume not supported by emulator");
-            return;
-        }
-        
-        console.log("X86DOSBoxPlatform resume() called");
-        // Send resume command to iframe emulator
-        const frame = document.getElementById("x86dosbox-iframe") as HTMLIFrameElement;
-        if (frame && frame.contentWindow) {
-            frame.contentWindow.postMessage({ type: 'resume' }, '*');
-            console.log("X86DOSBoxPlatform: Sent resume command to iframe");
-        }
+        // Resume functionality disabled for now - not essential
+        console.log("X86DOSBoxPlatform: Resume functionality disabled");
     }
 
     isRunning(): boolean {
@@ -203,20 +183,20 @@ class X86DOSBoxPlatform implements Platform {
     }
 
     private updateControlButtons(): void {
-        // Find the control buttons in the UI and show/hide them based on capability
+        // Disable pause/resume functionality for now - not essential
         const pauseButton = document.getElementById('dbg_pause') as HTMLElement;
         const resumeButton = document.getElementById('dbg_go') as HTMLElement;
         
         if (pauseButton) {
-            pauseButton.style.display = this.pauseResumeSupported ? 'inline-block' : 'none';
-            console.log("X86DOSBoxPlatform: Pause button visibility:", this.pauseResumeSupported ? 'visible' : 'hidden');
+            pauseButton.style.display = 'none'; // Always hide pause button
+            console.log("X86DOSBoxPlatform: Pause button disabled");
         } else {
             console.log("X86DOSBoxPlatform: Pause button not found");
         }
         
         if (resumeButton) {
-            resumeButton.style.display = this.pauseResumeSupported ? 'inline-block' : 'none';
-            console.log("X86DOSBoxPlatform: Resume button visibility:", this.pauseResumeSupported ? 'visible' : 'hidden');
+            resumeButton.style.display = 'none'; // Always hide resume button
+            console.log("X86DOSBoxPlatform: Resume button disabled");
         } else {
             console.log("X86DOSBoxPlatform: Resume button not found");
         }
