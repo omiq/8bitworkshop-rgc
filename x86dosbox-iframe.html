@@ -106,6 +106,8 @@
                             console.log("DOSBox simulateKeyPress method available:", typeof dosInstance.simulateKeyPress === 'function');
                             console.log("DOSBox pause method available:", typeof dosInstance.pause === 'function');
                             console.log("DOSBox resume method available:", typeof dosInstance.resume === 'function');
+                            console.log("CI simulateKeyEvent method available:", typeof ci.simulateKeyEvent === 'function');
+                            console.log("CI sendKeyPress method available:", typeof ci.sendKeyPress === 'function');
                             
                             // Check for other possible keypress methods
                             console.log("DOSBox methods:", Object.getOwnPropertyNames(dosInstance));
@@ -242,50 +244,56 @@
                     break;
                     
                 case 'pause':
-                    if (ci && ci.sendKeyPress) {
+                    if (ci && ci.simulateKeyEvent) {
                         try {
                             // Send ALT-PAUSE keypress to pause DOSBox (DOSBox special key)
                             // ALT key code is 18, PAUSE key code is 19
                             // We need to send the key combination for ALT-PAUSE
-                            ci.sendKeyPress(18); // ALT key
-                            ci.sendKeyPress(19); // PAUSE key
-                            console.log("DOSBox pause keypress sent (ALT-PAUSE) via ci.sendKeyPress");
+                            ci.simulateKeyEvent(18, true);  // ALT key down
+                            ci.simulateKeyEvent(19, true);  // PAUSE key down
+                            ci.simulateKeyEvent(19, false); // PAUSE key up
+                            ci.simulateKeyEvent(18, false); // ALT key up
+                            console.log("DOSBox pause keypress sent (ALT-PAUSE) via ci.simulateKeyEvent");
                         } catch (error) {
                             console.error("Error sending pause keypress:", error);
                         }
                     } else {
-                        console.log("ci.sendKeyPress method not available");
+                        console.log("ci.simulateKeyEvent method not available");
                     }
                     break;
                     
                 case 'resume':
-                    if (ci && ci.sendKeyPress) {
+                    if (ci && ci.simulateKeyEvent) {
                         try {
                             // Send ALT-PAUSE keypress again to resume DOSBox (same key toggles pause/resume)
-                            ci.sendKeyPress(18); // ALT key
-                            ci.sendKeyPress(19); // PAUSE key
-                            console.log("DOSBox resume keypress sent (ALT-PAUSE) via ci.sendKeyPress");
+                            ci.simulateKeyEvent(18, true);  // ALT key down
+                            ci.simulateKeyEvent(19, true);  // PAUSE key down
+                            ci.simulateKeyEvent(19, false); // PAUSE key up
+                            ci.simulateKeyEvent(18, false); // ALT key up
+                            console.log("DOSBox resume keypress sent (ALT-PAUSE) via ci.simulateKeyEvent");
                         } catch (error) {
                             console.error("Error sending resume keypress:", error);
                         }
                     } else {
-                        console.log("ci.sendKeyPress method not available");
+                        console.log("ci.simulateKeyEvent method not available");
                     }
                     break;
                     
                 case 'stop':
-                    if (ci && ci.sendKeyPress) {
+                    if (ci && ci.simulateKeyEvent) {
                         try {
                             // Send CTRL-F9 keypress to kill DOSBox (DOSBox special key)
                             // CTRL key code is 17, F9 key code is 120
-                            ci.sendKeyPress(17); // CTRL key
-                            ci.sendKeyPress(120); // F9 key
-                            console.log("DOSBox stop keypress sent (CTRL-F9) via ci.sendKeyPress");
+                            ci.simulateKeyEvent(17, true);  // CTRL key down
+                            ci.simulateKeyEvent(120, true); // F9 key down
+                            ci.simulateKeyEvent(120, false); // F9 key up
+                            ci.simulateKeyEvent(17, false); // CTRL key up
+                            console.log("DOSBox stop keypress sent (CTRL-F9) via ci.simulateKeyEvent");
                         } catch (error) {
                             console.error("Error sending stop keypress:", error);
                         }
                     } else {
-                        console.log("ci.sendKeyPress method not available for stop");
+                        console.log("ci.simulateKeyEvent method not available for stop");
                     }
                     break;
             }
