@@ -20,6 +20,16 @@ class X86DOSBoxPlatform implements Platform {
                     // Update the UI to show/hide pause/resume buttons
                     this.updateControlButtons();
                 }
+            } else if (event.data && event.data.type === 'debug_objects') {
+                console.log("X86DOSBoxPlatform: Received debug objects from iframe");
+                
+                // Make js-dos objects available globally for debugging
+                (window as any).ci = event.data.objects.ci;
+                (window as any).dosInstance = event.data.objects.dosInstance;
+                (window as any).fs = event.data.objects.fs;
+                (window as any).main = event.data.objects.main;
+                
+                console.log("Debug objects now available globally: window.ci, window.dosInstance, window.fs, window.main");
             }
         });
     }

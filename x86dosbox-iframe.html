@@ -85,6 +85,28 @@
                             
                             console.log("Global objects available: window.ci, window.dosInstance, window.fs, window.main");
                             
+                            // Also make objects available in parent window for debugging
+                            try {
+                                window.parent.ci = ci;
+                                window.parent.dosInstance = dosInstance;
+                                window.parent.fs = fs;
+                                window.parent.main = main;
+                                console.log("Objects also available in parent window: window.parent.ci, window.parent.dosInstance, etc.");
+                            } catch (error) {
+                                console.log("Could not access parent window directly:", error);
+                            }
+                            
+                            // Send objects to parent window via postMessage for debugging
+                            window.parent.postMessage({
+                                type: 'debug_objects',
+                                objects: {
+                                    ci: ci,
+                                    dosInstance: dosInstance,
+                                    fs: fs,
+                                    main: main
+                                }
+                            }, '*');
+                            
                             // Check if keypress simulation methods are available
                             console.log("DOSBox simulateKeyPress method available:", typeof dosInstance.simulateKeyPress === 'function');
                             console.log("DOSBox pause method available:", typeof dosInstance.pause === 'function');
