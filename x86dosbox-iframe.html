@@ -247,13 +247,12 @@
                     if (ci && ci.simulateKeyEvent) {
                         try {
                             // Send ALT-PAUSE keypress to pause DOSBox (DOSBox special key)
-                            // ALT key code is 18, PAUSE key code is 19
-                            // We need to send the key combination for ALT-PAUSE
-                            ci.simulateKeyEvent(18, true);  // ALT key down
-                            ci.simulateKeyEvent(19, true);  // PAUSE key down
-                            ci.simulateKeyEvent(19, false); // PAUSE key up
-                            ci.simulateKeyEvent(18, false); // ALT key up
-                            console.log("DOSBox pause keypress sent (ALT-PAUSE) via ci.simulateKeyEvent");
+                            // Using correct SDL scancodes: LALT=226, PAUSE=72
+                            ci.simulateKeyEvent(226, true);  // SDL_SCANCODE_LALT down
+                            ci.simulateKeyEvent(72, true);   // SDL_SCANCODE_PAUSE down
+                            ci.simulateKeyEvent(72, false);  // SDL_SCANCODE_PAUSE up
+                            ci.simulateKeyEvent(226, false); // SDL_SCANCODE_LALT up
+                            console.log("DOSBox pause keypress sent (ALT-PAUSE) via ci.simulateKeyEvent with SDL scancodes");
                         } catch (error) {
                             console.error("Error sending pause keypress:", error);
                         }
@@ -266,11 +265,12 @@
                     if (ci && ci.simulateKeyEvent) {
                         try {
                             // Send ALT-PAUSE keypress again to resume DOSBox (same key toggles pause/resume)
-                            ci.simulateKeyEvent(18, true);  // ALT key down
-                            ci.simulateKeyEvent(19, true);  // PAUSE key down
-                            ci.simulateKeyEvent(19, false); // PAUSE key up
-                            ci.simulateKeyEvent(18, false); // ALT key up
-                            console.log("DOSBox resume keypress sent (ALT-PAUSE) via ci.simulateKeyEvent");
+                            // Using correct SDL scancodes: LALT=226, PAUSE=72
+                            ci.simulateKeyEvent(226, true);  // SDL_SCANCODE_LALT down
+                            ci.simulateKeyEvent(72, true);   // SDL_SCANCODE_PAUSE down
+                            ci.simulateKeyEvent(72, false);  // SDL_SCANCODE_PAUSE up
+                            ci.simulateKeyEvent(226, false); // SDL_SCANCODE_LALT up
+                            console.log("DOSBox resume keypress sent (ALT-PAUSE) via ci.simulateKeyEvent with SDL scancodes");
                         } catch (error) {
                             console.error("Error sending resume keypress:", error);
                         }
@@ -283,12 +283,12 @@
                     if (ci && ci.simulateKeyEvent) {
                         try {
                             // Send CTRL-F9 keypress to kill DOSBox (DOSBox special key)
-                            // CTRL key code is 17, F9 key code is 120
-                            ci.simulateKeyEvent(17, true);  // CTRL key down
-                            ci.simulateKeyEvent(120, true); // F9 key down
-                            ci.simulateKeyEvent(120, false); // F9 key up
-                            ci.simulateKeyEvent(17, false); // CTRL key up
-                            console.log("DOSBox stop keypress sent (CTRL-F9) via ci.simulateKeyEvent");
+                            // Using correct SDL scancodes: LCTRL=224, F9=67
+                            ci.simulateKeyEvent(224, true);  // SDL_SCANCODE_LCTRL down
+                            ci.simulateKeyEvent(67, true);   // SDL_SCANCODE_F9 down
+                            ci.simulateKeyEvent(67, false);  // SDL_SCANCODE_F9 up
+                            ci.simulateKeyEvent(224, false); // SDL_SCANCODE_LCTRL up
+                            console.log("DOSBox stop keypress sent (CTRL-F9) via ci.simulateKeyEvent with SDL scancodes");
                         } catch (error) {
                             console.error("Error sending stop keypress:", error);
                         }
