@@ -82,6 +82,15 @@
                             console.log("DOSBox pause method available:", typeof dosInstance.pause === 'function');
                             console.log("DOSBox resume method available:", typeof dosInstance.resume === 'function');
                             
+                            // Check for other possible keypress methods
+                            console.log("DOSBox methods:", Object.getOwnPropertyNames(dosInstance));
+                            console.log("DOSBox prototype methods:", Object.getOwnPropertyNames(Object.getPrototypeOf(dosInstance)));
+                            
+                            // Check if there's a keyboard or input method
+                            if (dosInstance.keyboard) {
+                                console.log("DOSBox keyboard methods:", Object.getOwnPropertyNames(dosInstance.keyboard));
+                            }
+                            
                             // Notify parent window that emulator is ready
                             window.parent.postMessage({
                                 type: 'emulator_capabilities',
@@ -208,6 +217,7 @@
                     break;
                     
                 case 'pause':
+                    // Try multiple approaches to pause DOSBox
                     if (dosInstance && dosInstance.simulateKeyPress) {
                         try {
                             // Send ALT-PAUSE keypress to pause DOSBox (DOSBox special key)
@@ -219,12 +229,23 @@
                         } catch (error) {
                             console.error("Error sending pause keypress:", error);
                         }
+                    } else if (dosInstance && dosInstance.pause) {
+                        try {
+                            // Try the pause method if available
+                            dosInstance.pause();
+                            console.log("DOSBox paused using pause() method");
+                        } catch (error) {
+                            console.error("Error using pause() method:", error);
+                        }
                     } else {
-                        console.log("simulateKeyPress method not available");
+                        console.log("No pause method available - trying to find alternative");
+                        // Log available methods for debugging
+                        console.log("Available dosInstance methods:", Object.getOwnPropertyNames(dosInstance));
                     }
                     break;
                     
                 case 'resume':
+                    // Try multiple approaches to resume DOSBox
                     if (dosInstance && dosInstance.simulateKeyPress) {
                         try {
                             // Send ALT-PAUSE keypress again to resume DOSBox (same key toggles pause/resume)
@@ -236,8 +257,18 @@
                         } catch (error) {
                             console.error("Error sending resume keypress:", error);
                         }
+                    } else if (dosInstance && dosInstance.resume) {
+                        try {
+                            // Try the resume method if available
+                            dosInstance.resume();
+                            console.log("DOSBox resumed using resume() method");
+                        } catch (error) {
+                            console.error("Error using resume() method:", error);
+                        }
                     } else {
-                        console.log("simulateKeyPress method not available");
+                        console.log("No resume method available - trying to find alternative");
+                        // Log available methods for debugging
+                        console.log("Available dosInstance methods:", Object.getOwnPropertyNames(dosInstance));
                     }
                     break;
                     
