@@ -173,6 +173,11 @@
         
         // Listen for messages from parent window
         window.addEventListener('message', (event) => {
+            // Filter out sync messages to reduce console spam
+            if (event.data && event.data.type === 'sync_sleep_message') {
+                return;
+            }
+            
             console.log("Received message from parent:", event.data);
             
             // Only process messages if emulator is initialized

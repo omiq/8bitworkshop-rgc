@@ -40,6 +40,9 @@ class X86DOSBoxPlatform implements Platform {
     async start(): Promise<void> {
         console.log("X86DOSBoxPlatform start() called - using iframe approach");
         
+        // Set up compilation listener immediately
+        this.setupCompilationListener();
+        
         // Initially hide pause/resume buttons until we know if they're supported
         this.pauseResumeSupported = false;
         setTimeout(() => this.updateControlButtons(), 100);
@@ -239,9 +242,6 @@ class X86DOSBoxPlatform implements Platform {
     private async triggerCompilationAndReload() {
         console.log("X86DOSBoxPlatform: Triggering compilation and reload");
         
-        // Set up a one-time compilation listener
-        this.setupCompilationListener();
-        
         // Check for worker availability with retry
         const checkWorkerAndCompile = () => {
             const worker = (window as any).worker;
@@ -310,6 +310,7 @@ class X86DOSBoxPlatform implements Platform {
             
             console.log("X86DOSBoxPlatform: Compilation output received - autoCompileEnabled:", autoCompileEnabled, "isManualCompilation:", isManualCompilation);
             console.log("X86DOSBoxPlatform: Raw autoCompileEnabled value:", (window as any).autoCompileEnabled);
+            console.log("X86DOSBoxPlatform: Output type:", typeof output, "is Uint8Array:", output instanceof Uint8Array);
             
             if (output && output instanceof Uint8Array && (autoCompileEnabled || isManualCompilation)) {
                 console.log("X86DOSBoxPlatform: Compilation completed, sending program to iframe");

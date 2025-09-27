@@ -93,6 +93,7 @@ export class CodeProject {
   segments : Segment[];
   mainPath : string;
   pendingWorkerMessages = 0;
+  hasDoneInitialCompilation = false;
   tools_preloaded = {};
   worker : Worker;
   platform_id : string;
@@ -127,6 +128,7 @@ export class CodeProject {
       if (!this.isCompiling) { console.log(this.pendingWorkerMessages); console.trace(); } // debug compile problems
       this.isCompiling = false;
       this.pendingWorkerMessages = 0;
+      this.hasDoneInitialCompilation = true; // Mark that we've done the initial compilation
     }
     if (data && isOutputResult(data)) {
       this.processBuildResult(data);
@@ -258,10 +260,16 @@ export class CodeProject {
 
   okToSend():boolean {
     // Check if auto-compile is enabled (access global variable from ui.ts)
-    // Allow initial compilation even when auto-compile is disabled
     const autoCompileEnabled = (window as any).autoCompileEnabled === true;
-    const isInitialCompilation = this.pendingWorkerMessages === 0;
-    return this.pendingWorkerMessages++ == 0 && this.mainPath != null && (autoCompileEnabled || isInitialCompilation);
+    const isInitialCompilation = !this.hasDoneInitialCompilation;
+    
+    // Only proceed if we have a main path and either auto-compile is enabled OR this is the initial compilation
+    if (this.mainPath != null && (autoCompileEnabled || isInitialCompilation)) {
+      // Increment the counter and return true only if it was 0 (first call)
+      return this.pendingWorkerMessages++ == 0;
+    }
+    
+    return false;
   }
 
   updateFileInStore(path:string, text:FileData) {
