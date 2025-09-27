@@ -43,9 +43,14 @@ class X86DOSBoxPlatform implements Platform {
         canvas.tabIndex = -1;
         canvas.style.pointerEvents = 'auto';
         
+        // Track whether DOSBox should accept keyboard input
+        let dosBoxHasFocus = false;
+        
         // Add click handler to focus canvas only when clicked
         canvas.addEventListener('click', () => {
             canvas.focus();
+            dosBoxHasFocus = true;
+            console.log("DOSBox now has focus - keyboard input enabled");
         });
         
         // Prevent canvas from stealing focus on page load
@@ -54,6 +59,7 @@ class X86DOSBoxPlatform implements Platform {
             if (!canvas.dataset.clicked) {
                 e.preventDefault();
                 canvas.blur();
+                dosBoxHasFocus = false;
             }
         });
         
@@ -63,6 +69,40 @@ class X86DOSBoxPlatform implements Platform {
                 delete canvas.dataset.clicked;
             }, 100);
         });
+        
+        // Intercept keyboard events and block them when DOSBox shouldn't have focus
+        document.addEventListener('keydown', (e) => {
+            if (!dosBoxHasFocus) {
+                // If DOSBox shouldn't have focus, prevent it from receiving keyboard input
+                if (canvas.contains(document.activeElement)) {
+                    canvas.blur();
+                }
+                // Stop propagation to prevent js-dos from handling the event
+                e.stopPropagation();
+            }
+        }, true); // Use capture phase to intercept before js-dos
+        
+        // Store the focus state for later use
+        (canvas as any).dosBoxHasFocus = () => dosBoxHasFocus;
+        (canvas as any).setDosBoxFocus = (focus: boolean) => {
+            dosBoxHasFocus = focus;
+            if (focus) {
+                canvas.focus();
+                console.log("DOSBox keyboard input ENABLED");
+            } else {
+                canvas.blur();
+                console.log("DOSBox keyboard input DISABLED");
+            }
+        };
+        
+        // Add a global function to toggle DOSBox focus
+        (window as any).toggleDosBoxFocus = () => {
+            const canvas = document.getElementById('jsdos') as HTMLCanvasElement;
+            if (canvas && (canvas as any).setDosBoxFocus) {
+                const currentFocus = (canvas as any).dosBoxHasFocus();
+                (canvas as any).setDosBoxFocus(!currentFocus);
+            }
+        };
         
         this.mainElement.appendChild(canvas);
 
@@ -129,8 +169,9 @@ class X86DOSBoxPlatform implements Platform {
         
         // Focus the canvas after compilation so user can interact with the running program
         const canvas = document.getElementById('jsdos') as HTMLCanvasElement;
-        if (canvas) {
-            canvas.focus();
+        if (canvas && (canvas as any).setDosBoxFocus) {
+            (canvas as any).setDosBoxFocus(true);
+            console.log("DOSBox focused after compilation - ready for user interaction");
         }
         
     }
