@@ -77,6 +77,10 @@
                             isInitialized = true;
                             console.log("DOSBox ready with Turbo C available");
                             
+                            // Check if pause/resume methods are available
+                            console.log("DOSBox pause method available:", typeof dosInstance.pause === 'function');
+                            console.log("DOSBox resume method available:", typeof dosInstance.resume === 'function');
+                            
                             // Notify parent window that emulator is ready
                             window.parent.postMessage({
                                 type: 'emulator_capabilities',
@@ -203,9 +207,11 @@
                     break;
                     
                 case 'pause':
-                    if (dosInstance && dosInstance.api) {
+                    if (dosInstance) {
                         try {
-                            dosInstance.api.pauseMainLoop();
+                            // Use the correct js-dos API method for pausing
+                            dosInstance.pause();
+                            console.log("DOSBox paused successfully");
                         } catch (error) {
                             console.error("Error pausing:", error);
                         }
@@ -213,9 +219,11 @@
                     break;
                     
                 case 'resume':
-                    if (dosInstance && dosInstance.api) {
+                    if (dosInstance) {
                         try {
-                            dosInstance.api.resumeMainLoop();
+                            // Use the correct js-dos API method for resuming
+                            dosInstance.resume();
+                            console.log("DOSBox resumed successfully");
                         } catch (error) {
                             console.error("Error resuming:", error);
                         }
@@ -223,9 +231,11 @@
                     break;
                     
                 case 'stop':
-                    if (dosInstance && dosInstance.api) {
+                    if (dosInstance) {
                         try {
-                            dosInstance.api.pauseMainLoop();
+                            // Use the correct js-dos API method for stopping
+                            dosInstance.pause();
+                            console.log("DOSBox stopped successfully");
                         } catch (error) {
                             console.error("Error stopping:", error);
                         }
