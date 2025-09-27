@@ -77,7 +77,8 @@
                             isInitialized = true;
                             console.log("DOSBox ready with Turbo C available");
                             
-                            // Check if pause/resume methods are available
+                            // Check if keypress simulation methods are available
+                            console.log("DOSBox simulateKeyPress method available:", typeof dosInstance.simulateKeyPress === 'function');
                             console.log("DOSBox pause method available:", typeof dosInstance.pause === 'function');
                             console.log("DOSBox resume method available:", typeof dosInstance.resume === 'function');
                             
@@ -207,38 +208,53 @@
                     break;
                     
                 case 'pause':
-                    if (dosInstance) {
+                    if (dosInstance && dosInstance.simulateKeyPress) {
                         try {
-                            // Use the correct js-dos API method for pausing
-                            dosInstance.pause();
-                            console.log("DOSBox paused successfully");
+                            // Send ALT-PAUSE keypress to pause DOSBox (DOSBox special key)
+                            dosInstance.simulateKeyPress(18, 0); // ALT key down
+                            dosInstance.simulateKeyPress(19, 0); // PAUSE key down
+                            dosInstance.simulateKeyPress(19, 1); // PAUSE key up
+                            dosInstance.simulateKeyPress(18, 1); // ALT key up
+                            console.log("DOSBox pause keypress sent (ALT-PAUSE)");
                         } catch (error) {
-                            console.error("Error pausing:", error);
+                            console.error("Error sending pause keypress:", error);
                         }
+                    } else {
+                        console.log("simulateKeyPress method not available");
                     }
                     break;
                     
                 case 'resume':
-                    if (dosInstance) {
+                    if (dosInstance && dosInstance.simulateKeyPress) {
                         try {
-                            // Use the correct js-dos API method for resuming
-                            dosInstance.resume();
-                            console.log("DOSBox resumed successfully");
+                            // Send ALT-PAUSE keypress again to resume DOSBox (same key toggles pause/resume)
+                            dosInstance.simulateKeyPress(18, 0); // ALT key down
+                            dosInstance.simulateKeyPress(19, 0); // PAUSE key down
+                            dosInstance.simulateKeyPress(19, 1); // PAUSE key up
+                            dosInstance.simulateKeyPress(18, 1); // ALT key up
+                            console.log("DOSBox resume keypress sent (ALT-PAUSE)");
                         } catch (error) {
-                            console.error("Error resuming:", error);
+                            console.error("Error sending resume keypress:", error);
                         }
+                    } else {
+                        console.log("simulateKeyPress method not available");
                     }
                     break;
                     
                 case 'stop':
-                    if (dosInstance) {
+                    if (dosInstance && dosInstance.simulateKeyPress) {
                         try {
-                            // Use the correct js-dos API method for stopping
-                            dosInstance.pause();
-                            console.log("DOSBox stopped successfully");
+                            // Send CTRL-F9 keypress to kill DOSBox (DOSBox special key)
+                            dosInstance.simulateKeyPress(17, 0); // CTRL key down
+                            dosInstance.simulateKeyPress(120, 0); // F9 key down
+                            dosInstance.simulateKeyPress(120, 1); // F9 key up
+                            dosInstance.simulateKeyPress(17, 1); // CTRL key up
+                            console.log("DOSBox stop keypress sent (CTRL-F9)");
                         } catch (error) {
-                            console.error("Error stopping:", error);
+                            console.error("Error sending stop keypress:", error);
                         }
+                    } else {
+                        console.log("simulateKeyPress method not available for stop");
                     }
                     break;
             }
