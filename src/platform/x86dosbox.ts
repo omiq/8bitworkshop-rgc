@@ -202,7 +202,7 @@ class X86DOSBoxPlatform implements Platform {
             await new Promise(resolve => setTimeout(resolve, 100));
             
             // Try different file path formats
-            const filePath = `TC/${filename}`;
+            const filePath = `TC\\${filename}`;
             console.log(`Creating/overwriting file: ${filePath}`);
             
             try {
