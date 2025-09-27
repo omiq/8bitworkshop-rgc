@@ -198,16 +198,22 @@ class X86DOSBoxPlatform implements Platform {
         const dosSourceCode = sourceCode.replace(/\n/g, '\r\n');
         
         try {
-            // Try to delete the file first if it exists to avoid conflicts
+            // Add a small delay to ensure file system is ready
+            await new Promise(resolve => setTimeout(resolve, 100));
+            
+            // Try different file path formats
+            const filePath = `TC/${filename}`;
+            console.log(`Creating/overwriting file: ${filePath}`);
+            
             try {
-                await this.fs.fs.unlink("\\TC\\" + filename);
-                console.log(`Deleted existing file: \\TC\\${filename}`);
-            } catch (unlinkError) {
-                // File doesn't exist, that's fine
-                console.log(`File \\TC\\${filename} doesn't exist, creating new one`);
+                await this.fs.createFile(filePath, dosSourceCode);
+                console.log(`✅ File created successfully: ${filePath}`);
+            } catch (createError) {
+                console.log(`Failed with TC/ path, trying \\TC\\ path`);
+                await this.fs.createFile("\\TC\\"+filename, dosSourceCode);
+                console.log(`✅ File created successfully: \\TC\\${filename}`);
             }
             
-            await this.fs.createFile("\\TC\\"+filename, dosSourceCode);
             await this.ci.shell('z:rescan');
             await this.ci.shell('cd c:\\tc');
             await this.ci.shell('tcc -IC:\\TC\\INCLUDE -LC:\\TC\\LIB '+ ' c:\\tc\\' + filename);
