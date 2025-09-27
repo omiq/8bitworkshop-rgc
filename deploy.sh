@@ -82,6 +82,13 @@ cp -r presets "$STAGING_DIR/"
 # Resources (WASM files, emulators, etc.)
 cp -r res "$STAGING_DIR/"
 
+# Ensure TC.zip is included for x86 DOSBox platform
+if [ -f "res/TC.zip" ]; then
+    echo "✅ Found TC.zip for x86 DOSBox platform"
+else
+    echo "⚠️  Warning: TC.zip not found - x86 DOSBox platform may not work"
+fi
+
 # Images and static assets
 cp -r images "$STAGING_DIR/"
 
@@ -114,6 +121,29 @@ cp *.js "$STAGING_DIR/" 2>/dev/null || true
 # x86 DOSBox platform files
 cp js-dos.js "$STAGING_DIR/" 2>/dev/null || true
 cp wdosbox.js "$STAGING_DIR/" 2>/dev/null || true
+
+# Verify x86 DOSBox platform files
+echo "🔍 Verifying x86 DOSBox platform files..."
+if [ -f "$STAGING_DIR/x86dosbox-iframe.html" ]; then
+    echo "✅ x86dosbox-iframe.html"
+else
+    echo "❌ Missing: x86dosbox-iframe.html"
+fi
+if [ -f "$STAGING_DIR/js-dos.js" ]; then
+    echo "✅ js-dos.js"
+else
+    echo "❌ Missing: js-dos.js"
+fi
+if [ -f "$STAGING_DIR/wdosbox.js" ]; then
+    echo "✅ wdosbox.js"
+else
+    echo "❌ Missing: wdosbox.js"
+fi
+if [ -f "$STAGING_DIR/res/TC.zip" ]; then
+    echo "✅ res/TC.zip"
+else
+    echo "❌ Missing: res/TC.zip"
+fi
 
 # PHP files for BBC BASIC program loading
 cp *.php "$STAGING_DIR/" 2>/dev/null || true
