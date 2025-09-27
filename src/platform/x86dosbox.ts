@@ -70,17 +70,14 @@ class X86DOSBoxPlatform implements Platform {
             }, 100);
         });
         
-        // Intercept keyboard events and block them when DOSBox shouldn't have focus
-        document.addEventListener('keydown', (e) => {
-            if (!dosBoxHasFocus) {
-                // If DOSBox shouldn't have focus, prevent it from receiving keyboard input
-                if (canvas.contains(document.activeElement)) {
-                    canvas.blur();
-                }
-                // Stop propagation to prevent js-dos from handling the event
-                e.stopPropagation();
+        // Add focus event listener to the canvas to manage focus state
+        canvas.addEventListener('blur', () => {
+            // When canvas loses focus, disable DOSBox keyboard input
+            if (dosBoxHasFocus) {
+                dosBoxHasFocus = false;
+                console.log("DOSBox lost focus - keyboard input DISABLED");
             }
-        }, true); // Use capture phase to intercept before js-dos
+        });
         
         // Store the focus state for later use
         (canvas as any).dosBoxHasFocus = () => dosBoxHasFocus;
@@ -103,6 +100,15 @@ class X86DOSBoxPlatform implements Platform {
                 (canvas as any).setDosBoxFocus(!currentFocus);
             }
         };
+        
+        // Add click listener to document to disable DOSBox focus when clicking elsewhere
+        document.addEventListener('click', (e) => {
+            if (!canvas.contains(e.target as Node) && dosBoxHasFocus) {
+                dosBoxHasFocus = false;
+                canvas.blur();
+                console.log("Clicked outside DOSBox - keyboard input DISABLED");
+            }
+        });
         
         this.mainElement.appendChild(canvas);
 
