@@ -162,7 +162,7 @@
                 // Compile and run
                 await ci.shell('z:rescan');
                 await ci.shell('cd c:\\tc');
-                await ci.shell('tcc -IC:\\TC\\INCLUDE -LC:\\TC\\LIB c:\\tc\\' + filename);
+                await ci.shell('tcc -IC:\\TC\\INCLUDE -LC:\\TC\\LIB c:\\tc\\' + filename + ' graphics.lib');
                 await ci.shell('c:\\tc\\' + filename.replace('.c', ''));
                 
                 console.log("Program compiled and executed successfully");
