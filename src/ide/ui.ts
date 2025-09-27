@@ -1411,7 +1411,13 @@ function toggleAutoCompile() {
 function manualBuildAndRun() {
   if (current_project && current_project.mainPath) {
     console.log("Manual build and run triggered");
+    // Set flag to indicate this is a manual compilation
+    (window as any).isManualCompilation = true;
     current_project.sendBuild();
+    // Reset the flag after a short delay
+    setTimeout(() => {
+      (window as any).isManualCompilation = false;
+    }, 1000);
   }
 }
 

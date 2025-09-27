@@ -46,14 +46,10 @@ class X86DOSBoxPlatform implements Platform {
         // Track whether DOSBox should accept keyboard input
         let dosBoxHasFocus = false;
         
-        // Explicitly disable DOSBox keyboard input by default
-        canvas.style.pointerEvents = 'none';
-        
         // Add click handler to focus canvas only when clicked
         canvas.addEventListener('click', () => {
             canvas.focus();
             dosBoxHasFocus = true;
-            canvas.style.pointerEvents = 'auto';
             console.log("DOSBox now has focus - keyboard input enabled");
         });
         
@@ -89,11 +85,9 @@ class X86DOSBoxPlatform implements Platform {
             dosBoxHasFocus = focus;
             if (focus) {
                 canvas.focus();
-                canvas.style.pointerEvents = 'auto';
                 console.log("DOSBox keyboard input ENABLED");
             } else {
                 canvas.blur();
-                canvas.style.pointerEvents = 'none';
                 console.log("DOSBox keyboard input DISABLED");
             }
         };
@@ -112,7 +106,6 @@ class X86DOSBoxPlatform implements Platform {
             if (!canvas.contains(e.target as Node) && dosBoxHasFocus) {
                 dosBoxHasFocus = false;
                 canvas.blur();
-                canvas.style.pointerEvents = 'none';
                 console.log("Clicked outside DOSBox - keyboard input DISABLED");
             }
         });
@@ -234,7 +227,12 @@ class X86DOSBoxPlatform implements Platform {
         const autoCompileEnabled = (window as any).autoCompileEnabled;
         console.log("Auto-compile enabled:", autoCompileEnabled);
         
-        if (this.ci && rom && rom.length > 0 && autoCompileEnabled) {
+        // Check if this is a manual compilation (triggered by play button)
+        const isManualCompilation = (window as any).isManualCompilation || false;
+        console.log("Manual compilation:", isManualCompilation);
+        
+        // Compile if auto-compile is enabled OR if this is a manual compilation
+        if (this.ci && rom && rom.length > 0 && (autoCompileEnabled || isManualCompilation)) {
             // Get the source code from the current project
             const sourceCode = new TextDecoder().decode(rom);
             
@@ -260,7 +258,7 @@ class X86DOSBoxPlatform implements Platform {
             // Compile and run the C program
             this.compileWithTurboC(sourceCode, filename);
         } else {
-            console.log("loadROM conditions not met - ci:", !!this.ci, "rom length:", rom ? rom.length : "null", "auto-compile:", autoCompileEnabled);
+            console.log("loadROM conditions not met - ci:", !!this.ci, "rom length:", rom ? rom.length : "null", "auto-compile:", autoCompileEnabled, "manual:", isManualCompilation);
         }
     }
 
