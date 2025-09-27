@@ -120,17 +120,16 @@
         }
         
         // Load a program into the emulator
-        function loadProgram(programData) {
+        function loadProgram(programData, filename = 'program.c') {
             if (!fs || !ci) {
                 console.error("Emulator not ready yet");
                 return;
             }
             
-            console.log("Loading program:", programData);
+            console.log("Loading program:", programData, "with filename:", filename);
             
             // Convert program data to source code
             const sourceCode = new TextDecoder().decode(programData);
-            const filename = 'program.c';
             
             // Compile and run the program
             compileWithTurboC(sourceCode, filename);
@@ -185,7 +184,8 @@
             switch (event.data.type) {
                 case 'compiled_program':
                     if (event.data.program && fs && ci) {
-                        loadProgram(event.data.program);
+                        const filename = event.data.filename || 'program.c';
+                        loadProgram(event.data.program, filename);
                     } else {
                         console.log("Cannot load program - emulator not ready");
                     }

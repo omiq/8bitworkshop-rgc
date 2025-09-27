@@ -155,10 +155,25 @@ class X86DOSBoxPlatform implements Platform {
             if (rom && rom.length > 0) {
                 console.log("X86DOSBoxPlatform: C program detected, sending via postMessage");
                 
+                // Extract the actual filename from the title or get it from the current project
+                let filename = 'program.c';
+                if (title && title.endsWith('.c')) {
+                    filename = title;
+                } else {
+                    // Try to get the current main filename
+                    const currentFilename = (window as any).IDE?.getCurrentMainFilename?.();
+                    if (currentFilename && currentFilename.endsWith('.c')) {
+                        filename = currentFilename;
+                    }
+                }
+                
+                console.log("X86DOSBoxPlatform: Using filename:", filename);
+                
                 // Don't reload the iframe - just send the program data
                 frame.contentWindow.postMessage({
                     type: 'compiled_program',
                     program: rom,
+                    filename: filename,
                     autoLoad: true
                 }, '*');
             } else {
@@ -204,14 +219,20 @@ class X86DOSBoxPlatform implements Platform {
     private async setupIframeWithAutoCompilation() {
         console.log("X86DOSBoxPlatform: Setting up iframe with auto-compilation");
         
+        // Check if auto-compile is enabled
+        const autoCompileEnabled = (window as any).autoCompileEnabled === true;
+        console.log("X86DOSBoxPlatform: Auto-compile enabled:", autoCompileEnabled);
+        
         // Check if we have a compiled program
         const output = (window as any).IDE?.getCurrentOutput();
         if (output && output instanceof Uint8Array) {
             console.log("X86DOSBoxPlatform: Found compiled program, loading iframe");
             this.loadROM("compiled_program", output);
-        } else {
+        } else if (autoCompileEnabled) {
             console.log("X86DOSBoxPlatform: No compiled program found, triggering compilation");
             await this.triggerCompilationAndReload();
+        } else {
+            console.log("X86DOSBoxPlatform: Auto-compile disabled, not triggering initial compilation");
         }
     }
 
@@ -284,10 +305,11 @@ class X86DOSBoxPlatform implements Platform {
             }
             
             // Check if auto-compile is enabled before processing output
-            const autoCompileEnabled = (window as any).autoCompileEnabled !== false;
+            const autoCompileEnabled = (window as any).autoCompileEnabled === true;
             const isManualCompilation = (window as any).isManualCompilation === true;
             
             console.log("X86DOSBoxPlatform: Compilation output received - autoCompileEnabled:", autoCompileEnabled, "isManualCompilation:", isManualCompilation);
+            console.log("X86DOSBoxPlatform: Raw autoCompileEnabled value:", (window as any).autoCompileEnabled);
             
             if (output && output instanceof Uint8Array && (autoCompileEnabled || isManualCompilation)) {
                 console.log("X86DOSBoxPlatform: Compilation completed, sending program to iframe");
