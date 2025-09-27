@@ -46,12 +46,32 @@ class X86DOSBoxPlatform implements Platform {
         // Track whether DOSBox should accept keyboard input
         let dosBoxHasFocus = false;
         
+        // Store reference to this for use in event listeners
+        const self = this;
+        
         // Add a global keyboard event listener to prevent DOSBox from capturing keys when it shouldn't
         document.addEventListener('keydown', (e) => {
             if (!dosBoxHasFocus) {
                 // If DOSBox doesn't have focus, ensure it doesn't capture keyboard events
                 if (canvas.contains(document.activeElement)) {
                     canvas.blur();
+                }
+                // Also try to pause the DOSBox instance to prevent it from processing keyboard input
+                if (self.dosInstance && self.dosInstance.api) {
+                    try {
+                        self.dosInstance.api.pauseMainLoop();
+                    } catch (error) {
+                        // Ignore errors
+                    }
+                }
+            } else {
+                // If DOSBox should have focus, make sure it's running
+                if (self.dosInstance && self.dosInstance.api) {
+                    try {
+                        self.dosInstance.api.resumeMainLoop();
+                    } catch (error) {
+                        // Ignore errors
+                    }
                 }
             }
         });
