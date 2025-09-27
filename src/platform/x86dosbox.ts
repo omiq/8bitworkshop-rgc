@@ -44,18 +44,28 @@ class X86DOSBoxPlatform implements Platform {
         this.pauseResumeSupported = false;
         setTimeout(() => this.updateControlButtons(), 100);
         
-        // Create iframe for DOSBox emulator
-        const iframe = document.createElement('iframe');
-        iframe.id = 'x86dosbox-iframe';
-        iframe.style.width = '100%';
-        iframe.style.height = '600px';
-        iframe.style.border = '1px solid #ccc';
-        iframe.style.backgroundColor = '#000';
+        // Check if iframe already exists
+        let iframe = document.getElementById("x86dosbox-iframe") as HTMLIFrameElement;
         
-        // Add iframe to the main element
-        this.mainElement.innerHTML = '';
-        this.mainElement.appendChild(iframe);
-        console.log("X86DOSBoxPlatform: iframe created, setting up with auto-compilation");
+        if (!iframe) {
+            // Create iframe for DOSBox emulator
+            iframe = document.createElement('iframe');
+            iframe.id = 'x86dosbox-iframe';
+            iframe.style.width = '100%';
+            iframe.style.height = '600px';
+            iframe.style.border = '1px solid #ccc';
+            iframe.style.backgroundColor = '#000';
+            
+            // Add iframe to the main element
+            this.mainElement.innerHTML = '';
+            this.mainElement.appendChild(iframe);
+            console.log("X86DOSBoxPlatform: iframe created");
+            
+            // Load the iframe content
+            iframe.src = 'x86dosbox-iframe.html';
+        } else {
+            console.log("X86DOSBoxPlatform: iframe already exists, reusing");
+        }
         
         // Set up iframe with auto-compilation (async)
         this.setupIframeWithAutoCompilation().catch(error => {
@@ -143,24 +153,14 @@ class X86DOSBoxPlatform implements Platform {
         if (frame && frame.contentWindow) {
             // Check if this is a C program
             if (rom && rom.length > 0) {
-                console.log("X86DOSBoxPlatform: C program detected, using postMessage");
+                console.log("X86DOSBoxPlatform: C program detected, sending via postMessage");
                 
-                // Load the iframe with just the base URL
-                const baseURL = 'x86dosbox-iframe.html?t=' + Date.now();
-                frame.src = baseURL;
-                
-                // Set up a one-time load event listener
-                const onLoad = () => {
-                    console.log("X86DOSBoxPlatform: iframe loaded, sending program via postMessage");
-                    // Send the program data via postMessage
-                    frame.contentWindow!.postMessage({
-                        type: 'compiled_program',
-                        program: rom,
-                        autoLoad: true
-                    }, '*');
-                    frame.removeEventListener('load', onLoad);
-                };
-                frame.addEventListener('load', onLoad);
+                // Don't reload the iframe - just send the program data
+                frame.contentWindow.postMessage({
+                    type: 'compiled_program',
+                    program: rom,
+                    autoLoad: true
+                }, '*');
             } else {
                 console.error("X86DOSBoxPlatform: No program data to load");
             }
@@ -266,6 +266,15 @@ class X86DOSBoxPlatform implements Platform {
     private setupCompilationListener() {
         console.log("X86DOSBoxPlatform: Setting up compilation listener");
         
+        // Check if we've already set up the listener
+        if ((window as any).x86dosboxCompilationListenerSetup) {
+            console.log("X86DOSBoxPlatform: Compilation listener already set up, skipping");
+            return;
+        }
+        
+        // Mark that we've set up the listener
+        (window as any).x86dosboxCompilationListenerSetup = true;
+        
         // Hook into the global setCompileOutput function to detect successful compilations
         const originalSetCompileOutput = (window as any).setCompileOutput;
         (window as any).setCompileOutput = (output: any) => {
@@ -274,14 +283,21 @@ class X86DOSBoxPlatform implements Platform {
                 originalSetCompileOutput(output);
             }
             
-            // If we have output, reload the iframe with the new program
-            if (output && output instanceof Uint8Array) {
-                console.log("X86DOSBoxPlatform: Compilation completed, reloading iframe with new program");
+            // Check if auto-compile is enabled before processing output
+            const autoCompileEnabled = (window as any).autoCompileEnabled !== false;
+            const isManualCompilation = (window as any).isManualCompilation === true;
+            
+            console.log("X86DOSBoxPlatform: Compilation output received - autoCompileEnabled:", autoCompileEnabled, "isManualCompilation:", isManualCompilation);
+            
+            if (output && output instanceof Uint8Array && (autoCompileEnabled || isManualCompilation)) {
+                console.log("X86DOSBoxPlatform: Compilation completed, sending program to iframe");
                 
                 // Wait a bit for the compilation output to be processed, then use loadROM
                 setTimeout(() => {
                     this.loadROM("compiled_program", output);
                 }, 1000);
+            } else if (output && output instanceof Uint8Array) {
+                console.log("X86DOSBoxPlatform: Compilation completed but auto-compile is disabled, not loading program");
             }
         };
     }
