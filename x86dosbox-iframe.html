@@ -280,21 +280,9 @@
                     break;
                     
                 case 'stop':
-                    if (ci && ci.simulateKeyEvent) {
-                        try {
-                            // Send CTRL-F9 keypress to kill DOSBox (DOSBox special key)
-                            // Using correct SDL scancodes: LCTRL=224, F9=67
-                            ci.simulateKeyEvent(224, true);  // SDL_SCANCODE_LCTRL down
-                            ci.simulateKeyEvent(67, true);   // SDL_SCANCODE_F9 down
-                            ci.simulateKeyEvent(67, false);  // SDL_SCANCODE_F9 up
-                            ci.simulateKeyEvent(224, false); // SDL_SCANCODE_LCTRL up
-                            console.log("DOSBox stop keypress sent (CTRL-F9) via ci.simulateKeyEvent with SDL scancodes");
-                        } catch (error) {
-                            console.error("Error sending stop keypress:", error);
-                        }
-                    } else {
-                        console.log("ci.simulateKeyEvent method not available for stop");
-                    }
+                case 'reset':
+                    // Stop/reset messages are now handled by parent window reloading the iframe
+                    console.log("Stop/Reset message received - parent window will handle iframe reload");
                     break;
             }
         });

@@ -81,21 +81,21 @@ class X86DOSBoxPlatform implements Platform {
 
     stop(): void {
         console.log("X86DOSBoxPlatform stop() called");
-        // Send stop command to iframe emulator
+        // Instead of sending a message, reload the iframe directly
         const frame = document.getElementById("x86dosbox-iframe") as HTMLIFrameElement;
-        if (frame && frame.contentWindow) {
-            frame.contentWindow.postMessage({ type: 'stop' }, '*');
-            console.log("X86DOSBoxPlatform: Sent stop command to iframe");
+        if (frame) {
+            frame.src = frame.src; // Reload the iframe
+            console.log("X86DOSBoxPlatform: Reloaded iframe for stop/reset");
         }
     }
 
     reset(): void {
         console.log("X86DOSBoxPlatform reset() called");
-        // Send reset command to iframe emulator
+        // Instead of sending a message, reload the iframe directly
         const frame = document.getElementById("x86dosbox-iframe") as HTMLIFrameElement;
-        if (frame && frame.contentWindow) {
-            frame.contentWindow.postMessage({ type: 'reset' }, '*');
-            console.log("X86DOSBoxPlatform: Sent reset command to iframe");
+        if (frame) {
+            frame.src = frame.src; // Reload the iframe
+            console.log("X86DOSBoxPlatform: Reloaded iframe for reset");
         }
     }
 
